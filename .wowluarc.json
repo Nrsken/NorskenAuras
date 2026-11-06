@@ -1,0 +1,58 @@
+{
+    "ignore": [],
+    "library": [
+        "../NorskenCore/",
+        "../NorskenUI/"
+    ],
+    "flavors": [
+        "retail"
+    ],
+    "globals": {
+        "read": [
+            "AuraButtonBorderStyle",
+            "AuraContainerInbound",
+            "AuraContainerItemEnchantmentSlot",
+            "AuraContainerSortDirection",
+            "AuraContainerSortMethod",
+            "BigWigsLoader",
+            "BugGrabber",
+            "BugSack",
+            "CustomAuraContainerAuraProcessingPolicy",
+            "CustomAuraContainerItemEnchantmentPlacement",
+            "HidingBarAddon",
+            "LoadAddOnWithErrorHandling",
+            "NorskenCore",
+            "NorskenUI",
+            "NorskenUIDB",
+            "SCMAPI",
+            "TimeUtil",
+            "UnitFrameUtil",
+            "_ENG",
+            "_FRAME",
+            "_G"
+        ],
+        "write": [
+            "NorskenAuras"
+        ]
+    },
+    "hint": {
+        "enable": true,
+        "parameterNames": false,
+        "variableTypes": false,
+        "functionReturnTypes": false,
+        "forVariableTypes": false,
+        "parameterTypes": false,
+        "chainedReturnTypes": false
+    },
+    "codeLens": {
+        "enable": true,
+        "references": false,
+        "implementations": false,
+        "overrides": true
+    },
+    "diagnostics": {
+        "disable": [
+            "inject-field"
+        ]
+    }
+}
