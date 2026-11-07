@@ -1,5 +1,5 @@
 ---@class NRSKNUI
-local NRSKNUI = _G.NorskenUI
+local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local Anchors = NRSKNUI.Anchors
@@ -18,6 +18,7 @@ local format = string.format
 local tostring = tostring
 local tsort = table.sort
 local wipe = wipe
+local C_Timer = C_Timer
 
 local SetCVar = C_CVar and C_CVar.SetCVar
 
@@ -40,31 +41,14 @@ local hookedViewers = {} ---@type table<table, true>
 
 -- Lifecycle --
 
-function CDM:UpdateDB()
-    -- Frames are keyed by display id and another profile reuses the same ids for other displays.
-    -- A namespace reset or copy refills the same table, so comparing tables can't tell a change apart.
-    if self.icons then
-        self:ReleaseAll()
-        wipe(self.preview)
-        wipe(self.selectionPreview)
-    end
-
-    local db = self.namespace.profile
-    self.db = db
-    if db.Version == 0 then -- a profile the CDM hasn't set up yet
-        if not self:ImportOldTrackers(db) then
-            self:SeedBuiltins()
-            db.Enabled = true -- the built-ins are on, as they were under the old Auras module
-        end
-        db.Version = self:GetSchemaVersion()
+function CDM:OnInitialize()
+    self.db = NRSKNUI.db.global
+    if self.db.Version == 0 then
+        self:SeedBuiltins()
+        self.db.Version = self:GetSchemaVersion()
     end
 
     self:EnsureUids()
-end
-
-function CDM:OnInitialize()
-    self.namespace = NRSKNUI.ProfileManager:RegisterNamespace('CDM', self.Defaults)
-    self:UpdateDB()
     self.icons = {} ---@type table<string, CDMIcon>
     self.containers = {} ---@type table<string, Frame|NRSKNUI.DynamicGroup>
     self.spareStatic = {} ---@type Frame[]
@@ -72,6 +56,22 @@ function CDM:OnInitialize()
     self.spareChain = {} ---@type CDMChainGroup[]
     self.preview = {} ---@type table<string, number>
     self.selectionPreview = {} ---@type string[]
+end
+
+local function ApplyAll()
+    CDM:ApplySettings()
+end
+
+-- Live GUI edits fire many times a second, rebuilding on each one drops frames.
+local APPLY_SETTLE_DELAY = 0.15
+local queuedApply
+
+local function QueueApplyAll()
+    if queuedApply then queuedApply:Cancel() end
+    queuedApply = C_Timer.NewTimer(APPLY_SETTLE_DELAY, function()
+        queuedApply = nil
+        NRSKNUI:RunWhenSafe(ApplyAll)
+    end)
 end
 
 function CDM:OnEnable()
@@ -91,6 +91,14 @@ function CDM:OnEnable()
     NRSKNUI.AuraTriggers:RegisterCallback(self, function(aceModule) aceModule:ReapplyAuraTriggers() end)
 
     self:ApplySettings()
+
+    self:RegisterMessage('NRSKNUI_SHARED_SETTINGS_CHANGED', QueueApplyAll)
+
+    -- on the addon: the triggers own this event on the module. Talents and spells settle by the first world entry.
+    NRSKNUI:RegisterEvent('PLAYER_ENTERING_WORLD', function()
+        NRSKNUI:UnregisterEvent('PLAYER_ENTERING_WORLD')
+        NRSKNUI:RunWhenSafe(ApplyAll)
+    end)
 end
 
 function CDM:OnDisable()

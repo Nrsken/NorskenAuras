@@ -1,2 +1,2 @@
 -- Italian itIT localization file.
-local L = _G.NorskenUI:NewLocale('itIT')
+local L = select(2, ...):NewLocale('itIT')

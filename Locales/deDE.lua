@@ -1,5 +1,5 @@
 -- German deDE localization file.
-local L = _G.NorskenUI:NewLocale('deDE')
+local L = select(2, ...):NewLocale('deDE')
 
 -- Aura Filter Builder --
 L['Trigger %d: %s'] = "Auslöser %d: %s"
@@ -66,3 +66,11 @@ L['Final'] = "Final"
 
 -- AuraGroup
 L['Aura group "%s" has an unusable unit (%s), falling back to player.'] = "Aurengruppe „%s“ hat eine unbrauchbare Einheit (%s), verwende stattdessen den Spieler."
+L['Layout'] = "Layout"
+L['Defensives'] = "Defensivzauber"
+L['Display'] = "Anzeige"
+L['Focus'] = "Fokus"
+L['Trigger'] = "Auslöser"
+L['Options will open after combat ends.'] = "Die Optionen werden nach dem Kampf geöffnet."
+L['Development Version'] = "Entwicklungsversion"
+L['%s is missing, reinstall NorskenAuras.'] = "%s fehlt, installiere NorskenAuras neu."

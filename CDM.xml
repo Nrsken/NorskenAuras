@@ -1,15 +1,13 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
 
-    <Script file="Init.lua" />
-    <Script file="Defaults.lua" />
     <Script file="Core\CDM.lua" />
     <Script file="Core\Placement.lua" />
     <Script file="Core\Debug.lua" />
+    <Script file="Core\Options.lua" />
     <Script file="Groups\Containers.lua" />
     <Script file="Data\Templates.lua" />
     <Script file="Data\Store.lua" />
-    <Script file="Data\Migrations.lua" />
     <Script file="Data\Transfer.lua" />
     <Script file="Data\Catalogue.lua" />
     <Script file="Displays\Text.lua" />

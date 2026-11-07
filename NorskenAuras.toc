@@ -2,12 +2,19 @@
 ## Title: |cffe51039Norsken|r|cffb3b3b3Auras|r
 ## Notes: Cooldown & Aura Manager
 ## Category: |cffe51039Norsken|r |cffb3b3b3Addons|r
-## Group: NorskenUI
 ## Version: @project-version@
 ## Author: Norsken
-## IconTexture: Interface\AddOns\NorskenUI\Media\Logo\LogoRed.png
-## Dependencies: NorskenUI
+## IconTexture: Interface\AddOns\NorskenCore\Media\Logo\LogoRed.png
+## SavedVariables: NorskenAurasDB
+## AddonCompartmentFunc: NorskenAuras_OnCompartmentClick
+## Dependencies: NorskenCore
+## OptionalDeps: NorskenUI
 ## X-Curse-Project-ID: 1787597
 
+# Load Libraries
+Libs/Init.xml
+
+Init.lua
 Locales\Locales.xml
+Defaults.lua
 CDM.xml

@@ -1,2 +1,2 @@
 -- Spanish esES localization file.
-local L = _G.NorskenUI:NewLocale('esES')
+local L = select(2, ...):NewLocale('esES')

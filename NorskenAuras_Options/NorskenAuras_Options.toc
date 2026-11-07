@@ -1,0 +1,12 @@
+## Interface: 120105, 120107
+## Title: |cffe51039Norsken|r|cffb3b3b3Auras|r Options
+## Notes: Settings pages for NorskenAuras. Stores no data.
+## Category: |cffe51039Norsken|r |cffb3b3b3Addons|r
+## Version: @project-version@
+## Author: Norsken
+## IconTexture: Interface\AddOns\NorskenCore\Media\Logo\LogoRed.png
+## LoadOnDemand: 1
+## Dependencies: NorskenAuras, NorskenCore_Options
+
+Locales\Locales.xml
+GUI-CDM.xml

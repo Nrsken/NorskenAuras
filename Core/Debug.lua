@@ -1,5 +1,5 @@
 ---@class NRSKNUI
-local NRSKNUI = _G.NorskenUI
+local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
@@ -161,7 +161,7 @@ local function ReportedDisplays(id)
     return { id }
 end
 
----This session's NorskenUI errors from BugGrabber's list, newest first; our own reports left out.
+---This session's NorskenAuras errors from BugGrabber's list, newest first; our own reports left out.
 ---@param lines string[]
 local function ErrorLines(lines)
     local db, session = BugGrabber:GetDB(), BugGrabber:GetSessionId()
@@ -169,13 +169,13 @@ local function ErrorLines(lines)
     for n = #db, 1, -1 do
         local entry = db[n]
         local message = type(entry) == 'table' and entry.session == session and entry.message
-        if type(message) == 'string' and message:find('NorskenUI', 1, true)
-            and not message:find('NorskenUI CDM debug report', 1, true) then
+        if type(message) == 'string' and message:find('NorskenAuras', 1, true)
+            and not message:find('NorskenAuras CDM debug report', 1, true) then
             found[#found + 1] = entry
         end
     end
 
-    lines[#lines + 1] = format('NorskenUI errors this session (%d)', #found)
+    lines[#lines + 1] = format('NorskenAuras errors this session (%d)', #found)
     if not found[1] then
         lines[#lines + 1] = '  none'
     end
@@ -203,14 +203,14 @@ local function DebugLines(id)
     local specIndex = GetSpecialization()
     local specName = specIndex and select(2, GetSpecializationInfo(specIndex))
     local _, instanceType, _, difficultyName = GetInstanceInfo()
-    lines[#lines + 1] = 'NorskenUI CDM debug report'
+    lines[#lines + 1] = 'NorskenAuras CDM debug report'
     lines[#lines + 1] = '  Time: ' .. date('%Y-%m-%d %H:%M:%S')
     lines[#lines + 1] = format('  Version: %s, build %s', tostring(NRSKNUI.Version), tostring(build))
     lines[#lines + 1] = format('  Player: %s, %s', tostring(NRSKNUI.MyClassLocale), tostring(specName or 'no spec'))
     lines[#lines + 1] = format('  Instance: %s%s', tostring(instanceType), difficultyName and difficultyName ~= '' and (', ' .. difficultyName) or '')
     lines[#lines + 1] = format('  Combat: %s, restriction %d, auras secret %s, cooldowns secret %s', YesNo(NRSKNUI:InCombat()),
         NRSKNUI:GetRestrictionState(), YesNo(NRSKNUI:AreAurasSecret()), YesNo(NRSKNUI:AreCooldownsSecret()))
-    lines[#lines + 1] = format('  Module: enabled %s, options open %s (previews show displays regardless)', YesNo(CDM.db.Enabled), YesNo(CDM.previewing))
+    lines[#lines + 1] = format('  Module: enabled %s, options open %s (previews show displays regardless)', YesNo(CDM:IsEnabled()), YesNo(CDM.previewing))
     lines[#lines + 1] = format('  Cooldown Manager: essential %d, utility %d, buffs %d, bars %d, viewer CVar %s',
         #CDM.Catalogue:GetList(Category.Essential), #CDM.Catalogue:GetList(Category.Utility), #CDM.Catalogue:GetList(Category.TrackedBuff),
         #CDM.Catalogue:GetList(Category.TrackedBar), tostring(GetCVar('cooldownViewerEnabled')))

@@ -1,2 +1,2 @@
 -- Russian ruRU localization file.
-local L = _G.NorskenUI:NewLocale('ruRU')
+local L = select(2, ...):NewLocale('ruRU')

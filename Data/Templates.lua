@@ -1,5 +1,5 @@
 ---@class NRSKNUI
-local NRSKNUI = _G.NorskenUI
+local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
@@ -228,8 +228,8 @@ local BUILTIN_BASE = {
     StackFont = { FontSize = 14, Position = { AnchorFrom = 'BOTTOMRIGHT', XOffset = 0, YOffset = 2 } },
     DurationFont = { FontSize = 18, Position = { AnchorFrom = 'CENTER', XOffset = 0, YOffset = 0 } },
     FontShadow = { Enabled = false, Color = { 0, 0, 0, 1 }, OffsetX = 1, OffsetY = -1 },
-    anchorFrameType = 'SELECTFRAME',
-    ParentFrame = 'NUF_Player',
+    anchorFrameType = 'UIPARENT',
+    ParentFrame = 'UIParent',
 }
 CDM.AURA_GROUP_TEMPLATE = BUILTIN_BASE -- what any aura group's own fields look like, which an import is checked against
 
@@ -291,7 +291,6 @@ CDM.BUILTIN_AURA_GROUPS = {
             sortMethod = 'AuraInstanceIDOnly',
             StackFont = { FontSize = 12 },
             DurationFont = { FontSize = 14 },
-            ParentFrame = 'NUF_Target',
             Position = { AnchorFrom = 'BOTTOMRIGHT', AnchorTo = 'TOPLEFT', XOffset = -30, YOffset = 120 },
         }),
     },

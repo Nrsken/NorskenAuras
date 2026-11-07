@@ -1,2 +1,2 @@
 -- Simplified Chinese zhCN localization file.
-local L = _G.NorskenUI:NewLocale('zhCN')
+local L = select(2, ...):NewLocale('zhCN')

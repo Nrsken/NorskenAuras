@@ -1,5 +1,5 @@
 ---@class NRSKNUI
-local NRSKNUI = _G.NorskenUI
+local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL

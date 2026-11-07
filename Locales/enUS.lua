@@ -1,5 +1,5 @@
 -- English enUS and enGB localization file.
-local L = _G.NorskenUI:NewLocale('enUS')
+local L = select(2, ...):NewLocale('enUS')
 
 -- Aura Filter Builder --
 L['Trigger %d: %s'] = true
@@ -66,3 +66,11 @@ L['Final'] = true
 
 -- AuraGroup
 L['Aura group "%s" has an unusable unit (%s), falling back to player.'] = true
+L['Layout'] = true
+L['Defensives'] = true
+L['Display'] = true
+L['Focus'] = true
+L['Trigger'] = true
+L['Options will open after combat ends.'] = true
+L['Development Version'] = true
+L['%s is missing, reinstall NorskenAuras.'] = true

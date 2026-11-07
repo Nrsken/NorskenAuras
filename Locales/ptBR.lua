@@ -1,2 +1,2 @@
 -- Portuguese ptBR localization file.
-local L = _G.NorskenUI:NewLocale('ptBR')
+local L = select(2, ...):NewLocale('ptBR')

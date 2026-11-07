@@ -1,2 +1,2 @@
 -- Traditional Chinese zhTW localization file.
-local L = _G.NorskenUI:NewLocale('zhTW')
+local L = select(2, ...):NewLocale('zhTW')

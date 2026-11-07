@@ -1,5 +1,5 @@
 ---@class NRSKNUI
-local NRSKNUI = _G.NorskenUI
+local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local Anchors = NRSKNUI.Anchors
@@ -10,7 +10,8 @@ On the screen with a mover, inside its group or matched to a dynamic group's wid
 Also keeps a display in place on screen when it moves to another group.
 ]]
 
-local floor = math.floor
+local floor, min, max = math.floor, math.min, math.max
+local ipairs = ipairs
 
 local UIParent = UIParent
 
@@ -24,7 +25,38 @@ local function AnchorOptions(id)
         db = function() return CDM:Get(id) end,
         apply = function(aceModule) aceModule:ApplySettings(id) end,
         displayName = CDM:GetName(id),
+        shown = function() return CDM:GetLoadState(id) ~= 'unloaded' end,
+        bounds = CDM:Get(id).type == 'group' and function() return CDM:GetGroupBounds(id) end or nil,
     }
+end
+
+---A static group's frame is a small handle, this is the area of what hangs off it.
+---@param id string
+---@return number? left in UIParent's units, nil when nothing inside has a readable size
+---@return number? bottom
+---@return number? right
+---@return number? top
+function CDM:GetGroupBounds(id)
+    local left, bottom, right, top
+    local base = UIParent:GetEffectiveScale()
+
+    for _, leaf in ipairs(self:GetLeaves(id)) do
+        local frame = self.icons[leaf] or self.containers[leaf]
+        if frame and frame:IsShown() then
+            local x, y, width, height = NRSKNUI:ScrubSecrets(frame:GetRect())
+            -- empty slots keep a sliver of size, and an icon holding an aura can have a secret one
+            if x and width and width > 1 and height > 1 then
+                local ratio = frame:GetEffectiveScale() / base
+                local l, b, r, t = x * ratio, y * ratio, (x + width) * ratio, (y + height) * ratio
+                left = left and min(left, l) or l
+                bottom = bottom and min(bottom, b) or b
+                right = right and max(right, r) or r
+                top = top and max(top, t) or t
+            end
+        end
+    end
+
+    return left, bottom, right, top
 end
 
 ---The point a dynamic group is pinned at: the picked one or its grow anchor, which grows away from where it sits.

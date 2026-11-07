@@ -1,2 +1,2 @@
 -- Korean koKR localization file.
-local L = _G.NorskenUI:NewLocale('koKR')
+local L = select(2, ...):NewLocale('koKR')
