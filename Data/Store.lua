@@ -21,7 +21,7 @@ local PowerType = Enum and Enum.PowerType
 
 local UID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()'
 local ID_PREFIX = 'cdm:'
-local SCHEMA_VERSION = 12
+local SCHEMA_VERSION = 1
 local RESOURCE_WIDTH, RESOURCE_HEIGHT = 240, 12
 
 -- Displays built from per-trigger layers: they have triggers, conditions and a style.

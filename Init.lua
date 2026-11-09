@@ -5,7 +5,7 @@ local addonName = ...
 local LibStub = LibStub
 local GetAddOnMetadata = C_AddOns.GetAddOnMetadata
 
-local LDBIconPath = 'Interface\\AddOns\\NorskenUI\\Media\\Logo\\logocookingsPT1128x128OTBRED.png'
+local LDBIconPath = 'Interface\\AddOns\\NorskenAuras\\Media\\Logo\\LogoAuras.png'
 
 local NorskenCore = _G.NorskenCore --[[@as NorskenCoreAPI]]
 NorskenCore:NewAddon(NRSKNUI, addonName, 'AceEvent-3.0')

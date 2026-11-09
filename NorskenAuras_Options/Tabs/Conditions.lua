@@ -306,26 +306,42 @@ local function CheckDef(display, check)
     return trigger, checks and checks[check.variable]
 end
 
+---The curve check a top All of holds beside its spec and talent checks; the condition only colours what that check would.
+---@param display table
+---@param check table
+---@return table? part
+local function CurvePart(display, check)
+    if check.variable ~= 'AND' then return nil end
+
+    for _, sub in ipairs(check.checks or {}) do
+        local _, def = CheckDef(display, sub)
+        if def and def.curve then
+            return sub
+        end
+    end
+end
+
 ---Whether the game decides this check out of our sight (an aura's own checks, the colour curves), so nothing knows if it matched.
----A combination can't hold one, so only the top check counts.
+---Only the top check counts or the curve check its All of holds.
 ---@param display table
 ---@param check table
 ---@return boolean
 local function GameDecided(display, check)
-    local _, def = CheckDef(display, check)
+    local _, def = CheckDef(display, CurvePart(display, check) or check)
     return def ~= nil and (def.secret == true or def.curve == true)
 end
 
 ---@param trigger table?
 ---@param skipSecret boolean? inside a combination, where an aura's checks can't be combined
----@param only table<string, boolean>? the checks allowed, on a group
+---@param skipCurve boolean? inside a combination with no room for a curve check
+---@param only table<string, boolean>? the checks allowed, on a group or beside a curve check
 ---@return table[] options, string? first
-local function CheckOptions(trigger, skipSecret, only)
+local function CheckOptions(trigger, skipSecret, skipCurve, only)
     local checks = trigger and CDM.ConditionChecks[trigger.Type]
     local options, first = {}, nil
     for _, key in ipairs(CHECK_ORDER) do
         local def = checks and checks[key]
-        if def and not (skipSecret and (def.secret or def.curve)) and not (only and not only[key]) and not (key == 'missing' and not trigger.Placeholder)
+        if def and not (skipSecret and def.secret) and not (skipCurve and def.curve) and not (only and not only[key]) and not (key == 'missing' and not trigger.Placeholder)
             and not (key == 'stacks' and trigger.Type == 'power' and trigger.PowerType ~= CDM.MAELSTROM_WEAPON)
             and not (key == 'charged' and not CDM.CHARGED_POWER[trigger.PowerType]) then
             options[#options + 1] = { value = key, text = def.secret and AURA_CHECK_NAMES[key] or CHECK_NAMES[key] }
@@ -407,17 +423,34 @@ end
 ---@param triggerTitle fun(index: number, trigger: table): string
 ---@param depth number how deep inside combinations the line sits
 ---@param removable boolean
+---@param parent table? the combination the line is part of
+---@param own table? the part the line edits, nil for a new one
 ---@return table[]
-local function IfOptions(display, triggerTitle, depth, removable)
+local function IfOptions(display, triggerTitle, depth, removable, parent, own)
+    -- a top All of takes one curve check while its other parts are spec and talent checks, which the curve is built from
+    local curveSlot, besideCurve = parent ~= nil and depth == 1 and parent.variable == 'AND', false
+    for _, sub in ipairs(curveSlot and parent.checks or {}) do
+        local _, def = CheckDef(display, sub)
+        if sub ~= own and def and def.curve then
+            besideCurve = true
+        elseif sub ~= own and not (sub.trigger == -1 and CDM.GROUP_CHECKS[sub.variable]) then
+            curveSlot = false
+        end
+    end
+    curveSlot = curveSlot and not besideCurve
+
     local options = {}
-    if depth < MAX_DEPTH then
+    if depth < MAX_DEPTH and not (parent and CurvePart(display, parent)) then
         options[1] = { value = 'header:combinations', text = L['Combinations'], header = true }
         options[2] = { value = 'AND', text = L['All of'] }
-        options[3] = { value = 'OR', text = L['Any of'] }
+        -- an Any of can't hold the curve check this All of has
+        if not (own and CurvePart(display, own)) then
+            options[3] = { value = 'OR', text = L['Any of'] }
+        end
     end
     local group = not CDM.LAYERED_TYPES[display.type]
     local function addGroup(index, trigger, title)
-        local checks = CheckOptions(trigger, depth > 0, group and CDM.GROUP_CHECKS or nil)
+        local checks = CheckOptions(trigger, depth > 0, depth > 0 and not curveSlot, (group or besideCurve) and CDM.GROUP_CHECKS or nil)
         if not checks[1] then return end
         options[#options + 1] = { value = 'header:' .. index, text = title, header = true }
         for _, option in ipairs(checks) do
@@ -442,7 +475,7 @@ local function SetCheck(display, check, value)
         if not CDM.COMBINATIONS[check.variable] then
             local _, def = CheckDef(display, check)
             check.checks = {}
-            if def and not def.secret and not def.curve then
+            if def and not def.secret and not (def.curve and value ~= 'AND') then
                 check.checks[1] = { trigger = check.trigger, variable = check.variable, op = check.op, value = check.value, entries = check.entries }
             end
             check.trigger, check.op, check.value, check.entries = nil, nil, nil, nil
@@ -647,9 +680,9 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
         ---@param onChange fun() applies a value edit and retitles its condition
         ---@param depth number
         ---@param label string?
-        ---@param parentChecks table[]? the combination it's part of, which Remove takes it out of
+        ---@param parent table? the combination it's part of, which Remove takes it out of
         ---@param subIndex number?
-        local function IfLine(check, onChange, depth, label, parentChecks, subIndex)
+        local function IfLine(check, onChange, depth, label, parent, subIndex)
             local _, def = CheckDef(display, check)
             local combination = CDM.COMBINATIONS[check.variable]
 
@@ -658,13 +691,17 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                 width = 0.5,
                 tooltip = def and def.secret and (check.variable == 'missing' and L["The game hides whether an aura is up, so this check can't be combined with others and only changes the placeholder."]
                         or L["The game hides whether an aura is up, so this check can't be combined with others and only changes the aura's own button."])
-                    or def and def.curve and (check.variable == 'stacks' and L["The game reads this in combat, so it only colours a text showing this aura's %s and can't be combined with others."]
-                        or L["The game reads this in combat, so it only colours a text showing this trigger's %p and can't be combined with others."]) or nil,
-                options = IfOptions(display, triggerTitle, depth, parentChecks ~= nil),
+                    or def and def.curve and (check.variable == 'stacks' and L["The game reads this in combat, so it only colours a text showing this aura's %s and only combines with spec and talent checks."]
+                        or L["The game reads this in combat, so it only colours a text showing this trigger's %p and only combines with spec and talent checks."]) or nil,
+                options = IfOptions(display, triggerTitle, depth, parent ~= nil, parent, check),
                 value = combination and check.variable or (check.trigger and check.variable and check.trigger .. ':' .. check.variable) or nil,
                 callback = function(value)
                     Edit(function()
-                        if value == REMOVE then tremove(parentChecks, subIndex) else SetCheck(display, check, value) end
+                        if value == REMOVE then
+                            tremove(parent.checks, subIndex)
+                        else
+                            SetCheck(display, check, value)
+                        end
                     end)
                 end,
             })
@@ -698,12 +735,12 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                 local title = subTrigger and triggerTitle(sub.trigger, subTrigger)
                 local subLabel = title
                 if i > 1 then subLabel = title and format(join, title) or joinWord end
-                IfLine(sub, onChange, depth + 1, subLabel, check.checks, i)
+                IfLine(sub, onChange, depth + 1, subLabel, check, i)
             end
 
             card:Row(rowH, nil, (depth + 1) * INDENT):Dropdown(check.checks[1] and joinWord or nil, {
                 width = 0.5,
-                options = IfOptions(display, triggerTitle, depth + 1, false),
+                options = IfOptions(display, triggerTitle, depth + 1, false, check),
                 callback = function(value)
                     Edit(function()
                         local sub = {}
@@ -718,9 +755,14 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
             local check = condition.check
             local trigger, def = CheckDef(display, check)
             local secret = def ~= nil and def.secret == true
+            -- an All of with a curve check reaches only what that check can colour
+            local decider = CurvePart(display, check) or check
+            local _, deciderDef = CheckDef(display, decider)
             -- Else If needs to know whether the one above matched, which the game keeps to itself for these
             local noElseIf = index > 1 and (GameDecided(display, check) or GameDecided(display, conditions[index - 1].check or {}))
             local linked = condition.linked and index > 1 and not noElseIf
+            local _, aboveDef = CheckDef(display, index > 1 and conditions[index - 1].check or {})
+            local besideAura = secret or (aboveDef ~= nil and aboveDef.secret == true)
 
             local open = opened[index]
             if open == nil then
@@ -806,10 +848,10 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                     end
                     -- one already set that can't reach the display stays listed, so it shows with its warning
                     local current = change.property and byKey[change.property]
-                    local unreachable = current ~= nil and not Allowed(current, check.variable, def, loneAura)
+                    local unreachable = current ~= nil and not Allowed(current, decider.variable, deciderDef, loneAura)
                     local options = {}
                     for _, entry in ipairs(properties) do
-                        if not used[entry.key] and (Allowed(entry, check.variable, def, loneAura) or entry == current) then
+                        if not used[entry.key] and (Allowed(entry, decider.variable, deciderDef, loneAura) or entry == current) then
                             options[#options + 1] = { value = entry.key, text = secret and check.variable ~= 'missing' and entry.overlayText or entry.text }
                         end
                     end
@@ -858,7 +900,8 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                         notice = noElseIf and {
                             level = 'info',
                             title = L['Else If'],
-                            text = L["Else If doesn't work next to aura checks, the game keeps them secret."],
+                            text = besideAura and L["Else If doesn't work next to aura checks, the game keeps them secret."]
+                                or L["Else If doesn't work next to power, time or stack checks, the game reads them in combat."],
                         } or nil,
                         value = linked == true,
                         callback = function(checked) Edit(function() condition.linked = checked or nil end) end,

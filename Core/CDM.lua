@@ -161,6 +161,7 @@ function CDM:BuildIcon(id)
     end
 
     frame.style = self:GetStyle(display)
+    frame.curveGates = self:CurveGates(display)
     self:StyleIcon(frame, display, frame.style)
 
     if self:IsDynamic(display.parent) then
@@ -173,7 +174,7 @@ function CDM:BuildIcon(id)
         end
         group:SetChildOrder(id, display.order or 0)
         group:NotifyChildResized(id, frame.style.Width, frame.style.Height)
-        Anchors:Unregister(id)
+        self:RegisterAnchor(frame, id, true)
     else
         self:Place(frame, id, display)
     end

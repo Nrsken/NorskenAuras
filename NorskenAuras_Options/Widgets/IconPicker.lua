@@ -232,6 +232,9 @@ end
 
 -- Grid widget --
 
+local STEP = BUTTON_SIZE + SPACING
+local NO_ICONS = {}
+
 local GridMixin = {}
 
 ---@param grid table
@@ -269,10 +272,58 @@ local function InitButton(grid, button, entry)
     button:SetBorderColor(color[1], color[2], color[3], 1)
 end
 
+---Fill the rows in view; only those have buttons, so a broad search makes no more frames than fit.
+---@param force boolean? the icons or the size changed, not only the scroll
+function GridMixin:Layout(force)
+    local columns, icons = self.columns, self.icons
+    local first = math.floor(self.scrollFrame:GetVerticalScroll() / STEP) * columns + 1
+    if first == self.first and not force then return end
+    self.first = first
+
+    local last = math.min(#icons, first + (math.ceil(self.scrollFrame:GetHeight() / STEP) + 1) * columns - 1)
+    local used = 0
+    for index = first, last do
+        used = used + 1
+        local button = self.buttons[used]
+        if not button then
+            button = CreateFrame('Button', nil, self.scrollChild)
+            button:NUISetPixelSize(BUTTON_SIZE, BUTTON_SIZE)
+            self.buttons[used] = button
+        end
+
+        local column, row = (index - 1) % columns, math.floor((index - 1) / columns)
+        button:ClearAllPoints()
+        button:NUISetPixelPoint('TOPLEFT', self.scrollChild, 'TOPLEFT', column * STEP, -row * STEP)
+        InitButton(self, button, icons[index])
+        button:Show()
+    end
+
+    for i = used + 1, #self.buttons do
+        self.buttons[i]:Hide()
+    end
+end
+
+---Size the content to the icons and the width, then fill what's in view.
+function GridMixin:Refresh()
+    local width = self.scrollFrame:GetWidth()
+    if width <= 0 then return end -- not laid out yet, OnSizeChanged comes back
+
+    self.columns = math.max(1, math.floor((width + SPACING) / STEP))
+    local height = math.max(1, math.ceil(#self.icons / self.columns) * STEP - SPACING)
+    self.scrollChild:NUISetPixelSize(width, height)
+    self.scrollbar:UpdateVisibility(height, self.scrollFrame:GetHeight())
+    self.scrollFrame:UpdateScrollChildRect()
+    self:Layout(true)
+end
+
 ---@param icons CDMIconEntry[]
 ---@param searched boolean? a search ran and found nothing, rather than nothing typed yet
 function GridMixin:SetIcons(icons, searched)
-    self.scrollBox:SetDataProvider(CreateDataProvider(icons))
+    self.icons = icons
+    self.scrollbar:SetValue(0)
+    self.scrollFrame:SetVerticalScroll(0)
+    self:Refresh()
+
     local hint = not (cache and cache.ready) and L['Loading icons...'] or searched and L['No icons found.'] or L['Type a name or an ID to search.']
     self.hint:SetText(hint)
     self.hint:SetShown(icons[1] == nil)
@@ -284,21 +335,32 @@ function GridMixin:OnAcquire(parent, _, config)
     self.onPick = config.onPick
     self.selected = config.selected
     self:Show()
-    self:SetIcons(config.icons or {}, config.searched)
+    self:SetIcons(config.icons or NO_ICONS, config.searched)
 end
 
 function GridMixin:OnRelease()
     self.onPick, self.selected = nil, nil
-    self.scrollBox:RemoveDataProvider()
+    self:SetIcons(NO_ICONS)
 end
 
 NRSKNUI.Libs.KAJI:RegisterWidgetType(GRID_TYPE, function()
     local frame = Mixin(CreateFrame('Frame'), GridMixin)
+    frame.icons, frame.buttons, frame.columns = NO_ICONS, {}, 1
 
-    local scrollBox = CreateFrame('Frame', nil, frame, 'WowScrollBoxList')
-    scrollBox:SetPoint('TOPLEFT')
-    scrollBox:SetPoint('BOTTOMRIGHT', -14, 0)
-    frame.scrollBox = scrollBox
+    local scrollFrame = CreateFrame('ScrollFrame', nil, frame)
+    scrollFrame:SetClipsChildren(true)
+    scrollFrame:NUISetPixelPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+    scrollFrame:NUISetPixelPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -(Theme.scrollbarWidth + SPACING), 0)
+    frame.scrollFrame = scrollFrame
+
+    local scrollChild = CreateFrame('Frame', nil, scrollFrame)
+    scrollChild:NUISetPixelSize(1, 1)
+    scrollFrame:SetScrollChild(scrollChild)
+    frame.scrollChild = scrollChild
+
+    frame.scrollbar = NRSKNUI.GUI:CreateScrollbar(scrollFrame, { width = Theme.scrollbarWidth, thumbHeight = 40, scrollStep = STEP })
+    frame.scrollbar.onValueChanged = function() frame:Layout() end
+    scrollFrame:HookScript('OnSizeChanged', function() frame:Refresh() end)
 
     local hint = frame:CreateFontString(nil, 'OVERLAY')
     NRSKNUI.GUI:ApplyFont(hint, 'normal')
@@ -306,19 +368,6 @@ NRSKNUI.Libs.KAJI:RegisterWidgetType(GRID_TYPE, function()
     hint:SetPoint('TOP', frame, 'TOP', 0, -16)
     frame.hint = hint
 
-    local scrollBar = CreateFrame('EventFrame', nil, frame, 'MinimalScrollBar')
-    scrollBar:SetPoint('TOPLEFT', scrollBox, 'TOPRIGHT', 4, 0)
-    scrollBar:SetPoint('BOTTOMLEFT', scrollBox, 'BOTTOMRIGHT', 4, 0)
-    local NorskenUI = _G.NorskenUI
-    local Skinning = NorskenUI and NorskenUI:GetModule('Skinning', true)
-    if Skinning then
-        Skinning:HandleTrimScrollBar(scrollBar)
-    end
-
-    local view = CreateScrollBoxListGridView(1, 0, 0, 0, 0, SPACING, SPACING)
-    view:SetStrideExtent(BUTTON_SIZE) -- columns follow the width; the view adds the spacing itself
-    view:SetElementInitializer('NRSKNUI_IconPickerButtonTemplate', function(button, entry) InitButton(frame, button, entry) end)
-    ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
     return frame
 end)
 

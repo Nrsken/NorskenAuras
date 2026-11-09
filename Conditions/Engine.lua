@@ -25,6 +25,86 @@ local CreateColorCurve = C_CurveUtil and C_CurveUtil.CreateColorCurve
 local CreateNumericRuleFormatter = C_StringUtil and C_StringUtil.CreateNumericRuleFormatter
 local CreateColor = CreateColor
 
+-- Curve checks --
+
+---@param display table
+---@param check table
+---@return table?
+local function CheckDef(display, check)
+    local trigger = CDM:GetCheckTrigger(display, check.trigger)
+    local checks = trigger and CDM.ConditionChecks[trigger.Type]
+    return checks and checks[check.variable]
+end
+
+---@param display table
+---@param check table
+---@return boolean
+local function IsCurve(display, check)
+    local def = CheckDef(display, check)
+    return def ~= nil and def.curve == true
+end
+
+---The curve part of an All of, the one check the game decides in it.
+---@param display table
+---@param check table
+---@return table?
+local function CurvePart(display, check)
+    if check.variable ~= 'AND' then return nil end
+
+    for _, sub in ipairs(check.checks or {}) do
+        if IsCurve(display, sub) then
+            return sub
+        end
+    end
+end
+
+---Whether the game decides this check out of our sight (an aura's own checks, the colour curves), so Else If can't follow it.
+---@param display table
+---@param check table
+---@return boolean
+local function GameDecided(display, check)
+    local def = CheckDef(display, CurvePart(display, check) or check)
+    return def ~= nil and (def.secret == true or def.curve == true)
+end
+
+---The check a condition's curve follows: the check itself or the one curve part of an All of whose other parts are spec
+---and talent checks that all match now. Those can't change in combat, so the curve is rebuilt when they do.
+---@param display table
+---@param check table
+---@return table?
+local function CurveCheck(display, check)
+    if check.variable ~= 'AND' then
+        return check
+    end
+
+    local curve
+    for _, sub in ipairs(check.checks or {}) do
+        if sub.trigger == -1 and CDM.GROUP_CHECKS[sub.variable] then
+            if not CheckDef(display, sub).match(sub.value, nil, sub) then return nil end
+        elseif curve or not IsCurve(display, sub) then
+            return nil
+        else
+            curve = sub
+        end
+    end
+    return curve
+end
+
+---Which of the display's spec or talent gated curves build right now, as '10'; nil when it has none.
+---A build keeps it, so a player change only rebuilds the displays where it moved.
+---@param display table
+---@return string?
+function CDM:CurveGates(display)
+    local gates
+    for _, condition in ipairs(display.Conditions or {}) do
+        local check = condition.check or {}
+        if CurvePart(display, check) then
+            gates = (gates or '') .. (CurveCheck(display, check) and '1' or '0')
+        end
+    end
+    return gates
+end
+
 -- Evaluate --
 
 local OPERATORS = {
@@ -111,15 +191,19 @@ end
 ---@param overrides table
 ---@param matches table
 local function Collect(conditions, display, frame, pip, overrides, matches)
-    local chainMatched = false
+    local chainMatched, lastDecided = false, false
     for index, condition in ipairs(conditions or {}) do
-        local matched = Matches(condition.check or {}, display, frame, pip) == true
-        if condition.linked and index > 1 then
+        local check = condition.check or {}
+        local matched = Matches(check, display, frame, pip) == true
+        -- nothing knows whether a check the game decides matched, so a chain breaks on either side of it
+        local decided = GameDecided(display, check)
+        if condition.linked and index > 1 and not (decided or lastDecided) then
             matched = matched and not chainMatched
             chainMatched = chainMatched or matched
         else
             chainMatched = matched
         end
+        lastDecided = decided
         matches[index] = matched
 
         if matched then
@@ -381,7 +465,17 @@ function CDM:EvaluateGroupConditions(display, frame)
     return true
 end
 
-local movedGroups = {}
+local movedGroups, rebuiltCurves = {}, {}
+
+-- Builds the displays whose gated curves changed; one function for the combat queue, a loading screen can come in combat.
+local function RebuildCurves()
+    local ids = {}
+    for id in pairs(rebuiltCurves) do
+        ids[#ids + 1] = id
+    end
+    wipe(rebuiltCurves)
+    CDM:ApplyDisplays(ids)
+end
 
 -- One function for the combat queue, which dedupes by identity; spec and talents can't change in combat, a loading screen can.
 local function PlaceMovedGroups()
@@ -404,13 +498,23 @@ end
 function CDM:RefreshPlayerConditions()
     for id, display in pairs(self.db.Displays) do
         if self:ConditionsUse(display, -1, 'spec') or self:ConditionsUse(display, -1, 'talent') then
+            local frame = self.icons[id]
             local group = self.containers[id] or self:GetAuraHost(id)
-            if self.icons[id] then
+            if frame then
                 self:Derive(id)
             elseif group and self:EvaluateGroupConditions(display, group) then
                 movedGroups[id] = true
             end
+
+            -- a gated curve is built into the texts, so those are styled again
+            if frame and self:CurveGates(display) ~= frame.curveGates then
+                rebuiltCurves[id] = true
+            end
         end
+    end
+
+    if next(rebuiltCurves) then
+        NRSKNUI:RunWhenSafe(RebuildCurves)
     end
 
     if next(movedGroups) then
@@ -430,7 +534,7 @@ end
 function CDM:TextColorCurve(display, triggerIndex, scales, ordinal, base)
     local steps -- only made when a condition colours this text, since a cast restyles %n texts every time
     for _, condition in ipairs(display.Conditions or {}) do
-        local check = condition.check or {}
+        local check = CurveCheck(display, condition.check or {}) or {}
         local scale = check.trigger == triggerIndex and scales[check.variable]
         if scale then
             for _, change in ipairs(condition.changes or {}) do
@@ -488,7 +592,7 @@ end
 function CDM:StackCountFormatter(display, triggerIndex, ordinal)
     local steps
     for _, condition in ipairs(display.Conditions or {}) do
-        local check = condition.check or {}
+        local check = CurveCheck(display, condition.check or {}) or {}
         if check.trigger == triggerIndex and check.variable == 'stacks' then
             for _, change in ipairs(condition.changes or {}) do
                 local name, sub = self:SplitProperty(change.property or '')

@@ -17,17 +17,21 @@ local UIParent = UIParent
 
 -- Placing --
 
----What the mover needs: where the position is saved and how to re-apply it.
+---Give a display its box in anchors: where the position is saved, how to re-apply it and the group it opens from.
+---@param frame Frame
 ---@param id string
----@return table
-local function AnchorOptions(id)
-    return {
+---@param locked boolean? a dynamic group places it, so it only selects
+function CDM:RegisterAnchor(frame, id, locked)
+    local display = self:Get(id)
+    Anchors:Register(self, id, frame, 'cooldownManager', {
         db = function() return CDM:Get(id) end,
         apply = function(aceModule) aceModule:ApplySettings(id) end,
-        displayName = CDM:GetName(id),
+        displayName = self:GetName(id),
         shown = function() return CDM:GetLoadState(id) ~= 'unloaded' end,
-        bounds = CDM:Get(id).type == 'group' and function() return CDM:GetGroupBounds(id) end or nil,
-    }
+        bounds = display.type == 'group' and function() return CDM:GetGroupBounds(id) end or nil,
+        parentKey = display.parent,
+        locked = locked,
+    })
 end
 
 ---A static group's frame is a small handle, this is the area of what hangs off it.
@@ -114,7 +118,7 @@ function CDM:Place(frame, id, display, point)
         return
     end
 
-    -- Inside a group it hangs off the group's frame.
+    -- Inside a group it hangs off the group's frame, its box opens from the group's.
     if parent then
         local host = self.containers[display.parent]
         frame:SetParent(host)
@@ -124,7 +128,7 @@ function CDM:Place(frame, id, display, point)
         local target = display.anchorFrameType == 'SELECTFRAME' and display.ParentFrame and _G[display.ParentFrame] or host
         frame:NUISetPixelPoint(point or position.AnchorFrom, target, position.AnchorTo, position.XOffset + extraX, position.YOffset + extraY)
         frame:SetFrameStrata(display.Strata or host:GetFrameStrata())
-        Anchors:Unregister(id)
+        self:RegisterAnchor(frame, id, self:IsDynamic(display.parent))
         return
     end
 
@@ -137,7 +141,7 @@ function CDM:Place(frame, id, display, point)
         frame:NUIApplyPosition(display, nil, extraX, extraY)
     end
 
-    Anchors:Register(self, id, frame, 'cooldownManager', AnchorOptions(id))
+    self:RegisterAnchor(frame, id)
 end
 
 -- Keeping place --

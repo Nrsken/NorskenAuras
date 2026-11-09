@@ -1,12 +1,16 @@
 ## Interface: 120105, 120107
-## Title: |cffe51039Norsken|r|cffb3b3b3Auras|r Options
+## Title: |cffc70000Norsken|r|cffb3b3b3Auras Options|r
 ## Notes: Settings pages for NorskenAuras. Stores no data.
 ## Category: |cffe51039Norsken|r |cffb3b3b3Addons|r
+## Group: NorskenAuras
 ## Version: @project-version@
 ## Author: Norsken
-## IconTexture: Interface\AddOns\NorskenCore\Media\Logo\LogoRed.png
+## IconTexture: Interface\AddOns\NorskenAuras\Media\Logo\LogoAuras.png
 ## LoadOnDemand: 1
-## Dependencies: NorskenAuras, NorskenCore_Options
+## OptionalDeps: NorskenCore, NorskenCore_Options, NorskenAuras
+
+# says why when NorskenCore is missing or off, see the file
+Bootstrap.lua [Bootstrap]
 
 Locales\Locales.xml
 GUI-CDM.xml

@@ -8,6 +8,7 @@ local strtrim, strlower = strtrim, strlower
 
 local OPTIONS = 'NorskenAuras_Options'
 local SHARED_OPTIONS = 'NorskenCore_Options'
+local LOAD_ORDER = { SHARED_OPTIONS, OPTIONS }
 
 ---The window lives in a LoadOnDemand addon, loaded the first time it's opened.
 ---@return boolean loaded
@@ -24,10 +25,21 @@ local function LoadOptions()
     local guid = UnitGUID('player')
     C_AddOns.EnableAddOn(SHARED_OPTIONS, guid)
     C_AddOns.EnableAddOn(OPTIONS, guid)
-    local loaded, failure = C_AddOns.LoadAddOn(OPTIONS)
-    if not loaded then
-        NRSKNUI:Print(OPTIONS .. ': ' .. (_G['ADDON_' .. tostring(failure)] or tostring(failure)))
-        return false
+
+    -- the TOC only lists it as optional (see Bootstrap.lua), which doesn't load a LoadOnDemand addon, so it's loaded first
+    for _, name in ipairs(LOAD_ORDER) do
+        local loaded, failure = C_AddOns.LoadAddOn(name)
+        if not loaded then
+            NRSKNUI:Print(name .. ': ' .. (_G['ADDON_' .. tostring(failure)] or tostring(failure)))
+            return false
+        end
+    end
+
+    -- folders from different releases mixed together break in odd ways, so say so up front
+    local version = C_AddOns.GetAddOnMetadata(OPTIONS, 'Version')
+    local addonVersion = C_AddOns.GetAddOnMetadata('NorskenAuras', 'Version')
+    if version ~= addonVersion then
+        NRSKNUI:Print(format(L['%s is version %s but NorskenAuras is %s, update both.'], OPTIONS, tostring(version), tostring(addonVersion)))
     end
     return true
 end

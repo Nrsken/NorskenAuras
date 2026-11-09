@@ -1,13 +1,15 @@
 ## Interface: 120105, 120107
-## Title: |cffe51039Norsken|r|cffb3b3b3Auras|r
+## Title: |cffc70000Norsken|r|cffb3b3b3Auras|r
+## Group: NorskenAuras
 ## Notes: Cooldown & Aura Manager
 ## Category: |cffe51039Norsken|r |cffb3b3b3Addons|r
 ## Version: @project-version@
 ## Author: Norsken
-## IconTexture: Interface\AddOns\NorskenCore\Media\Logo\LogoRed.png
+## IconTexture: Interface\AddOns\NorskenAuras\Media\Logo\LogoAuras.png
 ## SavedVariables: NorskenAurasDB
 ## AddonCompartmentFunc: NorskenAuras_OnCompartmentClick
 ## Dependencies: NorskenCore
+## X-NorskenCore-Minimum: 1
 ## OptionalDeps: NorskenUI
 ## X-Curse-Project-ID: 1787597
 

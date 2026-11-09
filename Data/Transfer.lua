@@ -26,7 +26,7 @@ local DecodeBase64 = C_EncodingUtil and C_EncodingUtil.DecodeBase64
 local DEFLATE = Enum and Enum.CompressionMethod.Deflate
 local OPTIMIZE_SIZE = Enum and Enum.CompressionLevel.OptimizeForSize
 
-local PREFIX = '!NUICDM1!'
+local PREFIX = '!NAURAS1!'
 local FORMAT_VERSION = 1
 local MAX_DEPTH = 32
 
@@ -285,7 +285,7 @@ function CDM:DecodeImport(text)
     text = (text or ''):gsub('%s+', '') -- Base64 has no whitespace; a string copied in wrapped lines still reads
     if text == '' then return nil end
     if text:sub(1, #PREFIX) ~= PREFIX then
-        return nil, L['This is not a NorskenUI Cooldown Manager string.']
+        return nil, L['This is not a NorskenAuras string.']
     end
 
     -- Untrusted pasted text and these natives raise rather than return nil.
@@ -299,7 +299,7 @@ function CDM:DecodeImport(text)
         return nil, L['The string is damaged.']
     end
     if payload._s > self:GetSchemaVersion() then
-        return nil, L['This string was made with a newer NorskenUI; update to import it.']
+        return nil, L['This string was made with a newer NorskenAuras; update to import it.']
     end
     if payload._s < self:GetSchemaVersion() then
         return nil, L['The string is damaged.']

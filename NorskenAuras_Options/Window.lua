@@ -1,7 +1,5 @@
 ---@class NRSKNUI
 local NRSKNUI = _G.NorskenAuras
----@class CDMModule
-local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
 local Theme = NRSKNUI.Theme
@@ -101,7 +99,7 @@ window:AddHeaderButton({
     glow = TEX .. 'anchor_glow.png',
     size = 22,
     onClick = function()
-        NRSKNUI.Anchors:Enter(CDM)
+        NRSKNUI.Anchors:Enter()
     end,
     tooltip = L['Open Anchors'],
 })
@@ -173,4 +171,3 @@ window:AddFooterSocial({
 })
 
 NRSKNUI.CDMWindow = window
-NRSKNUI.OptionWindows = { window } -- what the anchors step around
