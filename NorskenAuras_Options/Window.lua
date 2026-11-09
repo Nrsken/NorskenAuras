@@ -47,8 +47,7 @@ window = GUI:CreateGUIWindow({
                 color = 'textSecondary'
             },
         },
-        -- the raw value stays English, exports carry it
-        version = NRSKNUI.Version == 'Development Version' and L['Development Version'] or NRSKNUI.Version,
+        version = NRSKNUI:GetVersionText(),
         versionAnchor = { 'LEFT', 1, 'RIGHT', 100, -7 },
         versionColor = 'textSecondary',
     },
@@ -170,4 +169,4 @@ window:AddFooterSocial({
     end,
 })
 
-NRSKNUI.CDMWindow = window
+NRSKNUI.GUIFrame = window --[[@as GUIFrame]]

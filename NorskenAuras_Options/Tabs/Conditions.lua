@@ -125,12 +125,11 @@ local SELECT_OPTIONS = setmetatable({
         local specs = {}
         for classID = 1, GetNumClasses() do
             local classInfo = C_CreatureInfo.GetClassInfo(classID)
-            local color = classInfo and C_ClassColor.GetClassColor(classInfo.classFile)
             for index = 1, C_SpecializationInfo.GetNumSpecializationsForClassID(classID) do
                 local specID, name, _, icon = GetSpecializationInfoForClassID(classID, index)
                 if specID then
                     local text = format('|T%s:0:0:0:0:64:64:5:59:5:59|t %s', icon, name)
-                    specs[#specs + 1] = { value = specID, text = color and color:WrapTextInColorCode(text) or text }
+                    specs[#specs + 1] = { value = specID, text = NRSKNUI:ColorTextByClass(text, classInfo and classInfo.classFile) }
                 end
             end
         end
@@ -139,9 +138,8 @@ local SELECT_OPTIONS = setmetatable({
     end,
 })
 for _, token in ipairs(CLASS_SORT_ORDER) do
-    local color = C_ClassColor.GetClassColor(token)
     local name = LOCALIZED_CLASS_NAMES_MALE[token] or token
-    SELECT_OPTIONS.class[#SELECT_OPTIONS.class + 1] = { value = token, text = color and color:WrapTextInColorCode(name) or name }
+    SELECT_OPTIONS.class[#SELECT_OPTIONS.class + 1] = { value = token, text = NRSKNUI:ColorTextByClass(name, token) }
 end
 
 local OPERATORS = {

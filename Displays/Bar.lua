@@ -152,7 +152,7 @@ end
 ---@param style table
 function CDM:ResetBarColor(layer, style)
     if style.BarColorMode == 'class' then
-        local color = NRSKNUI:GetPlayerClassColor()
+        local color = { NRSKNUI:GetClassColor(NRSKNUI.MyClass):GetRGBA() }
         color[4] = style.BarColor[4] or 1
         self:PaintBar(layer, color)
     else
@@ -225,7 +225,7 @@ function CDM:StyleAuraBar(layer, button, refs, style, trigger)
 
     ShapeBar(bar, refs.icon, refs.inner, style)
     bar:SetFrameLevel(refs.cooldown:GetFrameLevel())
-    local color = style.BarColorMode == 'class' and NRSKNUI:GetPlayerClassColor() or style.BarColor
+    local color = style.BarColorMode == 'class' and { NRSKNUI:GetClassColor(NRSKNUI.MyClass):GetRGBA() } or style.BarColor
     bar:SetStatusBarColor(color[1], color[2], color[3], style.BarColor[4] or 1)
 
     local interpolation = style.Smooth and SMOOTH or IMMEDIATE
@@ -307,7 +307,7 @@ function CDM:GetLayerProgress(layer)
     if not progress then
         local source = CreateFrame('StatusBar', nil, layer.Bar)
         source:SetAllPoints()
-        source:SetStatusBarTexture('Interface\\Buttons\\WHITE8X8')
+        source:SetStatusBarTexture(NRSKNUI.WhiteTexture)
         source:GetStatusBarTexture():SetAlpha(0)
         source:Hide()
         progress = { source = source }

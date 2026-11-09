@@ -92,7 +92,7 @@ local function FormatName(element, name)
 
     -- custom keeps the text's own Color
     if element.NameColor == 'class' then
-        return NRSKNUI:ColorTextByClass(name)
+        return NRSKNUI:ColorTextByClass(name, NRSKNUI.MyClass)
     elseif element.NameColor == 'theme' then
         return NRSKNUI:ColorTextByTheme(name)
     end

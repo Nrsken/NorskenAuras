@@ -71,7 +71,3 @@ L['Defensives'] = true
 L['Display'] = true
 L['Focus'] = true
 L['Trigger'] = true
-L['Options will open after combat ends.'] = true
-L['Development Version'] = true
-L['%s is missing, reinstall NorskenAuras.'] = true
-L['%s is version %s but NorskenAuras is %s, update both.'] = true

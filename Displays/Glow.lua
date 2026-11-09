@@ -14,7 +14,7 @@ local ICON_ALERT = 'Interface\\SpellActivationOverlay\\IconAlert'
 local ICON_ALERT_ANTS = 'Interface\\SpellActivationOverlay\\IconAlertAnts'
 local SHINE = 'Interface\\Artifacts\\Artifacts'
 local SHINE_COORDS = { 0.8115234375, 0.9169921875, 0.8798828125, 0.9853515625 } -- LibCustomGlow's retail sparkle
-local WHITE = 'Interface\\BUTTONS\\WHITE8X8'
+local WHITE = NRSKNUI.WhiteTexture
 local MASK_HOLE = 'Interface\\AdventureMap\\BrokenIsles\\AM_29' -- LibCustomGlow's mask: clear inside, white outside when clamped
 local GOLD = { 0.95, 0.95, 0.32, 1 }
 
@@ -34,7 +34,7 @@ All of it runs on animation groups, since a glow inside an aura button never get
 ---@return number[]? color nil for the art's own color
 local function ResolveColor(settings, tintable)
     if settings.ColorMode == 'class' then
-        return NRSKNUI:GetPlayerClassColor()
+        return { NRSKNUI:GetClassColor(NRSKNUI.MyClass):GetRGBA() }
     end
     if settings.ColorMode == 'custom' then
         return settings.Color

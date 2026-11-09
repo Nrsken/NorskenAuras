@@ -13,10 +13,7 @@
 ## OptionalDeps: NorskenUI
 ## X-Curse-Project-ID: 1787597
 
-# Load Libraries
-Libs/Init.xml
-
-Init.lua
+Core\Init.lua
 Locales\Locales.xml
-Defaults.lua
+Core\Defaults.lua
 CDM.xml

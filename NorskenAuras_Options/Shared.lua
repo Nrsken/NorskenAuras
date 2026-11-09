@@ -67,7 +67,7 @@ local expandedGroups = {} -- [group uid] = true, for the session; groups start c
 ---@return table? tree
 local function Tree()
     -- the Settings view swaps the column for its own list, the tree rebuilds on the way back
-    local window = NRSKNUI.CDMWindow
+    local window = NRSKNUI.GUIFrame
     return window and window.content.currentId == PAGE and window.content.miniSidebar or nil
 end
 
@@ -96,7 +96,7 @@ local function EditTargets(id)
 end
 
 local function Reopen(selectKey)
-    local window = NRSKNUI.CDMWindow
+    local window = NRSKNUI.GUIFrame
     if not window then return end
 
     if selectKey and CDM:Get(selectKey) then

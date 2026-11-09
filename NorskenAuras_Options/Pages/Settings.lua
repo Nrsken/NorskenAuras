@@ -19,7 +19,7 @@ local BuildTrinketPage = Shared.BuildTrinketPage
 local GENERAL_ITEM = 'general'
 
 local function ReloadTheme()
-    NRSKNUI.CDMWindow:ShowPage(SETTINGS_PAGE, { itemKey = 'themePage' })
+    NRSKNUI.GUIFrame:ShowPage(SETTINGS_PAGE, { itemKey = 'themePage' })
 end
 
 local SHARED_BUILDS = {
@@ -40,6 +40,8 @@ local GLOBAL_PAGES = {
 
 ---@param page table
 local function BuildGeneralPage(page)
+    SharedPages:LauncherRow(page:Card(L['General'], 'all'), NRSKNUI, rowHL)
+
     local integration = page:Card(L['Integration'], 'all')
     integration:Row(rowH):Checkbox(L['Hide Blizzard Player Cast Bar'], {
         width = 1,
@@ -100,7 +102,7 @@ GUI:RegisterPage(SETTINGS_PAGE, {
         buttons = {
             {
                 text = L['Back'],
-                onClick = function() NRSKNUI.CDMWindow:ShowPage(PAGE) end,
+                onClick = function() NRSKNUI.GUIFrame:ShowPage(PAGE) end,
             },
         },
     },

@@ -9,7 +9,7 @@ local ipairs = ipairs
 local CreateFrame = CreateFrame
 local UnitPowerType = UnitPowerType
 
-local WHITE = 'Interface\\Buttons\\WHITE8X8'
+local WHITE = NRSKNUI.WhiteTexture
 local QUESTION_MARK = 134400
 local FILL = 0.7 -- how full the mini bar is drawn
 
@@ -68,7 +68,7 @@ end
 ---@param style table
 ---@return number[]
 local function BarColor(style)
-    if style.BarColorMode == 'class' then return NRSKNUI:GetPlayerClassColor() end
+    if style.BarColorMode == 'class' then return { NRSKNUI:GetClassColor(NRSKNUI.MyClass):GetRGBA() } end
     if style.BarColorMode == 'power' then
         local color = NRSKNUI.Colors.power[UnitPowerType('player')]
         if color then return { color:GetRGB() } end
@@ -95,7 +95,7 @@ local function DrawBar(host, display, size, texture)
         barLength = length - thickness
         icon:NUISetPixelSize(thickness, thickness)
         icon:SetTexture(texture or QUESTION_MARK)
-        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        icon:NUISetZoom()
         icon:Show()
     end
 

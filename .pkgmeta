@@ -9,12 +9,6 @@ required-dependencies:
 move-folders:
     NorskenAuras/NorskenAuras_Options: NorskenAuras_Options
 
-externals:
-    Libs/LibDBIcon-1.0: https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
-    Libs/LibDataBroker-1.1:
-        url: https://github.com/tekkub/libdatabroker-1-1
-        tag: master
-
 ignore:
     - README.md
     - .git/

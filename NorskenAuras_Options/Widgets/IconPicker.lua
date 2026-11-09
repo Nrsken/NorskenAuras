@@ -159,7 +159,7 @@ end
 local driver = CreateFrame('Frame')
 driver:Hide()
 driver:SetScript('OnUpdate', function(self)
-    local window = NRSKNUI.CDMWindow
+    local window = NRSKNUI.GUIFrame
     if NRSKNUI:InCombat() or not (window and window:IsShown()) then
         self:Hide()
         return

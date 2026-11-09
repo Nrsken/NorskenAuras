@@ -16,16 +16,6 @@ local tsort = table.sort
 local CopyTable = CopyTable
 local time = time
 
-local SerializeCBOR = C_EncodingUtil and C_EncodingUtil.SerializeCBOR
-local DeserializeCBOR = C_EncodingUtil and C_EncodingUtil.DeserializeCBOR
-local CompressString = C_EncodingUtil and C_EncodingUtil.CompressString
-local DecompressString = C_EncodingUtil and C_EncodingUtil.DecompressString
-local EncodeBase64 = C_EncodingUtil and C_EncodingUtil.EncodeBase64
-local DecodeBase64 = C_EncodingUtil and C_EncodingUtil.DecodeBase64
-
-local DEFLATE = Enum and Enum.CompressionMethod.Deflate
-local OPTIMIZE_SIZE = Enum and Enum.CompressionLevel.OptimizeForSize
-
 local PREFIX = '!NAURAS1!'
 local FORMAT_VERSION = 1
 local MAX_DEPTH = 32
@@ -157,10 +147,9 @@ function CDM:Export(id)
     end
 
     local payload = { _v = FORMAT_VERSION, _s = self:GetSchemaVersion(), _a = NRSKNUI.Version, _t = time(), root = id, d = d }
-    local ok, encoded = pcall(function()
-        return EncodeBase64(CompressString(SerializeCBOR(payload), DEFLATE, OPTIMIZE_SIZE))
-    end)
-    if not ok or not encoded then return nil end
+    local encoded = NRSKNUI:EncodeTable(payload)
+    if not encoded then return nil end
+
     return PREFIX .. encoded
 end
 
@@ -288,13 +277,8 @@ function CDM:DecodeImport(text)
         return nil, L['This is not a NorskenAuras string.']
     end
 
-    -- Untrusted pasted text and these natives raise rather than return nil.
-    local ok, payload = pcall(function()
-        local compressed = DecodeBase64(text:sub(#PREFIX + 1))
-        local serialized = compressed and DecompressString(compressed, DEFLATE)
-        return serialized and DeserializeCBOR(serialized)
-    end)
-    if not ok or type(payload) ~= 'table' or type(payload.d) ~= 'table' or type(payload.root) ~= 'string'
+    local payload = NRSKNUI:DecodeTable(text:sub(#PREFIX + 1))
+    if not payload or type(payload.d) ~= 'table' or type(payload.root) ~= 'string'
         or type(payload.d[payload.root]) ~= 'table' or type(payload._s) ~= 'number' then
         return nil, L['The string is damaged.']
     end

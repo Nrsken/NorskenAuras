@@ -4,7 +4,7 @@
     <Script file="Core\CDM.lua" />
     <Script file="Core\Placement.lua" />
     <Script file="Core\Debug.lua" />
-    <Script file="Core\Options.lua" />
+    <Script file="Core\Commands.lua" />
     <Script file="Groups\Containers.lua" />
     <Script file="Data\Templates.lua" />
     <Script file="Data\Store.lua" />

@@ -1,7 +1,6 @@
 {
     "ignore": [],
     "library": [
-        "Libs/",
         "../NorskenCore/",
         "../NorskenUI/"
     ],
