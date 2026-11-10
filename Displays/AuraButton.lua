@@ -12,7 +12,7 @@ local max = math.max
 local setmetatable = setmetatable
 local GetSpellName = C_Spell and C_Spell.GetSpellName
 
-local PANDEMIC_TEXTURE = 'Interface\\AddOns\\NorskenCore\\Media\\GUITextures\\AuraOverlay.png'
+local PANDEMIC_TEXTURE = NRSKNUI.Media.GUITextures .. 'AuraOverlay.png'
 local PANDEMIC_COLOR = { 1, 0.25, 0.25, 1 }
 CDM.PANDEMIC_TEXTURE = PANDEMIC_TEXTURE
 local AURA_FILTERS = { player = 'HELPFUL', target = 'HARMFUL' } -- spellID matching only holds for buffs on friends and debuffs on enemies

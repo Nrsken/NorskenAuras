@@ -14,7 +14,6 @@ NRSKNUI:SetLanguage(NRSKNUI:GetSharedSettings().Language)
 
 NRSKNUI.Libs = {
     AL = NRSKNUI.L,
-    KAJI = LibStub('LibKaji-1.0'),
 } --[[@as NRSKNUI.Libraries]]
 
 NRSKNUI.CDM = NRSKNUI:NewModule('CDM', 'AceEvent-3.0')

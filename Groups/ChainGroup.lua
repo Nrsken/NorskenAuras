@@ -2,7 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local Pixel = NRSKNUI.Libs.KAJI.Pixel
+local Pixel = NRSKNUI.Pixel
 
 local ipairs, pairs, next = ipairs, pairs, next
 local CreateFrame = CreateFrame

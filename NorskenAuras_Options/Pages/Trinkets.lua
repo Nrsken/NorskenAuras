@@ -24,7 +24,7 @@ local function BuildTrinketPage(page)
     local returnKey = Shared.trinketReturnKey --[[@as string?]]
     if returnKey and CDM:Get(returnKey) then
         blacklist:HeaderButton({
-            texture = 'Interface\\AddOns\\NorskenCore\\Media\\GUITextures\\right-arrow.png',
+            texture = NRSKNUI.Media.GUITextures .. 'right-arrow.png',
             size = 20,
             rotation = math.pi, -- our right arrow, pointing back
             tooltip = format(L['Back to %s'], CDM:GetName(returnKey)),

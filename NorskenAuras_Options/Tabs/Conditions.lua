@@ -3,7 +3,7 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
-local Kaji = NRSKNUI.Libs.KAJI
+local Kaji = NRSKNUI.KajiGUI
 local Theme = NRSKNUI.Theme
 local LoadConditions = NRSKNUI.LoadConditions
 local IconPicker = NRSKNUI.CDMIconPicker

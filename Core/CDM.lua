@@ -18,7 +18,6 @@ local format = string.format
 local tostring = tostring
 local tsort = table.sort
 local wipe = wipe
-local C_Timer = C_Timer
 
 local SetCVar = C_CVar and C_CVar.SetCVar
 
@@ -62,18 +61,6 @@ local function ApplyAll()
     CDM:ApplySettings()
 end
 
--- Live GUI edits fire many times a second, rebuilding on each one drops frames.
-local APPLY_SETTLE_DELAY = 0.15
-local queuedApply
-
-local function QueueApplyAll()
-    if queuedApply then queuedApply:Cancel() end
-    queuedApply = C_Timer.NewTimer(APPLY_SETTLE_DELAY, function()
-        queuedApply = nil
-        NRSKNUI:RunWhenSafe(ApplyAll)
-    end)
-end
-
 function CDM:OnEnable()
     self:SetBlizzardViewers(true)
     if self.db.HidePlayerCastBar then
@@ -92,7 +79,7 @@ function CDM:OnEnable()
 
     self:ApplySettings()
 
-    self:RegisterMessage('NRSKNUI_SHARED_SETTINGS_CHANGED', QueueApplyAll)
+    self:RegisterMessage('NRSKNUI_SHARED_SETTINGS_CHANGED', function() NRSKNUI:RunWhenSafe(ApplyAll) end)
 
     -- on the addon: the triggers own this event on the module. Talents and spells settle by the first world entry.
     NRSKNUI:RegisterEvent('PLAYER_ENTERING_WORLD', function()

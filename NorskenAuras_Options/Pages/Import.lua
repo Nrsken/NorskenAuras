@@ -144,7 +144,7 @@ local function BuildImportPage(page)
     ReadImport(importState.text) -- the tree may have changed since the string was pasted
     local summary
     page:Card(L['Import'], 'all'):HeaderButton({
-        texture = 'Interface\\AddOns\\NorskenCore\\Media\\GUITextures\\right-arrow.png',
+        texture = NRSKNUI.Media.GUITextures .. 'right-arrow.png',
         size = 20,
         rotation = math.pi,
         tooltip = L['Back'],

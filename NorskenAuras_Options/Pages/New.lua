@@ -5,7 +5,7 @@ local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
 local Theme = NRSKNUI.Theme
-local pixel = NRSKNUI.Libs.KAJI.Pixel
+local pixel = NRSKNUI.Pixel
 
 local CreateFrame = CreateFrame
 local GetTime = GetTime

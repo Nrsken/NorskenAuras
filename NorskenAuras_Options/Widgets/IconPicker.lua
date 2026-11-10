@@ -343,7 +343,7 @@ function GridMixin:OnRelease()
     self:SetIcons(NO_ICONS)
 end
 
-NRSKNUI.Libs.KAJI:RegisterWidgetType(GRID_TYPE, function()
+NRSKNUI.KajiGUI:RegisterWidgetType(GRID_TYPE, function()
     local frame = Mixin(CreateFrame('Frame'), GridMixin)
     frame.icons, frame.buttons, frame.columns = NO_ICONS, {}, 1
 
@@ -401,7 +401,7 @@ function IconPicker:Build(page)
     local grid, timer
 
     local header = page:Card(L['Choose an Icon'], 'all'):HeaderButton({
-        texture = 'Interface\\AddOns\\NorskenCore\\Media\\GUITextures\\right-arrow.png',
+        texture = NRSKNUI.Media.GUITextures .. 'right-arrow.png',
         size = 20,
         rotation = math.pi,
         tooltip = L['Back'],

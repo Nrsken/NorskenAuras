@@ -1,5 +1,5 @@
 ---@class NRSKNUI
-local NRSKNUI = select(2, ...)
+local NRSKNUI = _G.NorskenAuras
 
 -- Displays are account wide and load conditions do the work, so there are no profiles.
 NRSKNUI.Defaults = {

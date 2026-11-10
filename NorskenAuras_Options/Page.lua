@@ -32,7 +32,7 @@ GUI:RegisterPage(PAGE, {
     end,
     sidebar = {
         width = 260,
-        create = NRSKNUI.Libs.KAJI.CreateItemTree,
+        create = NRSKNUI.KajiGUI.CreateItemTree,
         items = TreeContent,
         onSelectionChanged = function(key)
             CDM:SetSelectionPreview(CDM:Get(key) and key or nil)

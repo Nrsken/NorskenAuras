@@ -10,7 +10,7 @@ local PreviewManager = NRSKNUI.PreviewManager
 local Shared = NRSKNUI.CDMOptions
 local PAGE, SETTINGS_PAGE = Shared.PAGE, Shared.SETTINGS_PAGE
 
-local TEX = 'Interface\\AddOns\\NorskenCore\\Media\\GUITextures\\'
+local TEX = NRSKNUI.Media.GUITextures
 local LOGO = 'Interface\\AddOns\\NorskenCore\\Media\\Logo\\'
 local AURAS_MEDIA = 'Interface\\AddOns\\NorskenAuras\\Media\\Logo\\'
 local SOCIAL = 'Interface\\AddOns\\NorskenCore\\Media\\SupportLogos\\'
