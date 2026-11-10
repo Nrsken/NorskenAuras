@@ -447,4 +447,5 @@ L['Shades the end of the bar by the time your cast took to reach the server. Its
 L["Keep showing the item even when not in bags."] = "Den Gegenstand weiter anzeigen, auch wenn er nicht in den Taschen ist."
 L['Close Settings'] = "Einstellungen schließen"
 L['Open Anchors'] = "Anker öffnen"
+L['Open Theme Settings'] = "Designeinstellungen öffnen"
 L['Preview Every Display'] = "Vorschau aller Anzeigen"

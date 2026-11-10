@@ -87,6 +87,7 @@ window:AddHeaderButton({
 })
 window:AddHeaderButton({
     icon = TEX .. 'cogwheel.png',
+    glow = TEX .. 'cogwheel_glow.png',
     size = 18,
     onClick = function()
         window:ShowPage(window.content.currentId == SETTINGS_PAGE and PAGE or SETTINGS_PAGE)
@@ -101,6 +102,13 @@ window:AddHeaderButton({
         NRSKNUI.Anchors:Enter()
     end,
     tooltip = L['Open Anchors'],
+})
+window:AddHeaderButton({
+    icon = TEX .. 'fill.png',
+    glow = TEX .. 'fill_glow.png',
+    size = 18,
+    onClick = Shared.ShowTheme,
+    tooltip = L['Open Theme Settings'],
 })
 window:AddHeaderButton({
     icon = TEX .. 'eye.png',

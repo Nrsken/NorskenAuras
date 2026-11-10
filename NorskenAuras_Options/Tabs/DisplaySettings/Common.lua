@@ -36,8 +36,11 @@ local TEXT_JUSTIFY = {
     { value = 'RIGHT',  text = L['Right'] },
 }
 
--- Sections and sub-sections start closed, each tab's first aside; what the user opens or closes holds for the session.
-local sectionOpen = { icon = true, bar = true, text = true, groupLayout = true, groupPosition = true } -- [section key] = true
+-- Sections and sub-sections start closed except the ones listed here; what the user opens or closes holds for the session.
+local sectionOpen = { -- [section key] = true
+    icon = true, bar = true, text = true, groupIcon = true, groupLayout = true, groupAnchor = true, groupPosition = true,
+    ['size:icon'] = true, ['size:bar'] = true, ['size:text'] = true,
+}
 
 local subOpen = {}                              -- [sub-section key] = true
 

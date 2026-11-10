@@ -6,7 +6,7 @@ local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local AuraCards = NRSKNUI.GUIAuraCards
 local IconPicker = NRSKNUI.CDMIconPicker
-local rowHL = Theme.rowHeightLast
+local rowH = Theme.rowHeight
 
 local ipairs = ipairs
 local tostring = tostring
@@ -79,9 +79,9 @@ local function BuildAuraGroupDisplayTab(page, id)
     page:Card(L['Display'], 'all'):Rebuild(function(card)
         local sections = SectionPage(page, card)
         Heading(card, L['Icon'])
-        local iconRow = sections:Card(L['Icon Settings']):Row(rowHL, 0)
+        local iconRow = sections:Card(L['Icon Settings']):Row(rowH)
         iconRow:EditBox(L['Icon ID'], {
-            width = 0.9,
+            width = 'fill',
             tooltip = L['The icon this aura group shows in the list. Empty uses its first spell.'],
             value = display.Icon and tostring(display.Icon) or '',
             callback = function(text)

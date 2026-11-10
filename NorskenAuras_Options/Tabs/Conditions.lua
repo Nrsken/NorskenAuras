@@ -257,7 +257,8 @@ local function PropertyList(display)
         end
         if element.type == 'text' then
             add({ key = 'sub.' .. n .. '.fontSize', text = format(L['%s Font Size'], name), kind = 'fontSize' })
-            add({ key = 'sub.' .. n .. '.text', text = format(L['%s Display Text'], name), kind = 'text' })
+            -- a text display's one text would read 'Text Display Text'
+            add({ key = 'sub.' .. n .. '.text', text = kind == 'text' and L['Display Text'] or format(L['%s Display Text'], name), kind = 'text' })
         end
     end
     return list, byKey
@@ -400,14 +401,15 @@ local function Title(index, condition, byKey, display, triggerChip)
             names[#names + 1] = format('%s %s', text, value ~= false and L['ON'] or L['OFF'])
         elseif entry and entry.kind == 'color' and type(value) == 'table' then
             local r, g, b = value[1] or 1, value[2] or 1, value[3] or 1
-            local hex = format('#%02X%02X%02X', r * 255, g * 255, b * 255)
-            -- Drawn in its own colour, lifted toward white just enough to read on the dark header when it's very dark.
+            -- The name is drawn in the colour, lifted toward white just enough to read on the dark header when it's very dark.
             local light = 0.299 * r + 0.587 * g + 0.114 * b
             if light < MIN_LIGHT then
                 local lift = (MIN_LIGHT - light) / (1 - light)
                 r, g, b = r + (1 - r) * lift, g + (1 - g) * lift, b + (1 - b) * lift
             end
-            names[#names + 1] = format('%s |cff%02x%02x%02x%s|r', text, r * 255, g * 255, b * 255, hex)
+            names[#names + 1] = format('|cff%02x%02x%02x%s|r', r * 255, g * 255, b * 255, text)
+        elseif entry and entry.kind == 'text' and type(value) == 'string' then
+            names[#names + 1] = format('%s "%s"', text, value)
         elseif entry and value ~= nil and type(value) ~= 'table' then
             names[#names + 1] = format('%s %s', text, tostring(value))
         elseif entry then
@@ -585,7 +587,7 @@ local function ValueWidget(row, entry, change, set, edit)
         })
     elseif entry.kind == 'icon' then
         row:EditBox(L['Icon'], {
-            width = 0.4,
+            width = 'fill',
             tooltip = L['An icon file ID.'],
             value = change.value and tostring(change.value) or '',
             callback = function(text) edit(function() change.value = tonumber(text) end) end,

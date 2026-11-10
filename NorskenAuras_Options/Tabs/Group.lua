@@ -5,7 +5,7 @@ local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local IconPicker = NRSKNUI.CDMIconPicker
-local rowHL = Theme.rowHeightLast
+local rowH = Theme.rowHeight
 
 local tostring = tostring
 local tonumber = tonumber
@@ -33,6 +33,25 @@ local function BuildGroupTab(page, id)
     local grow = dynamic and display.Layout.Grow
 
     page:Card(L['Group'], 'all'):Rebuild(function(card)
+        if Section(card, 'groupIcon', L['Group Icon']) then
+            local iconRow = card:Row(rowH)
+            iconRow:EditBox(L['Icon ID'], {
+                width = 'fill',
+                tooltip = L['The icon this group shows in the list. Empty uses its first icon.'],
+                value = display.Icon and tostring(display.Icon) or '',
+                callback = function(text)
+                    display.Icon = tonumber(text)
+                    RefreshTree()
+                end,
+            })
+            IconPicker:BrowseButton(iconRow, display.Icon, function()
+                IconPicker:Open(display.Icon, function(texture)
+                    display.Icon = texture
+                    RefreshTree()
+                end)
+            end)
+        end
+
         if dynamic and Section(card, 'groupLayout', L['Dynamic Group Settings']) then
             card:Premade('DynamicGroupCard', {
                 db = display.Layout,
@@ -56,7 +75,7 @@ local function BuildGroupTab(page, id)
         end
 
         if dynamic and Section(card, 'groupAnchor', L['Unit Frame Anchor']) then
-            card:Row(rowHL, 0):Dropdown(L['Anchor Role'], {
+            card:Row(rowH):Dropdown(L['Anchor Role'], {
                 width = 1,
                 options = ANCHOR_ROLES,
                 value = display.UFAnchor or 'none',
@@ -66,25 +85,6 @@ local function BuildGroupTab(page, id)
                     ScheduleAnchorUpdate()
                 end,
             })
-        end
-
-        if Section(card, 'groupIcon', L['Group Icon']) then
-            local iconRow = card:Row(rowHL, 0)
-            iconRow:EditBox(L['Icon ID'], {
-                width = 0.9,
-                tooltip = L['The icon this group shows in the list. Empty uses its first icon.'],
-                value = display.Icon and tostring(display.Icon) or '',
-                callback = function(text)
-                    display.Icon = tonumber(text)
-                    RefreshTree()
-                end,
-            })
-            IconPicker:BrowseButton(iconRow, display.Icon, function()
-                IconPicker:Open(display.Icon, function(texture)
-                    display.Icon = texture
-                    RefreshTree()
-                end)
-            end)
         end
 
         if Section(card, 'groupPosition', L['Position and Size Settings']) then

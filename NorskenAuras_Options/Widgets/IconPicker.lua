@@ -22,6 +22,7 @@ local SEARCH_DELAY = 0.15
 local MAX_RESULTS = 500 -- keeps a broad search responsive
 local ICON_PATH = 'Interface\\Icons\\'
 local QUESTION_MARK = 134400
+local PREVIEW_SIZE = 24 -- the icon beside an Icon ID or Search box
 
 ---@class CDMIconPicker
 local IconPicker = {}
@@ -409,7 +410,7 @@ function IconPicker:Build(page)
     })
     local row = header:Row(NRSKNUI.Theme.rowHeightLast, 0)
     row:EditBox(L['Search'], {
-        width = 0.9,
+        width = 'fill',
         value = state.search,
         tooltip = L['An icon or spell name, or a file, spell or item ID.'],
         onTextChanged = function(text)
@@ -418,7 +419,7 @@ function IconPicker:Build(page)
             timer = C_Timer.NewTimer(SEARCH_DELAY, function() grid:SetIcons(Search(state.search), strtrim(state.search) ~= '') end)
         end,
     })
-    row:Icon({ width = 0.1, size = 24, yOffset = -14, texture = state.value or QUESTION_MARK })
+    row:Icon({ fixedWidth = PREVIEW_SIZE, size = PREVIEW_SIZE, yOffset = -14, texture = state.value or QUESTION_MARK })
 
     grid = page:Card(nil, 'all'):Row(GRID_HEIGHT, 0):Widget(GRID_TYPE, nil, {
         width = 1,
@@ -442,8 +443,8 @@ end
 ---@param conditions string[]? the box's own page conditions, so both grey out together
 function IconPicker:BrowseButton(row, value, onClick, conditions)
     row:Icon({
-        width = 0.1,
-        size = 24,
+        fixedWidth = PREVIEW_SIZE,
+        size = PREVIEW_SIZE,
         yOffset = -14,
         conditions = conditions,
         texture = value or QUESTION_MARK,

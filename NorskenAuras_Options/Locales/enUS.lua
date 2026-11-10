@@ -447,4 +447,5 @@ L['Shades the end of the bar by the time your cast took to reach the server. Its
 L["Keep showing the item even when not in bags."] = true
 L['Close Settings'] = true
 L['Open Anchors'] = true
+L['Open Theme Settings'] = true
 L['Preview Every Display'] = true

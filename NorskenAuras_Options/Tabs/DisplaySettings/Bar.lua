@@ -308,7 +308,7 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         end,
     })
     sourceRow:EditBox(L['Manual Icon'], {
-        width = 0.4,
+        width = 'fill',
         conditions = { 'cdm:barIcon' },
         tooltip = L['An icon file ID. Automatic uses it for triggers without an icon of their own, such as Player Stat.'],
         value = style.ManualIcon and tostring(style.ManualIcon) or '',

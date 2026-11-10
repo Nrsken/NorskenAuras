@@ -18,16 +18,18 @@ local BuildTrinketPage = Shared.BuildTrinketPage
 
 local GENERAL_ITEM = 'general'
 
-local function ReloadTheme()
+local function ShowTheme()
     NRSKNUI.GUIFrame:ShowPage(SETTINGS_PAGE, { itemKey = 'themePage' })
 end
+
+Shared.ShowTheme = ShowTheme
 
 local SHARED_BUILDS = {
     globalFonts = function(page) SharedPages:BuildFonts(page) end,
     globalTextures = function(page) SharedPages:BuildTextures(page) end,
     globalDurationText = function(page) SharedPages:BuildDurationText(page) end,
     globalLanguage = function(page) SharedPages:BuildLanguage(page, NRSKNUI) end,
-    themePage = function(page) SharedPages:BuildTheme(page, ReloadTheme) end,
+    themePage = function(page) SharedPages:BuildTheme(page, ShowTheme) end,
 }
 
 local GLOBAL_PAGES = {
