@@ -46,6 +46,16 @@ Item triggers: an equipped trinket, a family of items that share a cooldown (hea
 
 -- Trigger --
 
+---@param layer CDMLayer
+---@return boolean changed
+local function RefreshUsable(layer)
+    if not layer.itemID then return false end
+    local usable = IsUsableItem(layer.itemID) == true
+    local changed = usable ~= layer.state.usable
+    layer.state.usable = usable
+    return changed
+end
+
 ---The item IDs an item trigger can read: the equipped trinket, a family, or a custom ID.
 ---@param trigger table
 ---@return number[]
@@ -149,7 +159,7 @@ CDM.TriggerTypes.item = {
         layer.state.owned = layer.itemSlot ~= nil or (count or 0) > 0
         -- ~50 µs a call, so only for a condition that reads it
         if layer.watchUsable then
-            layer.state.usable = IsUsableItem(itemID) == true
+            RefreshUsable(layer)
         end
 
         CDM:UpdateTexts(layer)
@@ -168,6 +178,9 @@ CDM.TriggerTypes.item = {
 
     ---@param layer CDMLayer
     IsStandby = function(layer) return layer.itemID ~= nil and layer.state.owned == false end,
+
+    -- SPELL_UPDATE_USABLE also covers items: a Gateway Control Shard turns unusable away from the gateway with no bag event
+    RefreshUsable = RefreshUsable,
 }
 
 ---@param trigger table
@@ -228,7 +241,7 @@ local function ResolveItems()
     UpdateItems() -- a display that stayed loaded may now show another item or count
 end
 
--- Item usability isn't re-read on SPELL_UPDATE_USABLE; these are what change it.
+-- Usability is re-read on SPELL_UPDATE_USABLE by CDM:RefreshUsable; these catch what changes alongside cooldowns and combat.
 local handlers = {
     BAG_UPDATE_COOLDOWN = UpdateItems,
     PLAYER_REGEN_DISABLED = UpdateItems,
