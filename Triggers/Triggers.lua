@@ -560,7 +560,7 @@ local handlers = {
         CDM:DeriveUsing(0, 'combat')
         if resolvePending then
             resolvePending = false
-            resolveAllFrame:NUIScheduleUpdate()
+            resolveAllFrame:NCScheduleUpdate()
         end
     end,
     PLAYER_TARGET_CHANGED = function()
@@ -584,12 +584,12 @@ function CDM:OnCatalogueChanged()
         -- In combat this fires on every override swap, which ResolveOverrides already handled; only a learned or lost spell
         -- and an icon swapped without an override matter.
         resolvePending = true
-        loadCheckFrame:NUIScheduleUpdate()
+        loadCheckFrame:NCScheduleUpdate()
         self:RefreshSpellTextures()
         return
     end
 
-    resolveAllFrame:NUIScheduleUpdate()
+    resolveAllFrame:NCScheduleUpdate()
 end
 
 local function OnEvent(_, event, ...)
@@ -603,9 +603,9 @@ function CDM:RegisterTriggerEvents()
         eventFrame = CreateFrame('Frame')
         eventFrame:SetScript('OnEvent', OnEvent)
         resolveAllFrame = CreateFrame('Frame')
-        resolveAllFrame:NUISetScheduledUpdate(ResolveAllScheduled)
+        resolveAllFrame:NCSetScheduledUpdate(ResolveAllScheduled)
         loadCheckFrame = CreateFrame('Frame')
-        loadCheckFrame:NUISetScheduledUpdate(CheckLoadScheduled)
+        loadCheckFrame:NCSetScheduledUpdate(CheckLoadScheduled)
     end
 
     for event in pairs(handlers) do

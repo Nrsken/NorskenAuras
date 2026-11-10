@@ -52,7 +52,7 @@ local function NewBar(parent)
     bar.bg:SetAllPoints()
     bar.spark = bar:CreateTexture(nil, 'OVERLAY')
     bar.spark:SetBlendMode('ADD')
-    bar.spark:NUISetPixelSnap() -- the spark glides between pixels, the fill stays snapped or its edge smears
+    bar.spark:NCDisablePixelSnap() -- the spark glides between pixels, the fill stays snapped or its edge smears
     return bar
 end
 
@@ -77,11 +77,11 @@ local function ShapeBar(bar, icon, area, style)
         if not vertical and (side == 'TOP' or side == 'BOTTOM') then
             side = side == 'TOP' and 'LEFT' or 'RIGHT'
         end
-        icon:NUISetPixelSize(thickness, thickness)
-        icon:NUISetPixelPoint(side, area, side, 0, 0)
+        icon:NCSetSize(thickness, thickness)
+        icon:NCSetPoint(side, area, side, 0, 0)
         local corners = ICON_SIDES[side]
-        bar:NUISetPixelPoint(corners[1], icon, corners[2], 0, 0)
-        bar:NUISetPixelPoint(corners[3], area, corners[3], 0, 0)
+        bar:NCSetPoint(corners[1], icon, corners[2], 0, 0)
+        bar:NCSetPoint(corners[3], area, corners[3], 0, 0)
     else
         bar:SetAllPoints(area)
     end
@@ -98,7 +98,7 @@ local function ShapeBar(bar, icon, area, style)
         NRSKNUI:SetSpark(spark, style, thickness)
         if vertical then
             local width, height = spark:GetSize()
-            spark:NUISetPixelSize(height, width)
+            spark:NCSetSize(height, width)
         end
         spark:SetRotation(vertical and math.pi / 2 or 0)
         spark:SetPoint('CENTER', bar:GetStatusBarTexture(), FILL_EDGE[vertical and 'VERTICAL' or 'HORIZONTAL'][style.ReverseFill and 2 or 1], 0, 0)
@@ -677,7 +677,7 @@ local function PlaceTick(layer, set, index, fraction, bar)
         host:SetMinMaxValues(0, 1)
         host.mark = host:CreateTexture(nil, 'OVERLAY')
         host.mark:SetTexture(NRSKNUI.WhiteTexture)
-        host.mark:NUISetPixelSnap()
+        host.mark:NCDisablePixelSnap()
         set.hosts[index] = host
     end
 
@@ -695,9 +695,9 @@ local function PlaceTick(layer, set, index, fraction, bar)
     mark:ClearAllPoints()
     mark:SetPoint('CENTER', host:GetStatusBarTexture(), FILL_EDGE[vertical and 'VERTICAL' or 'HORIZONTAL'][reverse and 2 or 1])
     if vertical then
-        mark:NUISetPixelSize(length, element.Thickness)
+        mark:NCSetSize(length, element.Thickness)
     else
-        mark:NUISetPixelSize(element.Thickness, length)
+        mark:NCSetSize(element.Thickness, length)
     end
     mark:SetVertexColor(unpack(set.color or element.Color))
     host:Show()

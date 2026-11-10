@@ -69,7 +69,7 @@ function CDM:BuildContainer(id)
             frame = tremove(self.spareDynamic) or NRSKNUI:CreateDynamicGroup(nil, UIParent)
         else
             frame = tremove(self.spareStatic) or CreateFrame('Frame', nil, UIParent)
-            frame:NUISetPixelSize(STATIC_GROUP_SIZE, STATIC_GROUP_SIZE)
+            frame:NCSetSize(STATIC_GROUP_SIZE, STATIC_GROUP_SIZE)
         end
         self.containers[id] = frame
     end

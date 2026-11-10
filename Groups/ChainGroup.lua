@@ -147,9 +147,9 @@ local function Resize(self)
     end
     -- The group's own size is every loaded icon's extent, for its mover and the unit frame anchor; the visible row lives in self.chain.
     if grow.horizontal then
-        self:NUISetPixelSize(max(1, total), max(1, cross))
+        self:NCSetSize(max(1, total), max(1, cross))
     else
-        self:NUISetPixelSize(max(1, cross), max(1, total))
+        self:NCSetSize(max(1, cross), max(1, total))
     end
     PlaceChain(self)
 end
@@ -219,7 +219,7 @@ function ChainMixin:UpdateGroupPosition(source, grow, extraX, extraY)
         parent = _G[source.ParentFrame] or UIParent
     end
     self:ClearAllPoints()
-    self:NUISetPixelPoint(position.SelfPoint or self:GetResolvedAnchor(grow), parent, position.AnchorTo or 'CENTER', (position.XOffset or 0) + (extraX or 0), (position.YOffset or 0) + (extraY or 0))
+    self:NCSetPoint(position.SelfPoint or self:GetResolvedAnchor(grow), parent, position.AnchorTo or 'CENTER', (position.XOffset or 0) + (extraX or 0), (position.YOffset or 0) + (extraY or 0))
     self:SetFrameStrata(source.Strata or 'MEDIUM')
 end
 

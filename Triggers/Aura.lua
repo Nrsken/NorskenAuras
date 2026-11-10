@@ -354,7 +354,7 @@ CDM.TriggerTypes.aura = {
             host:SetAllPoints()
             border = host:CreateTexture(nil, 'OVERLAY')
             border:SetTexture(CDM.PANDEMIC_TEXTURE)
-            border:NUISetPixelInside(layer)
+            border:NCSetInside(layer)
             layer.previewPandemic = border
         end
         border:GetParent():SetFrameLevel(layer:GetFrameLevel() + 2) -- over the swipe, under the sub elements

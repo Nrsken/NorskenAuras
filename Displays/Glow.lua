@@ -127,8 +127,8 @@ end
 ---@param scale number
 local function Centre(texture, host, width, height, scale)
     texture:ClearAllPoints()
-    texture:NUISetPixelPoint('CENTER', host, 'CENTER', 0, 0)
-    texture:NUISetPixelSize(width * scale, height * scale)
+    texture:NCSetPoint('CENTER', host, 'CENTER', 0, 0)
+    texture:NCSetSize(width * scale, height * scale)
 end
 
 ---@param group AnimationGroup
@@ -348,9 +348,9 @@ function BUILDERS.autocast(self, settings, width, height)
             texture:SetTexture(SHINE)
             texture:SetTexCoord(unpack(SHINE_COORDS))
             texture:SetBlendMode('ADD')
-            texture:NUISetPixelSize(size, size)
+            texture:NCSetSize(size, size)
             texture:ClearAllPoints()
-            texture:NUISetPixelPoint('CENTER', self.host, CORNERS[dot], 0, 0)
+            texture:NCSetPoint('CENTER', self.host, CORNERS[dot], 0, 0)
             Tint(texture, color)
             texture:SetAlpha(1)
 

@@ -56,7 +56,7 @@ local function CreateLayer(frame)
 
     local icon = layer:CreateTexture(nil, 'ARTWORK')
     icon:SetAllPoints()
-    icon:NUISetPixelSnap()
+    icon:NCDisablePixelSnap()
     layer.Icon = icon
 
     local cooldown = CreateFrame('Cooldown', nil, layer, 'CooldownFrameTemplate')
@@ -154,10 +154,10 @@ local function StyleBorder(border, host, anchor, element, engineSnap)
         border.edges = {}
         for i, edge in ipairs(EDGES) do
             local texture = border:CreateTexture(nil, 'OVERLAY')
-            texture:NUISetPixelPoint(edge[1], border, edge[1], 0, 0)
-            texture:NUISetPixelPoint(edge[2], border, edge[2], 0, 0)
+            texture:NCSetPoint(edge[1], border, edge[1], 0, 0)
+            texture:NCSetPoint(edge[2], border, edge[2], 0, 0)
             if not engineSnap then
-                texture:NUISetPixelSnap()
+                texture:NCDisablePixelSnap()
             end
             border.edges[i] = texture
         end
@@ -165,13 +165,13 @@ local function StyleBorder(border, host, anchor, element, engineSnap)
 
     local offset, size = element.Offset, element.Size
     border:ClearAllPoints()
-    border:NUISetPixelPoint('TOPLEFT', anchor, 'TOPLEFT', -offset, offset)
-    border:NUISetPixelPoint('BOTTOMRIGHT', anchor, 'BOTTOMRIGHT', offset, -offset)
+    border:NCSetPoint('TOPLEFT', anchor, 'TOPLEFT', -offset, offset)
+    border:NCSetPoint('BOTTOMRIGHT', anchor, 'BOTTOMRIGHT', offset, -offset)
     for i, texture in ipairs(border.edges) do
         if EDGES[i][3] == 'height' then
-            texture:NUISetPixelHeight(size)
+            texture:NCSetHeight(size)
         else
-            texture:NUISetPixelWidth(size)
+            texture:NCSetWidth(size)
         end
         texture:SetColorTexture(unpack(element.Color))
     end
@@ -322,7 +322,7 @@ local function Never() return false end
 ---@param display table
 ---@param style table
 function CDM:StyleIcon(frame, display, style)
-    frame:NUISetPixelSize(style.Width, style.Height)
+    frame:NCSetSize(style.Width, style.Height)
     frame:SetAlpha(style.Alpha)
     frame:EnableMouse(style.Tooltip == true)
 

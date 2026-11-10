@@ -52,7 +52,7 @@ local gcdEndFrame ---@type Frame
 ---@param frame Frame
 local function OnGCDEnd(frame)
     if GetSpellCooldown(GCD_SPELL).isActive then
-        return frame:NUIScheduleUpdate()
+        return frame:NCScheduleUpdate()
     end
 
     gcdEnds = gcdEnds + 1
@@ -232,7 +232,7 @@ CDM.TriggerTypes.spell = {
             layer.readInGCD = gcdAtEvent
             if layer.heldGCD then
                 recheck[layer] = true
-                gcdEndFrame:NUIScheduleUpdate()
+                gcdEndFrame:NCScheduleUpdate()
             else
                 recheck[layer] = nil
             end
@@ -243,7 +243,7 @@ CDM.TriggerTypes.spell = {
                     state.onGCD = true -- a GCD its cooldown event hasn't reached yet: SPELL_UPDATE_CHARGES fires before it
                 end
                 recheck[layer] = true
-                gcdEndFrame:NUIScheduleUpdate()
+                gcdEndFrame:NCScheduleUpdate()
             else
                 -- the API can still read active the frame its swipe ends; Blizzard's viewer trusts its end time there (IsExpired)
                 if layer.timerDone then
@@ -423,7 +423,7 @@ CDM.TriggerTypes.spell.RegisterEvents = function()
         eventFrame = CreateFrame('Frame')
         eventFrame:SetScript('OnEvent', OnEvent)
         gcdEndFrame = CreateFrame('Frame')
-        gcdEndFrame:NUISetScheduledUpdate(OnGCDEnd)
+        gcdEndFrame:NCSetScheduledUpdate(OnGCDEnd)
     end
 
     for event in pairs(handlers) do

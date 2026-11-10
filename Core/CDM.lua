@@ -599,6 +599,6 @@ end
 
 function CDM:HidePlayerCastBar()
     NRSKNUI:RunWhenSafe(function()
-        PlayerCastingBarFrame:NUIBanish()
+        PlayerCastingBarFrame:NCBanish()
     end)
 end

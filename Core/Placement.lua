@@ -111,8 +111,8 @@ function CDM:Place(frame, id, display, point)
         local edge, groupEdge = above and 'BOTTOM' or 'TOP', above and 'TOP' or 'BOTTOM'
         frame:SetParent(parent and self.containers[display.parent] or UIParent)
         frame:ClearAllPoints()
-        frame:NUISetPixelPoint(edge .. 'LEFT', left, groupEdge .. 'LEFT', extraX, y)
-        frame:NUISetPixelPoint(edge .. 'RIGHT', right, groupEdge .. 'RIGHT', extraX - padX, y)
+        frame:NCSetPoint(edge .. 'LEFT', left, groupEdge .. 'LEFT', extraX, y)
+        frame:NCSetPoint(edge .. 'RIGHT', right, groupEdge .. 'RIGHT', extraX - padX, y)
         frame:SetFrameStrata(display.Strata or matched:GetFrameStrata())
         Anchors:Unregister(id)
         return
@@ -126,7 +126,7 @@ function CDM:Place(frame, id, display, point)
 
         -- A picked frame wins over the group; the group still owns its visibility.
         local target = display.anchorFrameType == 'SELECTFRAME' and display.ParentFrame and _G[display.ParentFrame] or host
-        frame:NUISetPixelPoint(point or position.AnchorFrom, target, position.AnchorTo, position.XOffset + extraX, position.YOffset + extraY)
+        frame:NCSetPoint(point or position.AnchorFrom, target, position.AnchorTo, position.XOffset + extraX, position.YOffset + extraY)
         frame:SetFrameStrata(display.Strata or host:GetFrameStrata())
         self:RegisterAnchor(frame, id, self:IsDynamic(display.parent))
         return
@@ -138,7 +138,7 @@ function CDM:Place(frame, id, display, point)
         ---@cast frame NRSKNUI.DynamicGroup
         frame:UpdateGroupPosition(display, display.Layout.Grow, extraX, extraY)
     else
-        frame:NUIApplyPosition(display, nil, extraX, extraY)
+        frame:NCApplyPosition(display, nil, extraX, extraY)
     end
 
     self:RegisterAnchor(frame, id)

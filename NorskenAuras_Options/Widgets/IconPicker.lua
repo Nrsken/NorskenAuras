@@ -244,10 +244,10 @@ local function InitButton(grid, button, entry)
     if not button.icon then
         button.icon = button:CreateTexture(nil, 'ARTWORK')
         button.icon:SetAllPoints()
-        button.icon:NUISetZoom()
-        button:NUIAddBorders()
+        button.icon:NCSetZoom()
+        button:NCAddBorders()
         local highlight = button:CreateTexture(nil, 'HIGHLIGHT')
-        highlight:NUISetPixelInside(button, 1, 1)
+        highlight:NCSetInside(button, 1, 1)
         highlight:SetColorTexture(1, 1, 1, 0.2)
         highlight:SetBlendMode('ADD')
         button:RegisterForClicks('LeftButtonUp')
@@ -287,13 +287,13 @@ function GridMixin:Layout(force)
         local button = self.buttons[used]
         if not button then
             button = CreateFrame('Button', nil, self.scrollChild)
-            button:NUISetPixelSize(BUTTON_SIZE, BUTTON_SIZE)
+            button:NCSetSize(BUTTON_SIZE, BUTTON_SIZE)
             self.buttons[used] = button
         end
 
         local column, row = (index - 1) % columns, math.floor((index - 1) / columns)
         button:ClearAllPoints()
-        button:NUISetPixelPoint('TOPLEFT', self.scrollChild, 'TOPLEFT', column * STEP, -row * STEP)
+        button:NCSetPoint('TOPLEFT', self.scrollChild, 'TOPLEFT', column * STEP, -row * STEP)
         InitButton(self, button, icons[index])
         button:Show()
     end
@@ -310,7 +310,7 @@ function GridMixin:Refresh()
 
     self.columns = math.max(1, math.floor((width + SPACING) / STEP))
     local height = math.max(1, math.ceil(#self.icons / self.columns) * STEP - SPACING)
-    self.scrollChild:NUISetPixelSize(width, height)
+    self.scrollChild:NCSetSize(width, height)
     self.scrollbar:UpdateVisibility(height, self.scrollFrame:GetHeight())
     self.scrollFrame:UpdateScrollChildRect()
     self:Layout(true)
@@ -349,12 +349,12 @@ NRSKNUI.KajiGUI:RegisterWidgetType(GRID_TYPE, function()
 
     local scrollFrame = CreateFrame('ScrollFrame', nil, frame)
     scrollFrame:SetClipsChildren(true)
-    scrollFrame:NUISetPixelPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
-    scrollFrame:NUISetPixelPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -(Theme.scrollbarWidth + SPACING), 0)
+    scrollFrame:NCSetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+    scrollFrame:NCSetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -(Theme.scrollbarWidth + SPACING), 0)
     frame.scrollFrame = scrollFrame
 
     local scrollChild = CreateFrame('Frame', nil, scrollFrame)
-    scrollChild:NUISetPixelSize(1, 1)
+    scrollChild:NCSetSize(1, 1)
     scrollFrame:SetScrollChild(scrollChild)
     frame.scrollChild = scrollChild
 

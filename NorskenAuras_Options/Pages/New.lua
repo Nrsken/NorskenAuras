@@ -5,7 +5,6 @@ local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
 local Theme = NRSKNUI.Theme
-local pixel = NRSKNUI.Pixel
 
 local CreateFrame = CreateFrame
 local GetTime = GetTime
@@ -58,7 +57,7 @@ end
 ---@return Texture
 local function SampleTexture(canvas, layer)
     local texture = canvas:CreateTexture(nil, layer)
-    texture:NUISetPixelSnap()
+    texture:NCDisablePixelSnap()
     return texture
 end
 
@@ -73,7 +72,7 @@ local function SampleParts(canvas)
         parts.edges[i] = SampleTexture(canvas, 'BORDER')
         parts.edges[i]:SetColorTexture(0, 0, 0, 1)
         parts.icons[i] = SampleTexture(canvas, 'ARTWORK')
-        parts.icons[i]:NUISetZoom()
+        parts.icons[i]:NCSetZoom()
         parts.stacks[i] = canvas:CreateFontString(nil, 'OVERLAY')
         parts.pips[i] = SampleTexture(canvas, 'ARTWORK')
     end
@@ -99,8 +98,8 @@ end
 ---@param height number
 local function Place(region, x, y, width, height)
     region:ClearAllPoints()
-    region:NUISetPixelSize(width, height)
-    region:NUISetPixelPoint('TOPLEFT', region:GetParent(), 'TOPLEFT', x, -y)
+    region:NCSetSize(width, height)
+    region:NCSetPoint('TOPLEFT', region:GetParent(), 'TOPLEFT', x, -y)
     region:Show()
 end
 
@@ -147,8 +146,7 @@ local function DrawIconSample(canvas, height, width)
     local icon = SampleIcon(parts, 1, SampleIcons({ Enum.CooldownViewerCategory.Essential }, 1)[1], height, floor((width - height) / 2), 0)
     local cooldown = parts.cooldown
     cooldown:ClearAllPoints()
-    -- through Kaji directly, a Cooldown frame isn't sure to carry the injected NUI methods
-    pixel.SetPixelInside(cooldown, icon, 0, 0)
+    cooldown:NCSetInside(icon, 0, 0)
     cooldown:Show()
     cooldown:SetCooldown(GetTime(), SAMPLE_COOLDOWN)
     -- Blizzard's countdown carries its own shadowed font; the GUI's texts are outlined without a shadow.
@@ -179,7 +177,7 @@ local function DrawProgressSample(canvas, height, width)
     GUI:ApplyFont(timer, 'small')
     timer:SetText('6.2')
     timer:ClearAllPoints()
-    timer:NUISetPixelPoint('RIGHT', parts.barBg, 'RIGHT', -2, 0)
+    timer:NCSetPoint('RIGHT', parts.barBg, 'RIGHT', -2, 0)
     timer:Show()
     return true
 end
@@ -301,7 +299,7 @@ local function DrawAuraSample(canvas, height, width)
             GUI:ApplyFont(stack, 'normal')
             stack:SetText(SAMPLE_STACKS[i])
             stack:ClearAllPoints()
-            stack:NUISetPixelPoint('BOTTOMRIGHT', icon, 'BOTTOMRIGHT', 1, 0)
+            stack:NCSetPoint('BOTTOMRIGHT', icon, 'BOTTOMRIGHT', 1, 0)
             stack:Show()
         end
     end
@@ -318,7 +316,7 @@ local function DrawTextSample(canvas)
     fs:SetText('Abc')
     fs:SetTextColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     fs:ClearAllPoints()
-    fs:NUISetPixelPoint('CENTER', canvas, 'CENTER', 0, 0)
+    fs:NCSetPoint('CENTER', canvas, 'CENTER', 0, 0)
     fs:Show()
     return true
 end
@@ -333,9 +331,9 @@ local function DrawTextureSample(canvas, height)
     texture:SetTexture('Interface\\AddOns\\NorskenCore\\Media\\CursorCircles\\nauraThick.png')
     texture:SetVertexColor(Theme.accent[1], Theme.accent[2], Theme.accent[3], 1)
     texture:ClearAllPoints()
-    texture:NUISetPixelSize(height, height)
-    texture:NUISetPixelPoint('CENTER', canvas, 'CENTER', 0, 0)
-    texture:NUISetPixelSnap()
+    texture:NCSetSize(height, height)
+    texture:NCSetPoint('CENTER', canvas, 'CENTER', 0, 0)
+    texture:NCDisablePixelSnap()
     texture:Show()
     return true
 end

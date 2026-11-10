@@ -81,7 +81,7 @@ local function InitAuraButton(button, host, refs, style)
 
     local icon = button:CreateTexture(nil, 'ARTWORK')
     icon:SetAllPoints(inner)
-    icon:NUISetPixelSnap() -- snaps like the borders around it, so they still line up when a chain lands on a half pixel
+    icon:NCDisablePixelSnap() -- snaps like the borders around it, so they still line up when a chain lands on a half pixel
     refs.icon = icon
     button:SetIcon(icon)
 
@@ -112,7 +112,7 @@ local function InitAuraButton(button, host, refs, style)
     pandemicHost:SetFrameLevel(base + 1)
     local pandemic = pandemicHost:CreateTexture(nil, 'OVERLAY')
     pandemic:SetTexture(PANDEMIC_TEXTURE)
-    pandemic:NUISetPixelInside(inner) -- the same inset SkinAuraButton gives this texture on debuffs
+    pandemic:NCSetInside(inner) -- the same inset SkinAuraButton gives this texture on debuffs
     pandemic:SetVertexColor(unpack(PANDEMIC_COLOR))
     refs.pandemic = pandemic
     button:AddPandemicRegion(pandemic)
