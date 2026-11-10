@@ -2,17 +2,15 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local IsPreviewing, PreviewDuration = CDM.IsPreviewingLayer, CDM.PreviewDuration
-local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
 local L = NRSKNUI.Libs.AL
 
-local pairs, ipairs = pairs, ipairs
-local type = type
-local select = select
 local hooksecurefunc = hooksecurefunc
-local GetTime = GetTime
-local format = string.format
+local pairs, ipairs = pairs, ipairs
 local CreateFrame = CreateFrame
+local format = string.format
+local GetTime = GetTime
+local select = select
+local type = type
 
 local IsSpellOverlayed = C_SpellActivationOverlay and C_SpellActivationOverlay.IsSpellOverlayed
 local GetSpellCooldownDuration = C_Spell and C_Spell.GetSpellCooldownDuration
@@ -30,8 +28,13 @@ local IsSpellUsable = C_Spell and C_Spell.IsSpellUsable
 local GLOBAL_RECOVERY_CATEGORY = Constants.SpellCooldownConsts.GLOBAL_RECOVERY_CATEGORY
 local GCD_SPELL = 61304
 
+local IsPreviewing = CDM.IsPreviewingLayer
+local PreviewDuration = CDM.PreviewDuration
+
+local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
+
 local inCooldownEvent = false
-local gcdEnds = 0 -- steps each time OnGCDEnd sees the GCD end
+local gcdEnds = 0               -- steps each time OnGCDEnd sees the GCD end
 local gcdPassTime
 local changedSpell, changedBase -- the spell the running SPELL_UPDATE_COOLDOWN names
 local gcdAtEvent = false

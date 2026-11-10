@@ -16,8 +16,11 @@ local next = next
 
 local NewTimer = C_Timer and C_Timer.NewTimer
 
-local IsPreviewing, PreviewDuration = CDM.IsPreviewingLayer, CDM.PreviewDuration
-local PREVIEW_LENGTH, PREVIEW_PANDEMIC = CDM.PREVIEW_LENGTH, CDM.PREVIEW_PANDEMIC
+local IsPreviewing = CDM.IsPreviewingLayer
+local PreviewDuration = CDM.PreviewDuration
+
+local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
+local PREVIEW_PANDEMIC = CDM.PREVIEW_PANDEMIC
 local QUESTION_MARK = 134400
 
 --[[

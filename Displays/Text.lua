@@ -3,23 +3,27 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
+local AbbreviateLargeNumbers = AbbreviateLargeNumbers
+local BreakUpLargeNumbers = BreakUpLargeNumbers
+local AbbreviateNumbers = AbbreviateNumbers
+local UnitPowerPercent = UnitPowerPercent
+local setmetatable = setmetatable
 local CreateFrame = CreateFrame
-local strfind = string.find
+local strformat = string.format
 local strmatch = string.match
 local strupper = string.upper
-local strformat = string.format
+local strfind = string.find
 local tonumber = tonumber
-local type = type
 local gsub = string.gsub
 local unpack = unpack
-local setmetatable = setmetatable
+local type = type
 
 local CreateDurationTextBinding = C_DurationUtil and C_DurationUtil.CreateDurationTextBinding
 local GetSpellDisplayCount = C_Spell and C_Spell.GetSpellDisplayCount
 local GetSpellCharges = C_Spell and C_Spell.GetSpellCharges
 local GetSpellCastCount = C_Spell and C_Spell.GetSpellCastCount
 local TruncateWhenZero = C_StringUtil and C_StringUtil.TruncateWhenZero
-local UnitPowerPercent = UnitPowerPercent
+
 local CurveConstants = CurveConstants
 
 local BindingProperty = Enum.DurationTextBindingProperty
@@ -31,9 +35,14 @@ Times and power values can be secret, so they only ever go through a duration bi
 ]]
 
 -- number formats for value texts; each takes a secret number (LocalizationDocumentation, AllowedWhenTainted)
-local ABBREVIATORS = { abbreviate = AbbreviateNumbers, large = AbbreviateLargeNumbers, breakup = BreakUpLargeNumbers }
+local ABBREVIATORS = {
+    abbreviate = AbbreviateNumbers,
+    large = AbbreviateLargeNumbers,
+    breakup = BreakUpLargeNumbers
+}
+
 local LITERAL_PERCENT = '\001' -- a typed %%, until the text's kind decides how a percent sign is written
-local args = {} -- one SetFormattedText argument per token, refilled on every update
+local args = {}                -- one SetFormattedText argument per token, refilled on every update
 
 local TEXT_ROTATIONS = { LEFT = math.pi / 2, RIGHT = -math.pi / 2 }
 local TEXT_PINS = { LEFT = 'LEFT', RIGHT = 'RIGHT', CENTER = 'CENTER', AUTO = 'CENTER' } -- a text display's text, by its alignment

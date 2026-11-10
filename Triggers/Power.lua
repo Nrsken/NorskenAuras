@@ -12,7 +12,6 @@ a power type (Maelstrom Weapon, Stagger). Values only ever reach widgets, so a s
 local UnitPower, UnitPowerMax, UnitPowerMissing, UnitPowerType = UnitPower, UnitPowerMax, UnitPowerMissing, UnitPowerType
 local UnitPartialPower, UnitPowerDisplayMod = UnitPartialPower, UnitPowerDisplayMod
 local GetUnitChargedPowerPoints = GetUnitChargedPowerPoints
-local tContains = tContains
 local GetPowerRegenForPowerType = GetPowerRegenForPowerType
 local GetSpecialization = GetSpecialization
 local UnitPowerPercent = UnitPowerPercent
@@ -20,6 +19,7 @@ local GetRuneCooldown = GetRuneCooldown
 local pairs, ipairs = pairs, ipairs
 local UnitHealthMax = UnitHealthMax
 local CreateFrame = CreateFrame
+local tContains = tContains
 local GetTime = GetTime
 local select = select
 

@@ -3,25 +3,33 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
+local ipairs, pairs = ipairs, pairs
+local setmetatable = setmetatable
 local CreateFrame = CreateFrame
 local gsub = string.gsub
-local ipairs, pairs = ipairs, pairs
-local next = next
 local unpack = unpack
 local max = math.max
-local setmetatable = setmetatable
+local next = next
+
 local GetSpellName = C_Spell and C_Spell.GetSpellName
 
 local PANDEMIC_TEXTURE = NRSKNUI.Media.GUITextures .. 'AuraOverlay.png'
 local PANDEMIC_COLOR = { 1, 0.25, 0.25, 1 }
+local LITERAL_PERCENT = CDM.Text.LITERAL_PERCENT
+local TIME_SCALES = CDM.Text.TIME_SCALES
 CDM.PANDEMIC_TEXTURE = PANDEMIC_TEXTURE
+
+local ExpandText = CDM.Text.Expand
+local ConfigureText = CDM.Text.Configure
+local DurationFormat = CDM.Text.DurationFormat
+local PlaceText = CDM.Text.Place
+local StyleBorders = CDM.Layer.StyleBorders
+local LevelElements = CDM.Layer.LevelElements
+local ElementEnabled = CDM.Layer.ElementEnabled
+local ApplyTexCoords = CDM.ApplyTexCoords
+
 local AURA_FILTERS = { player = 'HELPFUL', target = 'HARMFUL' } -- spellID matching only holds for buffs on friends and debuffs on enemies
 local TEXT_KINDS = { 'time', 'count', 'static', 'sourcedText' } -- the fontstrings an aura button's text frame can hold
-
-local ExpandText, ConfigureText, DurationFormat, PlaceText = CDM.Text.Expand, CDM.Text.Configure, CDM.Text.DurationFormat, CDM.Text.Place
-local LITERAL_PERCENT, TIME_SCALES = CDM.Text.LITERAL_PERCENT, CDM.Text.TIME_SCALES
-local StyleBorders, LevelElements, ElementEnabled = CDM.Layer.StyleBorders, CDM.Layer.LevelElements, CDM.Layer.ElementEnabled
-local ApplyTexCoords = CDM.ApplyTexCoords
 
 --[[
 An aura trigger draws through a one-slot native AuraContainer: the client shows the slot while the
@@ -52,7 +60,7 @@ local function FollowTarget(container, follows)
             targetWatcher = CreateFrame('Frame')
             targetWatcher:SetScript('OnEvent', OnTargetChanged)
         end
-        targetWatcher:RegisterEvent('PLAYER_TARGET_CHANGED')
+        targetWatcher:RegisterEvent('PLAYER_TARGET_CHANGED') -- UNIT_TARGET can lag and it also requires target to be in the players visual range, so we use this event instead.
     elseif targetWatcher then
         targetWatcher:UnregisterEvent('PLAYER_TARGET_CHANGED')
     end

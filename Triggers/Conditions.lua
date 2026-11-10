@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local LoadConditions = NRSKNUI.LoadConditions
 
 --[[
 The Conditions trigger: active while the player's states match, as a load condition reads them.
@@ -9,7 +10,6 @@ trigger.Conditions has a load table's shape ({ State, Group }), so LoadCondition
 each state's events; nothing set is always active.
 ]]
 
-local LoadConditions = NRSKNUI.LoadConditions
 local next, pairs = next, pairs
 
 local CONDITIONS_ICON = 'Interface\\Icons\\INV_Misc_Gear_01'

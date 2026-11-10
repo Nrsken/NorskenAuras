@@ -4,26 +4,33 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
-local pairs, ipairs = pairs, ipairs
-local format = string.format
-local CreateFrame = CreateFrame
-local GetInventoryItemID = GetInventoryItemID
 local GetInventoryItemCooldown = GetInventoryItemCooldown
-local GetItemCooldown = C_Item.GetItemCooldown
-local GetItemCount = C_Item.GetItemCount
-local GetItemIconByID = C_Item.GetItemIconByID
-local GetItemNameByID = C_Item.GetItemNameByID
-local GetItemInfoInstant = C_Item.GetItemInfoInstant
-local GetItemSpell = C_Item.GetItemSpell
-local IsUsableItem = C_Item.IsUsableItem
-local CreateDuration = C_DurationUtil.CreateDuration
-local NewTimer = C_Timer.NewTimer
+local GetInventoryItemID = GetInventoryItemID
+local pairs, ipairs = pairs, ipairs
+local CreateFrame = CreateFrame
+local format = string.format
 local GetTime = GetTime
 
-local IsPreviewing, PreviewDuration = CDM.IsPreviewingLayer, CDM.PreviewDuration
+local CreateDuration = C_DurationUtil.CreateDuration
+local GetItemInfoInstant = C_Item.GetItemInfoInstant
+local GetItemCooldown = C_Item.GetItemCooldown
+local GetItemIconByID = C_Item.GetItemIconByID
+local GetItemNameByID = C_Item.GetItemNameByID
+local GetItemCount = C_Item.GetItemCount
+local GetItemSpell = C_Item.GetItemSpell
+local IsUsableItem = C_Item.IsUsableItem
+local NewTimer = C_Timer.NewTimer
+
+local IsPreviewing = CDM.IsPreviewingLayer
+local PreviewDuration = CDM.PreviewDuration
+
 local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
 
-local ITEM_SLOTS = { trinket1 = INVSLOT_TRINKET1, trinket2 = INVSLOT_TRINKET2 }
+local ITEM_SLOTS = {
+    trinket1 = INVSLOT_TRINKET1,
+    trinket2 = INVSLOT_TRINKET2
+}
+
 -- Items that share one cooldown, so any of them reads it; the first one in the bags is shown.
 local ITEM_FAMILIES = {
     healthstone = { 5512, 224464 }, -- Healthstone, Demonic Healthstone

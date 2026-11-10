@@ -5,13 +5,13 @@ local CDM = NRSKNUI:GetModule('CDM')
 local Pixel = NRSKNUI.Pixel
 
 local ipairs, pairs, next = ipairs, pairs, next
-local CreateFrame = CreateFrame
 local tsort, tremove = table.sort, table.remove
+local CreateFrame = CreateFrame
 local floor = math.floor
-local wipe = wipe
 local max = math.max
 local Mixin = Mixin
 local type = type
+local wipe = wipe
 local _G = _G
 
 local PROBE_TEMPLATE = 'DisableUntrustedLayoutScriptsTemplate' -- anchoring to an aura button needs it

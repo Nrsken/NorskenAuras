@@ -4,10 +4,10 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
+local CreateFrame = CreateFrame
+local pairs = pairs
 local next = next
 local wipe = wipe
-local pairs = pairs
-local CreateFrame = CreateFrame
 
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
 local GetSpellName = C_Spell and C_Spell.GetSpellName

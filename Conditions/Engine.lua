@@ -2,10 +2,6 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local PROPERTIES = CDM.ConditionProperties
-local SubElement = CDM.ConditionRegions.SubElement
-local PaintRegion = CDM.ConditionRegions.PaintRegion
-CDM.COMBINATIONS = { AND = true, OR = true }
 
 --[[
 Runs a display's conditions and puts their changes on it, taking them back off once they stop matching.
@@ -14,16 +10,21 @@ Also keeps conditions pointing at the right triggers and sub elements when those
 
 local ipairs, pairs, next = ipairs, pairs, next
 local tremove, tsort = table.remove, table.sort
+local CreateColor = CreateColor
 local tonumber = tonumber
-local unpack = unpack
 local GetTime = GetTime
+local unpack = unpack
 local select = select
 local wipe = wipe
 
 local NewTimer = C_Timer and C_Timer.NewTimer
 local CreateColorCurve = C_CurveUtil and C_CurveUtil.CreateColorCurve
 local CreateNumericRuleFormatter = C_StringUtil and C_StringUtil.CreateNumericRuleFormatter
-local CreateColor = CreateColor
+
+local PROPERTIES = CDM.ConditionProperties
+local SubElement = CDM.ConditionRegions.SubElement
+local PaintRegion = CDM.ConditionRegions.PaintRegion
+CDM.COMBINATIONS = { AND = true, OR = true }
 
 -- Curve checks --
 

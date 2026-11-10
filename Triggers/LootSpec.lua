@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local LoadConditions = NRSKNUI.LoadConditions
 
 --[[
 The Loot Specialization trigger: the spec's icon, its name as %n, active while it passes the spec and Current Specialization filters.
@@ -10,7 +11,6 @@ Loot spec 0 is Current Specialization, which follows the active spec (EncounterJ
 
 local GetSpecializationInfoByID = GetSpecializationInfoByID
 local GetLootSpecialization = GetLootSpecialization
-local LoadConditions = NRSKNUI.LoadConditions
 local CreateFrame = CreateFrame
 local select = select
 local ipairs = ipairs

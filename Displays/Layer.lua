@@ -5,18 +5,20 @@ local CDM = NRSKNUI:GetModule('CDM')
 
 local CreateObjectPool = CreateObjectPool
 local CreateFrame = CreateFrame
+local tsort = table.sort
 local ipairs = ipairs
 local unpack = unpack
 local min = math.min
-local tsort = table.sort
 
 local GameTooltip = GameTooltip
 
+local AcquireText = CDM.Text.Acquire
+local PlaceText = CDM.Text.Place
+local ConfigureText = CDM.Text.Configure
+
+local TEXT_PINS = CDM.Text.PINS
 local OVERLAY_LEVELS = 6 -- an aura overlay's layer, aura host, container, button, its swipe and pandemic border, before its elements
 CDM.GLOW_LEVEL = 3       -- a glow's level above its layer
-
-local Text = CDM.Text
-local AcquireText, PlaceText, ConfigureText, TEXT_PINS = Text.Acquire, Text.Place, Text.Configure, Text.PINS
 
 --[[
 An icon frame and its layers, one per trigger: art, swipe, texts, borders and glows.

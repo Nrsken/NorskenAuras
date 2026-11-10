@@ -2,9 +2,6 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local PlaceText = CDM.Text.Place
-local ConfigureText = CDM.Text.Configure
-local StyleBorder = CDM.Layer.StyleBorder
 
 --[[
 Bar layers: the fill, its icon and spark, timers and values, split resource bars and their pips,
@@ -23,6 +20,10 @@ local SMOOTH = Enum and Enum.StatusBarInterpolation.ExponentialEaseOut
 local REMAINING = Enum and Enum.StatusBarTimerDirection.RemainingTime
 local ELAPSED = Enum and Enum.StatusBarTimerDirection.ElapsedTime
 local IMMEDIATE = Enum and Enum.StatusBarInterpolation.Immediate
+
+local PlaceText = CDM.Text.Place
+local ConfigureText = CDM.Text.Configure
+local StyleBorder = CDM.Layer.StyleBorder
 
 CDM.BAR_REMAINING = REMAINING
 CDM.BAR_ELAPSED = ELAPSED

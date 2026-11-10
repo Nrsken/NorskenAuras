@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local LoadConditions = NRSKNUI.LoadConditions
 
 --[[
 What a condition can check on each trigger type and how it reads the answer.
@@ -9,7 +10,6 @@ A trigger type adds its own checks to CDM.ConditionChecks.
 A curve check reads a secret time, percent or stack count, so we never run it ourselves: its Text Color changes become a curve or count formatter the game evaluates.
 ]]
 
-local LoadConditions = NRSKNUI.LoadConditions
 local UnitCanAttack = UnitCanAttack
 local UnitExists = UnitExists
 local pairs = pairs

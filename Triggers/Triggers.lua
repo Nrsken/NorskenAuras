@@ -9,10 +9,6 @@ The pipeline every trigger type shares: Resolve what a trigger points at, Update
 Each Triggers/*.lua fills CDM.TriggerTypes[type] with IsKnown, Resolve, Update and IsActive, plus optional IsStandby, Warnings, Unwatch and RegisterEvents.
 ]]
 
-CDM.TriggerTypes = {}
-CDM.PREVIEW_LENGTH = 7     -- options preview timer, in seconds
-CDM.PREVIEW_PANDEMIC = 0.3 -- previewed pandemic border at 30% left
-
 local InCombatLockdown = InCombatLockdown
 local pairs, ipairs = pairs, ipairs
 local CreateFrame = CreateFrame
@@ -24,6 +20,10 @@ local next = next
 local CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
 local GetSpellName = C_Spell and C_Spell.GetSpellName
+
+CDM.TriggerTypes = {}
+CDM.PREVIEW_LENGTH = 7     -- options preview timer, in seconds
+CDM.PREVIEW_PANDEMIC = 0.3 -- previewed pandemic border at 30% left
 
 -- Preview --
 

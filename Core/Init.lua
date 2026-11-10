@@ -2,6 +2,7 @@
 local NRSKNUI = select(2, ...)
 local addonName = ...
 
+local _G = _G
 local LibStub = LibStub
 
 local NorskenCore = _G.NorskenCore --[[@as NorskenCoreAPI]]

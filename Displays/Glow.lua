@@ -3,8 +3,8 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
-local pairs, ipairs = pairs, ipairs
 local min, abs, ceil = math.min, math.abs, math.ceil
+local pairs, ipairs = pairs, ipairs
 local setmetatable = setmetatable
 local CreateFrame = CreateFrame
 local unpack = unpack

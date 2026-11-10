@@ -2,8 +2,6 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local IsPreviewing = CDM.IsPreviewingLayer
-local PreviewDuration = CDM.PreviewDuration
 local L = NRSKNUI.Libs.AL
 
 local pairs, ipairs = pairs, ipairs
@@ -17,6 +15,9 @@ local IsSpellKnown = C_SpellBook and C_SpellBook.IsSpellKnown
 local GetOverrideSpell = C_Spell and C_Spell.GetOverrideSpell
 local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
 local NewTimer = C_Timer and C_Timer.NewTimer
+
+local IsPreviewing = CDM.IsPreviewingLayer
+local PreviewDuration = CDM.PreviewDuration
 
 local timerIndex = {} ---@type table<number, table<CDMLayer, true>> cast spellID -> timer layers it starts
 

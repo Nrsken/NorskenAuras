@@ -7,20 +7,22 @@ local L = NRSKNUI.Libs.AL
 --[[
 The Prey Hunt trigger: active while a hunt runs, its progress as Cold, Warm, Hot and Final.
 Progress only lives on a UI widget and no API names that widget, so it's found by its type (Blizzard_UIWidgetTemplatePreyHuntProgress.lua).
-A hunt has no widget outside its zone, so it can be active without a state.
+A hunt has no widget outside its zone, so it can be active without a state but can be handled with condition checks.
 ]]
+
+local ipairs, pairs = ipairs, pairs
+local CreateFrame = CreateFrame
+local next = next
 
 local GetPreyHuntInfo = C_UIWidgetManager.GetPreyHuntProgressWidgetVisualizationInfo
 local GetPowerBarWidgetSetID = C_UIWidgetManager.GetPowerBarWidgetSetID
 local GetAllWidgetsBySetID = C_UIWidgetManager.GetAllWidgetsBySetID
 local GetActivePreyQuest = C_QuestLog.GetActivePreyQuest
 local GetTitleForQuestID = C_QuestLog.GetTitleForQuestID
-local CreateFrame = CreateFrame
-local ipairs, pairs = ipairs, pairs
-local next = next
 
 local PREY_WIDGET = Enum.UIWidgetVisualizationType.PreyHuntProgress
 local HIDDEN = Enum.WidgetShownState.Hidden
+
 local PREY_ICON = 'Interface\\Icons\\Ability_Hunter_MarkedForDeath'
 local STEPS = 4 -- a bar's fill, nothing returns finer progress than the state
 
@@ -32,8 +34,8 @@ local STATE_NAMES = {
 }
 
 local preyLayers = {} ---@type table<CDMLayer, true>
-local hunt = {}       -- what the layers read: questID, title, state, hint
-local widgetID        ---@type number?
+local hunt = {} -- what the layers read: questID, title, state, hint
+local widgetID ---@type number?
 
 -- Hunt --
 
