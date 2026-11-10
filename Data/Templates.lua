@@ -127,6 +127,7 @@ CDM.SUBREGION_TEMPLATES = {
         Precision = 1,
         NumberFormat = 'auto', -- values (power, stats): auto, decimals, abbreviate, large, breakup, percent (power only)
         Decimals = 1,
+        HideZero = true,       -- %s
         NameFormat = 'full',   -- %n: full, initial, upper
         NameColor = 'custom',  -- %n: custom (the text's Color), class, theme
         Rotation = 'NONE',

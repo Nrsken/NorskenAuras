@@ -88,7 +88,7 @@ window:AddHeaderButton({
 window:AddHeaderButton({
     icon = TEX .. 'cogwheel.png',
     glow = TEX .. 'cogwheel_glow.png',
-    size = 18,
+    size = 20,
     onClick = function()
         window:ShowPage(window.content.currentId == SETTINGS_PAGE and PAGE or SETTINGS_PAGE)
     end,
