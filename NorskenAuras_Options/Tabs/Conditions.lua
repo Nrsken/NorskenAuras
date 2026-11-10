@@ -152,6 +152,7 @@ local OPERATORS = {
 }
 -- A curve steps at its point, so a value is either below it or at it and up.
 local CURVE_OPERATORS = { OPERATORS[1], OPERATORS[4] }
+local SELECT_OPERATORS = { OPERATORS[3], OPERATORS[6] }
 -- Number checks with a slider; the rest type their number.
 local CHECK_RANGES = {
     remaining = { min = -50, max = 500, step = 0.1 },
@@ -373,7 +374,7 @@ local function Title(index, condition, byKey, display, triggerChip)
         elseif def.type == 'select' then
             for _, option in ipairs(SELECT_OPTIONS[def.options]) do
                 if option.value == check.value then
-                    name = format('%s: %s', name, option.text)
+                    name = format(check.op == '~=' and '%s ~= %s' or '%s: %s', name, option.text)
                     break
                 end
             end
@@ -503,8 +504,19 @@ end
 ---@param apply fun()
 local function ValueControls(row, check, def, apply)
     if def.type == 'select' then
+        if def.negatable then
+            row:Dropdown(nil, {
+                width = 0.15,
+                options = SELECT_OPERATORS,
+                value = check.op or '==',
+                callback = function(value)
+                    check.op = value
+                    apply()
+                end,
+            })
+        end
         row:Dropdown(nil, {
-            width = 0.5,
+            width = def.negatable and 0.35 or 0.5,
             options = SELECT_OPTIONS[def.options],
             value = check.value,
             callback = function(value)

@@ -14,7 +14,7 @@ local UnitCanAttack = UnitCanAttack
 local UnitExists = UnitExists
 local pairs = pairs
 
----@type table<string, table<string, { type: 'bool'|'number'|'select', secret?: boolean, curve?: boolean, talents?: boolean, get?: (fun(layer: CDMLayer, trigger: table, pip: CDMPip?): any), match?: (fun(value: any, layer: CDMLayer?, check: table): boolean), options?: string }>>
+---@type table<string, table<string, { type: 'bool'|'number'|'select', secret?: boolean, curve?: boolean, talents?: boolean, negatable?: boolean, get?: (fun(layer: CDMLayer, trigger: table, pip: CDMPip?): any), match?: (fun(value: any, layer: CDMLayer?, check: table): boolean), options?: string }>>
 CDM.ConditionChecks = {}
 
 CDM.ConditionChecks.global = {
@@ -25,7 +25,8 @@ CDM.ConditionChecks.global = {
 
 -- Player/Unit checks; spec and talents can't change in combat, so a group can move on them.
 CDM.ConditionChecks.group = {
-    classInGroup = { type = 'select', options = 'class', match = function(class) return NRSKNUI:IsClassInGroup(class) end },
+    -- negatable: the pick takes an = / ~= in check.op, so it can also ask for a class missing from the group
+    classInGroup = { type = 'select', options = 'class', negatable = true, match = function(class) return NRSKNUI:IsClassInGroup(class) end },
     spec = { type = 'select', options = 'spec', match = function(specID) return LoadConditions:GetSpecID() == specID end },
     -- check.entries holds the picks: [entryID] = true must have, false must not
     talent = {

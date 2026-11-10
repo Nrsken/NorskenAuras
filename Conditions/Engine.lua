@@ -143,7 +143,7 @@ local function Matches(check, display, frame, pip)
 
     local layer = frame.layers and frame.layers[check.trigger]
     if def.type == 'select' then
-        return def.match(check.value, layer, check) == true
+        return (def.match(check.value, layer, check) == true) ~= (check.op == '~=')
     end
 
     local value = def.get(layer, trigger, pip)
