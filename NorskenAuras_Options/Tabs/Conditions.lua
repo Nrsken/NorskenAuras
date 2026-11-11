@@ -924,7 +924,9 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
         end
         card:EndSection()
 
-        card:Separator()
+        if #conditions > 0 then
+            card:Separator()
+        end
 
         card:Row(24):Button(L['Add Condition'], {
             width = 1,
