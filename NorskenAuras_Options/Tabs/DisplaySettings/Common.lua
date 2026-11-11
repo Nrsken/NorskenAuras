@@ -7,8 +7,6 @@ local CopyTable = CopyTable
 local type = type
 local floor = math.floor
 
-local SUB_INDENT = 12
-
 -- The label is centred in its row and the row keeps the default gap after it, so a heading sits midway between its neighbours.
 local HEADING_HEIGHT = 26
 
@@ -153,7 +151,6 @@ DisplayTab.ANCHOR_POINTS = ANCHOR_POINTS
 DisplayTab.Assign = Assign
 DisplayTab.Differ = Differ
 DisplayTab.ICON_SOURCES = ICON_SOURCES
-DisplayTab.SUB_INDENT = SUB_INDENT
 DisplayTab.Section = Section
 DisplayTab.TEXT_JUSTIFY = TEXT_JUSTIFY
 DisplayTab.subOpen = subOpen

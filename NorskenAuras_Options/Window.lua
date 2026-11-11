@@ -76,10 +76,6 @@ window:AddHeaderButton(SharedPages:HeaderButton('home', function() Reopen(GENERA
 window:AddHeaderButton(SharedPages:HeaderButton('global', function() ShowGlobalSettings() end))
 window:AddHeaderButton(SharedPages:HeaderButton('theme', function() ShowGlobalSettings(SharedPages.THEME_ITEM) end))
 window:AddHeaderButton(SharedPages:HeaderButton('anchors', function() NRSKNUI.Anchors:Enter() end))
-window:AddHeaderButton(SharedPages:HeaderButton('preview', function(btn)
-    PreviewManager:SetForceAll(not PreviewManager:IsForceAll())
-    btn:SetActive(PreviewManager:IsForceAll())
-end))
 
 window.content.onPageChanged = function(pageId, previousId)
     PreviewManager:SetPage(pageId)

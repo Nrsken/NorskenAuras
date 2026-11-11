@@ -6,7 +6,6 @@ local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local TriggerEditor = NRSKNUI.GUITriggerEditor
 local AuraTriggers = NRSKNUI.AuraTriggers
-local SUB_INDENT = NRSKNUI.CDMDisplayTab.SUB_INDENT
 local rowH = Theme.rowHeight
 
 local tinsert, tremove = table.insert, table.remove
@@ -95,7 +94,6 @@ local function BuildTriggerTab(page, id)
                 end
             end
             card:EndSection()
-            card:Separator()
         end
 
         -- Aura alone, Aura Overlay beside other triggers; a group takes its first member's place.
@@ -254,7 +252,7 @@ local function BuildAuraGroupTriggerTab(page, id)
                 end,
             }) then
             card:Row(rowH):Dropdown(L['Unit'], {
-                width = 0.5,
+                width = 1,
                 options = AuraTriggers.UnitOptions,
                 value = trigger.Unit,
                 tooltip = L['Every trigger in this display watches this unit.'],
@@ -262,7 +260,6 @@ local function BuildAuraGroupTriggerTab(page, id)
             })
         end
         card:EndSection()
-        card:Separator()
 
         for index = 1, #branches do
             local open = triggerOpen[index]
@@ -291,7 +288,7 @@ local function BuildAuraGroupTriggerTab(page, id)
                 end or nil,
             })
             if expanded then
-                TriggerEditor:BuildBranch(card, trigger, index, Changed, { key = key, indent = SUB_INDENT })
+                TriggerEditor:BuildBranch(card, trigger, index, Changed, { key = key })
             end
         end
         card:EndSection()

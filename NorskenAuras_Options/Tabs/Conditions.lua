@@ -724,10 +724,13 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
             if def and def.talents then
                 check.entries = check.entries or {}
                 local width = card.real and card.real.content and card.real.content:GetWidth() or 0
-                if width <= 0 then width = 400 end -- the card hasn't been laid out yet
-                width = width - depth * INDENT
+                -- the card hasn't been laid out yet
+                if width <= 0 then
+                    width = 400
+                end
+                width = width - card.page.gui.theme.sectionIndent - depth * INDENT
                 for _, section in ipairs(Kaji.TalentTreeSections(check.value)) do
-                    card:Separator(TALENT_SECTIONS[section], { useLabel = true, centered = true, height = 20, spacing = 10 })
+                    card:Separator(TALENT_SECTIONS[section], { useLabel = true, centered = true, height = 20, spacing = 10, inSection = true })
                     card:Row(Kaji.TalentTreeHeight(check.value, width, section), nil, depth * INDENT):Widget('TalentTree', nil, {
                         width = 1,
                         specID = check.value,
@@ -919,7 +922,7 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                         callback = function(checked) Edit(function() condition.linked = checked or nil end) end,
                     })
                 end
-                if index < #conditions then card:Separator() end -- the last one meets the divider above Add Condition
+                --if index < #conditions then card:Separator() end -- the last one meets the divider above Add Condition
             end
         end
         card:EndSection()

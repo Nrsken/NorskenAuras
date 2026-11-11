@@ -487,7 +487,7 @@ local function SubElements(card, page, icons, apply, triggerChip)
             elseif element.type == 'tick' then
                 TickRows(card, page, element, set, mixed, key)
             end
-            if index < #elements then card:Separator() end -- the last one meets the divider above the add buttons
+            --if index < #elements then card:Separator() end -- the last one meets the divider above the add buttons
         end
         OverlayRows(index)
     end

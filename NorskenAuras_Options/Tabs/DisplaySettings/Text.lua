@@ -13,7 +13,6 @@ local format = string.format
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
 local ANCHOR_POINTS = DisplayTab.ANCHOR_POINTS
-local SUB_INDENT = DisplayTab.SUB_INDENT
 local TEXT_JUSTIFY = DisplayTab.TEXT_JUSTIFY
 local subOpen = DisplayTab.subOpen
 local CASTER_PATTERN = CDM.Text.CASTER_PATTERN
@@ -90,7 +89,7 @@ local function DisplayTextTooltip(tooltip)
     tooltip:AddLine(L['%casterName only works on an aura, as a text of its own.'], secondary[1], secondary[2], secondary[3], true)
 end
 
----An indented, animated header for the less used settings inside a section, closed until opened.
+---An animated header for the less used settings inside a section, closed until opened.
 ---@param card table
 ---@param key string
 ---@param title string
@@ -101,7 +100,6 @@ local function SubSection(card, key, title, summary)
     return card:SubSection(title, {
         key = key,
         summary = summary,
-        indent = SUB_INDENT,
         collapsed = not subOpen[key],
         onToggle = function()
             subOpen[key] = not subOpen[key] or nil
@@ -280,7 +278,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
     end
     local formatOpen = (readsTime or readsValue or readsCount or readsName or readsCaster) and SubSection(card, key .. ':format', L['Format Options'])
     if formatOpen and readsCaster then
-        local casterRow = card:Row(rowH, nil, SUB_INDENT)
+        local casterRow = card:Row(rowH)
         casterRow:Checkbox(L['Class Color'], {
             width = 0.5,
             conditions = { shown },
@@ -298,7 +296,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         })
     end
     if formatOpen and readsName then
-        local nameRow = card:Row(rowH, nil, SUB_INDENT)
+        local nameRow = card:Row(rowH)
         nameRow:Dropdown(L['Name Format'], {
             width = 0.5,
             conditions = { shown },
@@ -319,7 +317,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         })
     end
     if formatOpen and readsValue then
-        local numberRow = card:Row(rowH, nil, SUB_INDENT)
+        local numberRow = card:Row(rowH)
         numberRow:Dropdown(L['Number Format'], {
             width = 0.5,
             conditions = { shown },
@@ -345,7 +343,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         })
     end
     if formatOpen and readsCount then
-        card:Row(rowH, nil, SUB_INDENT):Checkbox(L['Hide Zero'], {
+        card:Row(rowH):Checkbox(L['Hide Zero'], {
             width = 0.5,
             conditions = { shown },
             tooltip = L['%s shows nothing instead of 0.'],
@@ -355,7 +353,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         })
     end
     if formatOpen and readsTime then
-        card:Row(rowH, nil, SUB_INDENT):Dropdown(L['Time Format'], {
+        card:Row(rowH):Dropdown(L['Time Format'], {
             width = 0.5,
             conditions = { shown },
             tooltip = L['Global uses the duration breakpoints from the global settings.'],
@@ -368,7 +366,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
             end,
         })
 
-        local precisionRow = card:Row(rowH, nil, SUB_INDENT)
+        local precisionRow = card:Row(rowH)
         precisionRow:Slider(L['Increase Precision Below'], {
             width = 0.5,
             conditions = { shown, customTime },
@@ -406,7 +404,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         flagsHeader:SetSummary(FlagsSummary())
     end
     if flagsOpen then
-        local toggleRow = card:Row(rowH, nil, SUB_INDENT)
+        local toggleRow = card:Row(rowH)
         toggleRow:Checkbox(L['Shadow'], {
             width = 0.5,
             conditions = { shown },
@@ -425,7 +423,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
             callback = function(r, g, b, a) setShadow({ 'FontShadow', 'Color' }, { r, g, b, a }) end,
         })
 
-        local offsetRow = card:Row(rowH, nil, SUB_INDENT)
+        local offsetRow = card:Row(rowH)
         offsetRow:Slider(L['Shadow X'], {
             width = 0.5,
             conditions = { shown, shadow },
@@ -447,7 +445,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
             callback = function(value) setShadow({ 'FontShadow', 'OffsetY' }, value) end,
         })
 
-        local alignRow = card:Row(rowH, nil, SUB_INDENT)
+        local alignRow = card:Row(rowH)
         if not main then
             alignRow:Dropdown(L['Rotate Text'], {
                 width = 0.5,
@@ -468,7 +466,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
             callback = function(value) set({ 'Justify' }, value) end,
         })
 
-        local widthRow = card:Row(rowH, nil, SUB_INDENT)
+        local widthRow = card:Row(rowH)
         widthRow:Dropdown(L['Width'], {
             width = 0.5,
             conditions = { shown },
@@ -490,7 +488,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
             mixed = mixed({ 'FixedWidth' }),
             callback = function(value) set({ 'FixedWidth' }, value) end,
         })
-        card:Row(rowH, nil, SUB_INDENT):Checkbox(L['Word Wrap'], {
+        card:Row(rowH):Checkbox(L['Word Wrap'], {
             width = 0.5,
             conditions = { shown, fixedWidth },
             tooltip = L['Off cuts a text longer than the width short instead of wrapping it.'],
@@ -517,7 +515,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         anchorHeader:SetSummary(AnchorSummary())
     end
     if anchorOpen then
-        local pointRow = card:Row(rowH, nil, SUB_INDENT)
+        local pointRow = card:Row(rowH)
         pointRow:Dropdown(L['Anchor'], {
             width = 0.5,
             conditions = { shown },
@@ -536,7 +534,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
             callback = function(point) setPosition({ 'Position', 'AnchorTo' }, point) end,
         })
 
-        local offsetRow = card:Row(rowH, nil, SUB_INDENT)
+        local offsetRow = card:Row(rowH)
         offsetRow:Slider(L['X Offset'], {
             width = 0.5,
             conditions = { shown },
