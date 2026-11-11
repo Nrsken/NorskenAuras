@@ -174,6 +174,22 @@ local function Conform(input, default)
     end
 end
 
+---An icon's look, which an aura group's buttons share: every sub element of a known type, the style filled in.
+---@param display table
+---@return boolean ok
+local function ConformLook(display)
+    local elements = display.SubRegions
+    if elements ~= nil and type(elements) ~= 'table' then return false end
+    for _, element in ipairs(elements or {}) do
+        local template = type(element) == 'table' and CDM.SUBREGION_TEMPLATES[element.type]
+        if not template then return false end
+        Conform(element, template)
+    end
+
+    Conform(display.Style, CDM.STYLE_TEMPLATES[display.type] or CDM.STYLE_TEMPLATE)
+    return true
+end
+
 ---Puts an imported display's fields in shape, so nothing reads a wrong type later. Its lists can't be patched
 ---without changing what a trigger or condition number points at, so a broken one fails the whole string.
 ---@param display table
@@ -193,19 +209,12 @@ local function ConformDisplay(display)
             if type(trigger) ~= 'table' or type(trigger.Type) ~= 'string' then return false end
         end
 
-        local elements = display.SubRegions
-        if elements ~= nil and type(elements) ~= 'table' then return false end
-        for _, element in ipairs(elements or {}) do
-            local template = type(element) == 'table' and CDM.SUBREGION_TEMPLATES[element.type]
-            if not template then return false end
-            Conform(element, template)
-        end
-
-        Conform(display.Style, CDM.STYLE_TEMPLATES[display.type] or CDM.STYLE_TEMPLATE)
+        if not ConformLook(display) then return false end
         Conform(display, { Load = NRSKNUI.LoadConditions:GetDefaults() })
     elseif display.type == 'auragroup' then
         if type(display.Trigger) ~= 'table' then return false end
         Conform(display, CDM.AURA_GROUP_TEMPLATE)
+        if not ConformLook(display) then return false end
         Conform(display, { Load = NRSKNUI.LoadConditions:GetDefaults() })
     elseif display.type == 'dynamicgroup' then
         Conform(display, { Layout = CDM.LAYOUT_TEMPLATE })

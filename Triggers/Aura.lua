@@ -14,7 +14,7 @@ local ceil = math.ceil
 local unpack = unpack
 local next = next
 
-local NewTimer = C_Timer and C_Timer.NewTimer
+local NewTimer = C_Timer.NewTimer
 
 local IsPreviewing = CDM.IsPreviewingLayer
 local PreviewDuration = CDM.PreviewDuration
@@ -32,7 +32,7 @@ so this file points the button at its spells and draws the options preview and p
 
 ---Restyle a layer's aura button now or once the restriction lifts: existing buttons deny tainted access while
 ---auras are secret, not just in combat. The restriction queue keeps every entry, so a layer waits there once with its latest.
----@param layer CDMLayer
+---@param layer CDMLayer|Frame a layer, or an aura group's host restyling all its buttons
 ---@param restyle fun()
 function CDM:QueueAuraRestyle(layer, restyle)
     if not NRSKNUI:AreAurasSecret() then

@@ -10,12 +10,27 @@ local IconPicker = NRSKNUI.CDMIconPicker
 local pairs, ipairs = pairs, ipairs
 local format = string.format
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
+local GetSpellTexture = C_Spell.GetSpellTexture
+
+local AURA_GROUP_BADGE = {
+    texture = NRSKNUI.Media.GUITextures .. 'box_fat.png',
+    tipTitle = L['Aura Group'],
+    tipText = L['Shows every aura its triggers match, the game decides which and how many.'],
+}
 
 local Shared = NRSKNUI.CDMOptions
-local CAST_ICON, GENERAL, IMPORT, IsCollapsed = Shared.CAST_ICON, Shared.GENERAL, Shared.IMPORT, Shared.IsCollapsed
-local QUESTION_MARK, SECTION_LOADED, SECTION_UNLOADED = Shared.QUESTION_MARK, Shared.SECTION_LOADED, Shared.SECTION_UNLOADED
-local TRINKETS, TYPE_NAMES, expandedGroups = Shared.TRINKETS, Shared.TYPE_NAMES, Shared.expandedGroups
+local CAST_ICON = Shared.CAST_ICON
+local GENERAL = Shared.GENERAL
+local GLOBAL = Shared.GLOBAL
+local IMPORT = Shared.IMPORT
+local IsCollapsed = Shared.IsCollapsed
+local NEW = Shared.NEW
+local QUESTION_MARK = Shared.QUESTION_MARK
+local SECTION_LOADED = Shared.SECTION_LOADED
+local SECTION_UNLOADED = Shared.SECTION_UNLOADED
+local TRINKETS = Shared.TRINKETS
+local TYPE_NAMES = Shared.TYPE_NAMES
+local expandedGroups = Shared.expandedGroups
 
 -- Tree data --
 
@@ -105,6 +120,7 @@ local function RowData(id, depth, childIndex, index, count)
         data.loadState = CDM:GetLoadState(id)
         data.icon = DisplayIcon(id)
         data.preview = level
+        data.badge = display.type == 'auragroup' and AURA_GROUP_BADGE or nil
         data.leafIcon, data.leaves = data.icon, 1
         data.pinned, data.hidden = level == 2 and 1 or 0, level == 0 and 1 or 0
     end
@@ -194,8 +210,10 @@ local function TreeContent()
     return {
         general = { key = GENERAL, text = L['General'] },
         pages = {
-            { key = TRINKETS,        text = L['Trinket Blacklist'] },
+            { key = NEW,             text = L['New'] },
             { key = IMPORT,          text = L['Import'] },
+            { key = TRINKETS,        text = L['Trinket Blacklist'] },
+            { key = GLOBAL,          text = L['Global Settings'], page = NRSKNUI.GUISharedPages.GLOBAL_PAGE },
             { key = IconPicker.PAGE, text = L['Choose an Icon'] },
         },
         sections = { loaded, unloaded },

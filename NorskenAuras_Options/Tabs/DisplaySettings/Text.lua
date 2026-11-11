@@ -12,7 +12,11 @@ local format = string.format
 
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
-local ANCHOR_POINTS, SUB_INDENT, TEXT_JUSTIFY, subOpen = DisplayTab.ANCHOR_POINTS, DisplayTab.SUB_INDENT, DisplayTab.TEXT_JUSTIFY, DisplayTab.subOpen
+local ANCHOR_POINTS = DisplayTab.ANCHOR_POINTS
+local SUB_INDENT = DisplayTab.SUB_INDENT
+local TEXT_JUSTIFY = DisplayTab.TEXT_JUSTIFY
+local subOpen = DisplayTab.subOpen
+local CASTER_PATTERN = CDM.Text.CASTER_PATTERN
 
 local TEXT_SELF_POINTS = { { value = 'AUTO', text = L['Automatic'] } }
 for _, point in ipairs(ANCHOR_POINTS) do TEXT_SELF_POINTS[#TEXT_SELF_POINTS + 1] = point end
@@ -65,6 +69,8 @@ local TEXT_TOKENS = {
     { '%2.n', L["Trigger 2's name, e.g. the highest stat"] },
     { '%i', L['Spell icon'] },
     { '%2.i', L["Trigger 2's icon"] },
+    { '%casterName', L['Who cast the aura'] },
+    { '%2.casterName', L["In an aura group, only on Trigger 2's auras"] },
     { '%%', L['A percent sign'] },
     { '\\n', L['New line'] },
     { '{rt1}', L['Raid marker 1 to 8'] },
@@ -81,6 +87,7 @@ local function DisplayTextTooltip(tooltip)
     tooltip:AddLine(L["%p and %t can't share a text with %s."], secondary[1], secondary[2], secondary[3], true)
     tooltip:AddLine(L['On Power, %p is the value and %t the max; on Player Stat, %p is the percent and %t the rating.'], secondary[1], secondary[2], secondary[3], true)
     tooltip:AddLine(L['%2.p, %2.t or %2.s read Trigger 2 instead of the shown trigger. A text reads one trigger.'], secondary[1], secondary[2], secondary[3], true)
+    tooltip:AddLine(L['%casterName only works on an aura, as a text of its own.'], secondary[1], secondary[2], secondary[3], true)
 end
 
 ---An indented, animated header for the less used settings inside a section, closed until opened.
@@ -260,6 +267,7 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
 
     -- Only a text with a time, a value, a count or a name has anything to format; any display's text earns the rows.
     local readsName = strfind(element.Text or '', '%%%d*%.?n') ~= nil
+    local readsCaster = strfind(element.Text or '', CASTER_PATTERN) ~= nil
     for i = 2, #displays do
         local other = displays[i].SubRegions[slot].Text
         local time, value, power, count = Reads(other, displays[i].Triggers)
@@ -268,8 +276,27 @@ local function TextRows(card, page, element, set, mixed, key, displays, slot, pi
         readsPower = readsPower or power
         readsCount = readsCount or count
         readsName = readsName or strfind(other or '', '%%%d*%.?n') ~= nil
+        readsCaster = readsCaster or strfind(other or '', CASTER_PATTERN) ~= nil
     end
-    local formatOpen = (readsTime or readsValue or readsCount or readsName) and SubSection(card, key .. ':format', L['Format Options'])
+    local formatOpen = (readsTime or readsValue or readsCount or readsName or readsCaster) and SubSection(card, key .. ':format', L['Format Options'])
+    if formatOpen and readsCaster then
+        local casterRow = card:Row(rowH, nil, SUB_INDENT)
+        casterRow:Checkbox(L['Class Color'], {
+            width = 0.5,
+            conditions = { shown },
+            tooltip = L["Colors %casterName by the caster's class, in the game's class colors."],
+            value = element.CasterClassColor,
+            mixed = mixed({ 'CasterClassColor' }),
+            callback = function(checked) set({ 'CasterClassColor' }, checked or nil) end,
+        })
+        casterRow:Checkbox(L['Show Realm'], {
+            width = 0.5,
+            conditions = { shown },
+            value = element.CasterRealm,
+            mixed = mixed({ 'CasterRealm' }),
+            callback = function(checked) set({ 'CasterRealm' }, checked or nil) end,
+        })
+    end
     if formatOpen and readsName then
         local nameRow = card:Row(rowH, nil, SUB_INDENT)
         nameRow:Dropdown(L['Name Format'], {

@@ -15,7 +15,10 @@ local tsort = table.sort
 
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
-local Assign, Section, SplitPower, TextRows = DisplayTab.Assign, DisplayTab.Section, DisplayTab.SplitPower, DisplayTab.TextRows
+local Assign = DisplayTab.Assign
+local Section = DisplayTab.Section
+local SplitPower = DisplayTab.SplitPower
+local TextRows = DisplayTab.TextRows
 local Differ = DisplayTab.Differ
 
 local SUBREGION_NAMES = { text = L['Text'], border = L['Border'], glow = L['Glow'], tick = L['Tick'] }
@@ -65,9 +68,13 @@ end
 ---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
 ---@param key string
 ---@param pipName string? a split power bar's "Rune", whose borders can repeat on each one
-local function BorderRows(card, page, element, set, mixed, key, pipName)
+---@param dispel boolean? an aura group's border can take the colour of the aura's dispel type
+local function BorderRows(card, page, element, set, mixed, key, pipName, dispel)
     local shown = key .. ':shown'
     page:SetCondition(shown, function() return element.Enabled == true or mixed({ 'Enabled' }) end)
+    local typed, plain = key .. ':dispel', key .. ':plain'
+    page:SetCondition(typed, function() return dispel and (element.DispelColor == true or mixed({ 'DispelColor' })) end)
+    page:SetCondition(plain, function() return not element.DispelColor or mixed({ 'DispelColor' }) end)
 
     local showRow = card:Row(rowH)
     showRow:Checkbox(L['Show Border'], {
@@ -90,9 +97,31 @@ local function BorderRows(card, page, element, set, mixed, key, pipName)
         })
     end
 
+    if dispel then
+        local dispelRow = card:Row(rowH)
+        dispelRow:Checkbox(L['Dispel Type Color'], {
+            width = 0.5,
+            conditions = { shown },
+            tooltip = L['Colors the aura border by dispel type.'],
+            value = element.DispelColor,
+            mixed = mixed({ 'DispelColor' }),
+            callback = function(checked)
+                set({ 'DispelColor' }, checked or nil)
+                page:Refresh()
+            end,
+        })
+        dispelRow:Checkbox(L['Show Without Dispel Type'], {
+            width = 0.5,
+            conditions = { shown, typed },
+            value = element.DispelUntyped,
+            mixed = mixed({ 'DispelUntyped' }),
+            callback = function(checked) set({ 'DispelUntyped' }, checked or nil) end,
+        })
+    end
+
     card:Row(rowH):ColorPicker(L['Border Color'], {
         width = 1,
-        conditions = { shown },
+        conditions = { shown, plain },
         value = element.Color,
         mixed = mixed({ 'Color' }),
         callback = function(r, g, b, a) set({ 'Color' }, { r, g, b, a }) end,
@@ -452,7 +481,7 @@ local function SubElements(card, page, icons, apply, triggerChip)
             if element.type == 'text' then
                 TextRows(card, page, element, set, mixed, key, icons, index, pipName, false, CDM:DroppedAuraTexts(first)[element] == true)
             elseif element.type == 'border' then
-                BorderRows(card, page, element, set, mixed, key, pipName)
+                BorderRows(card, page, element, set, mixed, key, pipName, first.type == 'auragroup')
             elseif element.type == 'glow' then
                 GlowRows(card, element, set, mixed)
             elseif element.type == 'tick' then

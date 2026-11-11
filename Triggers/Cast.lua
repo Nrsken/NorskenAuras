@@ -14,12 +14,12 @@ local GetNetStats = GetNetStats
 local GetTime = GetTime
 local select = select
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
-local GetSpellName = C_Spell and C_Spell.GetSpellName
-local IsSpellKnown = C_SpellBook and C_SpellBook.IsSpellKnown
-local GetPlayerAuraBySpellID = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-local CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
-local NewTimer = C_Timer and C_Timer.NewTimer
+local GetSpellTexture = C_Spell.GetSpellTexture
+local GetSpellName = C_Spell.GetSpellName
+local IsSpellKnown = C_SpellBook.IsSpellKnown
+local GetPlayerAuraBySpellID = C_UnitAuras.GetPlayerAuraBySpellID
+local CreateDuration = C_DurationUtil.CreateDuration
+local NewTimer = C_Timer.NewTimer
 
 local PREVIEW_CAST = 10
 local MAX_LATENCY = 1 -- a SENT older than this belongs to some other cast attempt

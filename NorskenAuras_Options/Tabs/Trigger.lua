@@ -4,6 +4,9 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
+local TriggerEditor = NRSKNUI.GUITriggerEditor
+local AuraTriggers = NRSKNUI.AuraTriggers
+local SUB_INDENT = NRSKNUI.CDMDisplayTab.SUB_INDENT
 local rowH = Theme.rowHeight
 
 local tinsert, tremove = table.insert, table.remove
@@ -214,4 +217,96 @@ local function BuildTriggerTab(page, id)
     end)
 end
 
+---An aura group's triggers, laid out as an icon's: what they share on top, then a section each. Every trigger is
+---an aura group of its own in the display's container, shown in this order.
+---@param page table
+---@param id string
+local function BuildAuraGroupTriggerTab(page, id)
+    local display = CDM:Get(id)
+    display.Trigger = display.Trigger or AuraTriggers:New()
+    local trigger = display.Trigger
+    TriggerEditor:Prepare(trigger)
+    local apply = Applier(id)
+    local theme = page.gui.theme
+
+    page:Card(L['Triggers'], 'all'):Rebuild(function(card)
+        local function Edit(fn)
+            if fn then
+                fn()
+            end
+            apply()
+            AuraTriggers:Invalidate()
+            card:Rebuild()
+        end
+        -- the editor's callbacks pass arguments of their own
+        local function Changed()
+            Edit()
+        end
+        local branches = trigger.branches
+
+        -- the container's own settings, which every trigger shares, sit where an icon's combination does
+        if card:Section(L['Aura Group'], {
+                key = 'cdm:auragroup',
+                collapsed = triggerOpen.auraGroup,
+                onToggle = function()
+                    triggerOpen.auraGroup = not triggerOpen.auraGroup or nil
+                    card:Rebuild()
+                end,
+            }) then
+            card:Row(rowH):Dropdown(L['Unit'], {
+                width = 0.5,
+                options = AuraTriggers.UnitOptions,
+                value = trigger.Unit,
+                tooltip = L['Every trigger in this display watches this unit.'],
+                callback = function(value) Edit(function() trigger.Unit = value end) end,
+            })
+        end
+        card:EndSection()
+        card:Separator()
+
+        for index = 1, #branches do
+            local open = triggerOpen[index]
+            if open == nil then open = #branches == 1 end
+
+            local key = 'cdm:trigger:' .. index
+            local expanded = card:Section(TriggerEditor:Label(theme, trigger, index), {
+                key = key,
+                collapsed = not open,
+                onToggle = function()
+                    triggerOpen[index] = not open
+                    card:Rebuild()
+                end,
+                onMoveUp = index > 1 and function()
+                    Edit(function() TriggerEditor:MoveBranch(trigger, index, index - 1) end)
+                end or nil,
+                onMoveDown = index < #branches and function()
+                    Edit(function() TriggerEditor:MoveBranch(trigger, index, index + 1) end)
+                end or nil,
+                onDuplicate = function()
+                    Edit(function() TriggerEditor:DuplicateBranch(trigger, index) end)
+                end,
+                -- the last one stays: a display without any matches everything its aura type allows
+                onDelete = #branches > 1 and function()
+                    Edit(function() TriggerEditor:RemoveBranch(trigger, index) end)
+                end or nil,
+            })
+            if expanded then
+                TriggerEditor:BuildBranch(card, trigger, index, Changed, { key = key, indent = SUB_INDENT })
+            end
+        end
+        card:EndSection()
+
+        card:Separator()
+
+        card:Row(30, 0):Button(L['Add Trigger'], {
+            width = 1,
+            height = 24,
+            callback = function()
+                Edit(function() TriggerEditor:AddBranch(trigger) end)
+            end,
+        })
+    end)
+end
+
 Shared.BuildTriggerTab = BuildTriggerTab
+Shared.BuildAuraGroupTriggerTab = BuildAuraGroupTriggerTab

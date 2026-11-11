@@ -10,7 +10,9 @@ local pairs, ipairs = pairs, ipairs
 local format = string.format
 
 local Shared = NRSKNUI.CDMOptions
-local GENERAL, Reopen, TYPE_NAMES = Shared.GENERAL, Shared.Reopen, Shared.TYPE_NAMES
+local GENERAL = Shared.GENERAL
+local Reopen = Shared.Reopen
+local TYPE_NAMES = Shared.TYPE_NAMES
 
 local IMPORT_BOX_HEIGHT = 120
 local importState = { text = '', mode = 'update', picked = {} } ---@type { text: string, plan: table?, error: string?, mode: 'update'|'copy', picked: table<string, boolean> }

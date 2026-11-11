@@ -17,7 +17,7 @@ local random = math.random
 local type = type
 local wipe = wipe
 
-local PowerType = Enum and Enum.PowerType
+local PowerType = Enum.PowerType
 
 local UID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()'
 local ID_PREFIX = 'cdm:'
@@ -560,6 +560,7 @@ function CDM:CreateAuraGroup(name, presetKey, parentId)
 
     local display = self:NewBuiltinAuraGroup('builtin:defensives') --[[@as table]]
     display.name, display.builtin = name, nil
+    display.SubRegions = self:DefaultAuraGroupSubRegions() -- not Defensives' caster text, which reads its second trigger
     display.Trigger = presetKey
         and NRSKNUI.AuraTriggers:ToAuraFilter({ Type = NRSKNUI.AuraTriggers.Types.Preset, Preset = presetKey, Unit = 'player' })
         or NRSKNUI.AuraTriggers:New()
@@ -571,6 +572,21 @@ function CDM:CreateAuraGroup(name, presetKey, parentId)
     if parentId then
         self:SetParent(id, parentId)
     end
+    return id
+end
+
+---A built-in aura group as it shipped, added again: its Reset entries work as on the one a new profile gets.
+---@param key string
+---@return string? id
+function CDM:AddBuiltinAuraGroup(key)
+    local display = self:NewBuiltinAuraGroup(key)
+    if not display then return nil end
+
+    local position = display.Position
+    StartDisplay(display)
+    display.Position = position -- where it ships, as Reset puts it
+    local id = NextId()
+    Store()[id] = display
     return id
 end
 

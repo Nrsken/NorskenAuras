@@ -12,18 +12,18 @@ local GetTime = GetTime
 local select = select
 local type = type
 
-local IsSpellOverlayed = C_SpellActivationOverlay and C_SpellActivationOverlay.IsSpellOverlayed
-local GetSpellCooldownDuration = C_Spell and C_Spell.GetSpellCooldownDuration
-local GetSpellChargeDuration = C_Spell and C_Spell.GetSpellChargeDuration
-local EnableSpellRangeCheck = C_Spell and C_Spell.EnableSpellRangeCheck
-local CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
-local IsSpellKnown = C_SpellBook and C_SpellBook.IsSpellKnown
-local GetSpellCooldown = C_Spell and C_Spell.GetSpellCooldown
-local GetOverrideSpell = C_Spell and C_Spell.GetOverrideSpell
-local GetSpellCharges = C_Spell and C_Spell.GetSpellCharges
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
-local IsSpellInRange = C_Spell and C_Spell.IsSpellInRange
-local IsSpellUsable = C_Spell and C_Spell.IsSpellUsable
+local IsSpellOverlayed = C_SpellActivationOverlay.IsSpellOverlayed
+local GetSpellCooldownDuration = C_Spell.GetSpellCooldownDuration
+local GetSpellChargeDuration = C_Spell.GetSpellChargeDuration
+local EnableSpellRangeCheck = C_Spell.EnableSpellRangeCheck
+local CreateDuration = C_DurationUtil.CreateDuration
+local IsSpellKnown = C_SpellBook.IsSpellKnown
+local GetSpellCooldown = C_Spell.GetSpellCooldown
+local GetOverrideSpell = C_Spell.GetOverrideSpell
+local GetSpellCharges = C_Spell.GetSpellCharges
+local GetSpellTexture = C_Spell.GetSpellTexture
+local IsSpellInRange = C_Spell.IsSpellInRange
+local IsSpellUsable = C_Spell.IsSpellUsable
 
 local GLOBAL_RECOVERY_CATEGORY = Constants.SpellCooldownConsts.GLOBAL_RECOVERY_CATEGORY
 local GCD_SPELL = 61304
@@ -171,6 +171,16 @@ CDM.TriggerTypes.spell = {
         layer.watchUsable = display ~= nil and (CDM:ConditionsUse(display, layer.index, 'usable') or CDM:ConditionsUse(display, layer.index, 'noPower'))
         CDM:WatchSpell(base, layer.owner.id)
 
+        -- A spell this character doesn't know never reads: the game reports a shared cooldown category on every
+        -- spell in it, known or not (probed: a Rogue's Sprint showed on Monk Roll, category 44).
+        if base and not CDM.TriggerTypes.spell.IsKnown(trigger) then
+            layer.spellID, layer.realCooldown, layer.heldGCD = nil, nil, nil
+            layer.state = {}
+            CDM:SetLayerTimer(layer, nil)
+            CDM:SetIconTexture(layer, GetSpellTexture(base))
+            return
+        end
+
         -- read even when the icon ignores the override, so an Overridden condition can still follow it
         local override = base and GetOverrideSpell(base)
         layer.overridden = override ~= nil and override ~= base
@@ -207,6 +217,13 @@ CDM.TriggerTypes.spell = {
                 layer.count = 1
                 layer.duration = PreviewDuration(layer, PREVIEW_LENGTH)
                 CDM:SetLayerTimer(layer, layer.duration)
+                CDM:UpdateTexts(layer)
+            elseif layer.previewEnd then
+                -- nothing reads a spell this layer doesn't have, so the preview's cooldown would outlive the options
+                layer.previewEnd = nil
+                layer.state = {}
+                layer.count, layer.duration = nil, nil
+                CDM:SetLayerTimer(layer, nil)
                 CDM:UpdateTexts(layer)
             end
             return

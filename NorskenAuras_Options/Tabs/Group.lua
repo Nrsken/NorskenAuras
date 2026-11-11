@@ -5,13 +5,17 @@ local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local IconPicker = NRSKNUI.CDMIconPicker
+local AuraCards = NRSKNUI.GUIAuraCards
 local rowH = Theme.rowHeight
+local rowHL = Theme.rowHeightLast
 
 local tostring = tostring
 local tonumber = tonumber
 
 local Shared = NRSKNUI.CDMOptions
-local Applier, PositionConfig, RefreshTree = Shared.Applier, Shared.PositionConfig, Shared.RefreshTree
+local Applier = Shared.Applier
+local PositionConfig = Shared.PositionConfig
+local RefreshTree = Shared.RefreshTree
 
 local ANCHOR_ROLES = {
     { value = 'none',      text = L['None'] },
@@ -30,14 +34,16 @@ local function BuildGroupTab(page, id)
     local apply = Applier(id)
     local Section = NRSKNUI.CDMDisplayTab.Section
     local dynamic = display.type == 'dynamicgroup'
-    local grow = dynamic and display.Layout.Grow
+    local auraGroup = display.type == 'auragroup'
+    local grow = (dynamic or auraGroup) and display.Layout.Grow
 
     page:Card(L['Group'], 'all'):Rebuild(function(card)
         if Section(card, 'groupIcon', L['Group Icon']) then
             local iconRow = card:Row(rowH)
             iconRow:EditBox(L['Icon ID'], {
                 width = 'fill',
-                tooltip = L['The icon this group shows in the list. Empty uses its first icon.'],
+                tooltip = auraGroup and L['The icon this aura group shows in the list. Empty uses its first spell.']
+                    or L['The icon this group shows in the list. Empty uses its first icon.'],
                 value = display.Icon and tostring(display.Icon) or '',
                 callback = function(text)
                     display.Icon = tonumber(text)
@@ -52,9 +58,43 @@ local function BuildGroupTab(page, id)
             end)
         end
 
-        if dynamic and Section(card, 'groupLayout', L['Dynamic Group Settings']) then
+        if (dynamic or auraGroup) and Section(card, 'groupLayout', L['Dynamic Group Settings']) then
             card:Premade('DynamicGroupCard', {
                 db = display.Layout,
+                showLimit = dynamic,
+                -- the game sorts an aura group's auras and caps each trigger on its own
+                extraRows = auraGroup and function(c)
+                    local function Set(key)
+                        return function(value)
+                            display[key] = value
+                            apply()
+                        end
+                    end
+
+                    local sortRow = c:Row(rowH)
+                    sortRow:Dropdown(L['Sort Method'], { width = 0.5, options = AuraCards.SortMethods, value = display.sortMethod, callback = Set('sortMethod') })
+                    sortRow:Dropdown(L['Sort Direction'], { width = 0.5, options = AuraCards.SortDirections, value = display.sortDirection, callback = Set('sortDirection') })
+
+                    local countRow = c:Row(rowHL, 0)
+                    countRow:Slider(L['Auras Per Trigger'], {
+                        width = 0.5,
+                        tooltip = L['Each trigger shows up to this many, so several triggers can show more in total.'],
+                        min = 1,
+                        max = 40,
+                        step = 1,
+                        value = display.maxFrameCount,
+                        callback = Set('maxFrameCount'),
+                    })
+                    countRow:Slider(L['Preview Limit'], {
+                        width = 0.5,
+                        tooltip = L['How many auras the preview and the mover box show. The real auras are left alone.'],
+                        min = 1,
+                        max = 40,
+                        step = 1,
+                        value = display.previewLimit,
+                        callback = Set('previewLimit'),
+                    })
+                end or nil,
                 -- a chained group never reads the limit; asked on every rebuild, as switching to Grid lifts it
                 limitNotice = function()
                     return CDM:WantsChain(id) and {

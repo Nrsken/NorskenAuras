@@ -9,8 +9,8 @@ local pairs = pairs
 local next = next
 local wipe = wipe
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
-local GetSpellName = C_Spell and C_Spell.GetSpellName
+local GetSpellTexture = C_Spell.GetSpellTexture
+local GetSpellName = C_Spell.GetSpellName
 
 local SCAN_INTERVAL = 0.25
 

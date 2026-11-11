@@ -34,7 +34,7 @@
     <Script file="Tree\Actions.lua" />
     <Script file="Pages\New.lua" />
     <Script file="Pages\Trinkets.lua" />
-    <Script file="Pages\Settings.lua" />
+    <Script file="Pages\Home.lua" />
     <Script file="Pages\Import.lua" />
     <Script file="Page.lua" />
     <Script file="Window.lua" />

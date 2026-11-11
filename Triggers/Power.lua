@@ -28,9 +28,9 @@ local UnitStagger = UnitStagger --[[@as fun(unit: 'player'): number]]
 
 local huge = math.huge
 
-local GetPlayerAuraBySpellID = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
-local IsSpellKnown = C_SpellBook and C_SpellBook.IsSpellKnown
-local NewTimer = C_Timer and C_Timer.NewTimer
+local GetPlayerAuraBySpellID = C_UnitAuras.GetPlayerAuraBySpellID
+local IsSpellKnown = C_SpellBook.IsSpellKnown
+local NewTimer = C_Timer.NewTimer
 
 local PowerType = Enum.PowerType
 

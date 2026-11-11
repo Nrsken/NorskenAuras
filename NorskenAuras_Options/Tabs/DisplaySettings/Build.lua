@@ -7,15 +7,28 @@ local Theme = NRSKNUI.Theme
 local rowHL = Theme.rowHeightLast
 
 local ipairs = ipairs
+local setmetatable = setmetatable
 local format = string.format
 
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
-local Assign, BarColorSettings, BarIconSettings, BarSettings = DisplayTab.Assign, DisplayTab.BarColorSettings, DisplayTab.BarIconSettings, DisplayTab.BarSettings
+local Assign = DisplayTab.Assign
+local BarColorSettings = DisplayTab.BarColorSettings
+local BarIconSettings = DisplayTab.BarIconSettings
+local BarSettings = DisplayTab.BarSettings
 local Differ = DisplayTab.Differ
-local GeneralSettings, IconSettings, PipSettings, PositionAndSize = DisplayTab.GeneralSettings, DisplayTab.IconSettings, DisplayTab.PipSettings, DisplayTab.PositionAndSize
-local Section, SparkSettings, SplitPower, SubElements = DisplayTab.Section, DisplayTab.SparkSettings, DisplayTab.SplitPower, DisplayTab.SubElements
-local SwipeSettings, TextRows, TimerTextSettings = DisplayTab.SwipeSettings, DisplayTab.TextRows, DisplayTab.TimerTextSettings
+local GeneralSettings = DisplayTab.GeneralSettings
+local IconSettings = DisplayTab.IconSettings
+local PipSettings = DisplayTab.PipSettings
+local PositionAndSize = DisplayTab.PositionAndSize
+local Section = DisplayTab.Section
+local SparkSettings = DisplayTab.SparkSettings
+local SplitPower = DisplayTab.SplitPower
+local SubElements = DisplayTab.SubElements
+local SizeRows = DisplayTab.SizeRows
+local SwipeSettings = DisplayTab.SwipeSettings
+local TextRows = DisplayTab.TextRows
+local TimerTextSettings = DisplayTab.TimerTextSettings
 
 ---@param page table
 ---@param iconIds string[] one type: a mixed group or selection builds one block per type
@@ -33,8 +46,14 @@ function DisplayTab:Build(page, iconIds, apply, refreshTree, triggerChip, opts)
 
     local icons = {} ---@type table[]
     for _, id in ipairs(iconIds) do
-        icons[#icons + 1] = CDM:Get(id)
+        local display = CDM:Get(id)
+        -- an aura group's buttons are edited as an icon's aura with no triggers of its own; writes reach the group
+        if display.type == 'auragroup' then
+            display = setmetatable({ Triggers = {} }, { __index = display, __newindex = display })
+        end
+        icons[#icons + 1] = display
     end
+    local auraGroup = icons[1].type == 'auragroup'
     local style = CDM:GetStyle(icons[1])
 
     -- one style each, read the way it draws (a missing key from its template), for every widget's differ
@@ -99,8 +118,8 @@ function DisplayTab:Build(page, iconIds, apply, refreshTree, triggerChip, opts)
                 if Section(card, 'pips', format(L['%s Settings'], CDM.PIP_NAMES[powerType])) then PipSettings(card, style, set, mixed) end
             end
         else
-            if Section(card, 'icon', L['Icon Settings']) then IconSettings(card, page, style, set, mixed, refreshTree) end
-            if Section(card, 'swipe', L['Swipe Settings']) then SwipeSettings(card, page, style, set, mixed) end
+            if Section(card, 'icon', L['Icon Settings']) then IconSettings(card, page, style, set, mixed, refreshTree, auraGroup) end
+            if Section(card, 'swipe', L['Swipe Settings']) then SwipeSettings(card, page, style, set, mixed, auraGroup) end
             local triggers = icons[1].Triggers
             for _, display in ipairs(icons) do
                 if #display.Triggers > #triggers then triggers = display.Triggers end
@@ -108,11 +127,16 @@ function DisplayTab:Build(page, iconIds, apply, refreshTree, triggerChip, opts)
             if Section(card, 'timerText', L['Timer Text Settings']) then TimerTextSettings(card, page, style, set, mixed, triggers) end
         end
         DisplayTab.Heading(card, L['Layout'])
-        if Section(card, sizeKey, L['Position and Size Settings']) then
+        -- an aura group is placed on its Group tab and its buttons by the game
+        if auraGroup then
+            if Section(card, sizeKey, L['Size Settings']) then
+                SizeRows(card, style, set, mixed, 128)
+            end
+        elseif Section(card, sizeKey, L['Position and Size Settings']) then
             PositionAndSize(card, page, style, set, mixed, icons, apply, isBar and 600 or 128)
         end
         if not opts.noGeneral and Section(card, 'general', L['General']) then
-            GeneralSettings(card, style, set, mixed, isBar)
+            GeneralSettings(card, style, set, mixed, isBar, auraGroup)
         end
 
         DisplayTab.Heading(card, L['Sub Elements'])

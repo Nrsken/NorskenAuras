@@ -11,7 +11,8 @@ local tostring = tostring
 local format = string.format
 
 local Shared = NRSKNUI.CDMOptions
-local RefreshTree, TYPE_NAMES = Shared.RefreshTree, Shared.TYPE_NAMES
+local RefreshTree = Shared.RefreshTree
+local TYPE_NAMES = Shared.TYPE_NAMES
 
 local DESCRIPTION_HEIGHT = 80
 

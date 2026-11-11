@@ -11,26 +11,29 @@ local tostring = tostring
 local format = string.format
 local tonumber = tonumber
 
-local GetItemIconByID = C_Item and C_Item.GetItemIconByID
-local GetItemNameByID = C_Item and C_Item.GetItemNameByID
+local GetItemIconByID = C_Item.GetItemIconByID
+local GetItemNameByID = C_Item.GetItemNameByID
 
 local Shared = NRSKNUI.CDMOptions
-local QUESTION_MARK, Reopen = Shared.QUESTION_MARK, Shared.Reopen
+local GENERAL = Shared.GENERAL
+local QUESTION_MARK = Shared.QUESTION_MARK
+local Reopen = Shared.Reopen
 
----The trinket blacklist, its own page so the main page stays short; Back returns to the trigger it came from.
+---The trinket blacklist, its own page so the main page stays short; Back returns to the trigger it came from or home.
 ---@param page table
 local function BuildTrinketPage(page)
     local blacklist = page:Card(L['Trinket Blacklist'], 'all')
     local returnKey = Shared.trinketReturnKey --[[@as string?]]
-    if returnKey and CDM:Get(returnKey) then
-        blacklist:HeaderButton({
-            texture = NRSKNUI.Media.GUITextures .. 'right-arrow.png',
-            size = 20,
-            rotation = math.pi, -- our right arrow, pointing back
-            tooltip = format(L['Back to %s'], CDM:GetName(returnKey)),
-            onClick = function() Reopen(returnKey) end,
-        })
+    if not (returnKey and CDM:Get(returnKey)) then
+        returnKey = nil
     end
+    blacklist:HeaderButton({
+        texture = NRSKNUI.Media.GUITextures .. 'right-arrow.png',
+        size = 20,
+        rotation = math.pi, -- our right arrow, pointing back
+        tooltip = returnKey and format(L['Back to %s'], CDM:GetName(returnKey)) or L['Back'],
+        onClick = function() Reopen(returnKey or GENERAL) end,
+    })
     blacklist:Rebuild(function(card)
         card:Row(rowH):EditBox(L['Add Trinket'], {
             width = 1,

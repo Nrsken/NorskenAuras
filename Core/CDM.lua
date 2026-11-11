@@ -19,7 +19,7 @@ local tostring = tostring
 local tsort = table.sort
 local wipe = wipe
 
-local SetCVar = C_CVar and C_CVar.SetCVar
+local SetCVar = C_CVar.SetCVar
 
 local STATE_RANK = {
     loaded = 3,
@@ -307,7 +307,7 @@ end
 
 -- Preview --
 
-CDM.previewPages = { 'cooldownManager', 'cooldownManagerSettings' }
+CDM.previewPages = 'cooldownManager'
 
 -- Opening the page previews every loaded display at level 1.
 function CDM:ShowPreview()

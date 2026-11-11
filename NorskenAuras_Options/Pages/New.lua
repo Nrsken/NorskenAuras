@@ -11,12 +11,19 @@ local GetTime = GetTime
 local ipairs = ipairs
 local floor = math.floor
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
+local GetSpellTexture = C_Spell.GetSpellTexture
 
 local Shared = NRSKNUI.CDMOptions
-local IMPORT, NEW_TILE_HEIGHT, NEW_TILE_ICON, NEW_TILE_PREVIEW = Shared.IMPORT, Shared.NEW_TILE_HEIGHT, Shared.NEW_TILE_ICON, Shared.NEW_TILE_PREVIEW
-local NewAuraGroup, NewGroup, NewIcon, NewProgressBar = Shared.NewAuraGroup, Shared.NewGroup, Shared.NewIcon, Shared.NewProgressBar
-local NewResourceBar, NewText, Reopen = Shared.NewResourceBar, Shared.NewText, Shared.Reopen
+local NEW_TILE_HEIGHT = Shared.NEW_TILE_HEIGHT
+local NEW_TILE_ICON = Shared.NEW_TILE_ICON
+local NEW_TILE_PREVIEW = Shared.NEW_TILE_PREVIEW
+local NewAuraGroup = Shared.NewAuraGroup
+local NewGroup = Shared.NewGroup
+local NewIcon = Shared.NewIcon
+local NewProgressBar = Shared.NewProgressBar
+local NewResourceBar = Shared.NewResourceBar
+local NewText = Shared.NewText
+local Reopen = Shared.Reopen
 
 -- New page pictures: small versions of each type, drawn from the player's own spec --
 
@@ -395,6 +402,22 @@ local NEW_SECTIONS = {
     },
 }
 
+-- the built-in trackers a new profile starts with, to bring one back or add another
+local builtins = { title = L['Built-in Trackers'], types = {} }
+for i, builtin in ipairs(CDM.BUILTIN_AURA_GROUPS) do
+    builtins.types[i] = {
+        text = L[builtin.display.name],
+        description = L['Built-in aura group'],
+        icon = builtin.display.Icon,
+        create = function()
+            local id = CDM:AddBuiltinAuraGroup(builtin.key)
+            CDM:ApplySettings(id)
+            Reopen(id)
+        end,
+    }
+end
+NEW_SECTIONS[#NEW_SECTIONS + 1] = builtins
+
 ---@param page table
 local function BuildNewPage(page)
     -- The card's side padding is the gap between the tiles and below the last row too.
@@ -408,7 +431,7 @@ local function BuildNewPage(page)
                 width = 1 / #section.types,
                 spacing = gap,
                 size = NEW_TILE_ICON,
-                previewWidth = NEW_TILE_PREVIEW,
+                previewWidth = entry.draw and NEW_TILE_PREVIEW or nil, -- a plain icon stays square
                 showBorder = false,
                 tile = true,
                 tileHeight = NEW_TILE_HEIGHT,
@@ -420,14 +443,6 @@ local function BuildNewPage(page)
             })
         end
     end
-
-    local importH = 24
-    page:Card(L['Import'], 'all'):Row(importH):Button(L['Import a String'], {
-        width = 1,
-        height = importH,
-        tooltip = L['Add displays someone shared, or update the ones you have.'],
-        callback = function() Reopen(IMPORT) end,
-    })
 end
 
 Shared.BuildNewPage = BuildNewPage

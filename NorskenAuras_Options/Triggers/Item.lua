@@ -7,11 +7,14 @@ local rowH = Theme.rowHeight
 local tostring = tostring
 local tonumber = tonumber
 
-local GetItemIconByID = C_Item and C_Item.GetItemIconByID
+local GetItemIconByID = C_Item.GetItemIconByID
 
 local Shared = NRSKNUI.CDMOptions
-local ITEMS, QUESTION_MARK = Shared.ITEMS, Shared.QUESTION_MARK
-local Reopen, TRINKETS, TriggerRows = Shared.Reopen, Shared.TRINKETS, Shared.TriggerRows
+local ITEMS = Shared.ITEMS
+local QUESTION_MARK = Shared.QUESTION_MARK
+local Reopen = Shared.Reopen
+local TRINKETS = Shared.TRINKETS
+local TriggerRows = Shared.TriggerRows
 
 function TriggerRows.item(card, typeRow, display, trigger, id, apply)
     typeRow:Dropdown(L['Item'], {

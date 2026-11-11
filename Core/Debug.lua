@@ -23,9 +23,9 @@ local min = math.min
 local type = type
 local date = date
 
-local GetCVar = C_CVar and C_CVar.GetCVar
+local GetCVar = C_CVar.GetCVar
 
-local Category = Enum and Enum.CooldownViewerCategory
+local Category = Enum.CooldownViewerCategory
 
 local PREVIEW_NAMES = {
     [0] = 'off',

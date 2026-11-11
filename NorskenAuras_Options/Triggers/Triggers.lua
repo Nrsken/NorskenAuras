@@ -11,11 +11,13 @@ local format = string.format
 local CopyTable = CopyTable
 local floor = math.floor
 
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
-local GetSpellName = C_Spell and C_Spell.GetSpellName
+local GetSpellTexture = C_Spell.GetSpellTexture
+local GetSpellName = C_Spell.GetSpellName
 
 local Shared = NRSKNUI.CDMOptions
-local Applier, QUESTION_MARK, Reopen = Shared.Applier, Shared.QUESTION_MARK, Shared.Reopen
+local Applier = Shared.Applier
+local QUESTION_MARK = Shared.QUESTION_MARK
+local Reopen = Shared.Reopen
 
 -- Tabs --
 

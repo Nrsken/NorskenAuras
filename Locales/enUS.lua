@@ -67,7 +67,7 @@ L['Final'] = true
 -- AuraGroup
 L['Aura group "%s" has an unusable unit (%s), falling back to player.'] = true
 L['Layout'] = true
-L['Defensives'] = true
+L['Defensives & Externals'] = true
 L['Display'] = true
 L['Focus'] = true
 L['Trigger'] = true

@@ -13,7 +13,8 @@ local CopyTable = CopyTable
 
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
-local ICON_SOURCES, ANCHOR_POINTS = DisplayTab.ICON_SOURCES, DisplayTab.ANCHOR_POINTS
+local ICON_SOURCES = DisplayTab.ICON_SOURCES
+local ANCHOR_POINTS = DisplayTab.ANCHOR_POINTS
 
 ---@param card table
 ---@param page table
@@ -21,7 +22,8 @@ local ICON_SOURCES, ANCHOR_POINTS = DisplayTab.ICON_SOURCES, DisplayTab.ANCHOR_P
 ---@param set fun(path: string[], value: any)
 ---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
 ---@param refreshTree fun() the sidebar shows the icon too
-local function IconSettings(card, page, style, set, mixed, refreshTree)
+---@param auraGroup boolean? an aura group's buttons, each showing an aura of its own
+local function IconSettings(card, page, style, set, mixed, refreshTree, auraGroup)
     page:SetCondition('cdm:icon', function() return style.IconShow ~= false or mixed({ 'IconShow' }) end)
 
     local showRow = card:Row(rowH)
@@ -43,36 +45,61 @@ local function IconSettings(card, page, style, set, mixed, refreshTree)
         callback = function(r, g, b, a) set({ 'Color' }, { r, g, b, a }) end,
     })
 
-    local sourceRow = card:Row(rowH)
-    sourceRow:Dropdown(L['Icon Source'], {
-        width = 0.5,
-        conditions = { 'cdm:icon' },
-        options = ICON_SOURCES,
-        value = style.IconSource,
-        mixed = mixed({ 'IconSource' }),
-        callback = function(value)
-            set({ 'IconSource' }, value)
-            refreshTree()
-            page:Refresh()
-        end,
-    })
-    sourceRow:EditBox(L['Manual Icon'], {
-        width = 'fill',
-        conditions = { 'cdm:icon' },
-        tooltip = L['An icon file ID. Automatic uses it for triggers without an icon of their own, such as Player Stat.'],
-        value = style.ManualIcon and tostring(style.ManualIcon) or '',
-        mixed = mixed({ 'ManualIcon' }),
-        callback = function(text)
-            set({ 'ManualIcon' }, tonumber(text))
-            refreshTree()
-        end,
-    })
-    IconPicker:BrowseButton(sourceRow, style.ManualIcon, function()
-        IconPicker:Open(style.ManualIcon, function(texture)
-            set({ 'ManualIcon' }, texture)
-            refreshTree()
-        end)
-    end, { 'cdm:icon' })
+    if auraGroup then
+        -- every button shows its own aura, so there's no icon to pick but there is a dispel type to show
+        page:SetCondition('cdm:dispelIcon', function() return style.DispelIcon == true or mixed({ 'DispelIcon' }) end)
+        local dispelRow = card:Row(rowH)
+        dispelRow:Checkbox(L['Show Dispel Icon'], {
+            width = 0.5,
+            value = style.DispelIcon,
+            mixed = mixed({ 'DispelIcon' }),
+            callback = function(checked)
+                set({ 'DispelIcon' }, checked)
+                page:Refresh()
+            end,
+        })
+        dispelRow:Slider(L['Dispel Icon Size'], {
+            width = 0.5,
+            conditions = { 'cdm:dispelIcon' },
+            min = 6,
+            max = 40,
+            step = 1,
+            value = style.DispelIconSize,
+            mixed = mixed({ 'DispelIconSize' }),
+            callback = function(value) set({ 'DispelIconSize' }, value) end,
+        })
+    else
+        local sourceRow = card:Row(rowH)
+        sourceRow:Dropdown(L['Icon Source'], {
+            width = 0.5,
+            conditions = { 'cdm:icon' },
+            options = ICON_SOURCES,
+            value = style.IconSource,
+            mixed = mixed({ 'IconSource' }),
+            callback = function(value)
+                set({ 'IconSource' }, value)
+                refreshTree()
+                page:Refresh()
+            end,
+        })
+        sourceRow:EditBox(L['Manual Icon'], {
+            width = 'fill',
+            conditions = { 'cdm:icon' },
+            tooltip = L['An icon file ID. Automatic uses it for triggers without an icon of their own, such as Player Stat.'],
+            value = style.ManualIcon and tostring(style.ManualIcon) or '',
+            mixed = mixed({ 'ManualIcon' }),
+            callback = function(text)
+                set({ 'ManualIcon' }, tonumber(text))
+                refreshTree()
+            end,
+        })
+        IconPicker:BrowseButton(sourceRow, style.ManualIcon, function()
+            IconPicker:Open(style.ManualIcon, function(texture)
+                set({ 'ManualIcon' }, texture)
+                refreshTree()
+            end)
+        end, { 'cdm:icon' })
+    end
 
     local lookRow = card:Row(rowH)
     lookRow:Checkbox(L['Desaturate'], {
@@ -107,7 +134,8 @@ end
 ---@param style table
 ---@param set fun(path: string[], value: any)
 ---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
-local function SwipeSettings(card, page, style, set, mixed)
+---@param auraGroup boolean? an aura's swipe has no global cooldown to show
+local function SwipeSettings(card, page, style, set, mixed, auraGroup)
     page:SetCondition('cdm:swipe', function() return style.DrawSwipe == true or mixed({ 'DrawSwipe' }) end)
     local row1 = card:Row(rowH)
     row1:Checkbox(L['Enable Swipe'], {
@@ -135,14 +163,16 @@ local function SwipeSettings(card, page, style, set, mixed)
         mixed = mixed({ 'DrawEdge' }),
         callback = function(checked) set({ 'DrawEdge' }, checked) end,
     })
-    row2:Checkbox(L['Show Global Cooldown'], {
-        width = 0.5,
-        conditions = { 'cdm:swipe' },
-        tooltip = L['Run the swipe for the global cooldown too.'],
-        value = style.ShowGCD,
-        mixed = mixed({ 'ShowGCD' }),
-        callback = function(checked) set({ 'ShowGCD' }, checked) end,
-    })
+    if not auraGroup then
+        row2:Checkbox(L['Show Global Cooldown'], {
+            width = 0.5,
+            conditions = { 'cdm:swipe' },
+            tooltip = L['Run the swipe for the global cooldown too.'],
+            value = style.ShowGCD,
+            mixed = mixed({ 'ShowGCD' }),
+            callback = function(checked) set({ 'ShowGCD' }, checked) end,
+        })
+    end
 
     card:Row(rowH):ColorPicker(L['Swipe Color'], {
         width = 0.5,

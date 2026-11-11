@@ -11,7 +11,9 @@ local CopyTable = CopyTable
 local RunNextFrame = RunNextFrame
 
 local Shared = NRSKNUI.CDMOptions
-local Reopen, TRIGGER_DEFAULTS, Tree = Shared.Reopen, Shared.TRIGGER_DEFAULTS, Shared.Tree
+local Reopen = Shared.Reopen
+local TRIGGER_DEFAULTS = Shared.TRIGGER_DEFAULTS
+local Tree = Shared.Tree
 
 -- Actions --
 
@@ -160,8 +162,13 @@ end
 ---@param entries table[]
 local function BuiltinResetEntries(id, entries)
     local display = CDM:Get(id)
-    local shipped = NRSKNUI.AuraTriggers:GetShipped(display.Trigger)
-    if shipped and (shipped.Added or shipped.Removed) then
+    local edited = {}
+    for _, shipped in ipairs(NRSKNUI.AuraTriggers:GetShippedLists(display.Trigger)) do
+        if shipped.Added or shipped.Removed then
+            edited[#edited + 1] = shipped
+        end
+    end
+    if edited[1] then
         entries[#entries + 1] = {
             text = L['Reset Spells to Default'],
             onClick = function()
@@ -169,7 +176,9 @@ local function BuiltinResetEntries(id, entries)
                     title = L['Reset Spells to Default'],
                     text = L['Remove the spells you added and switch every default spell back on?'],
                     onAccept = function()
-                        shipped.Added, shipped.Removed = nil, nil
+                        for _, shipped in ipairs(edited) do
+                            shipped.Added, shipped.Removed = nil, nil
+                        end
                         NRSKNUI.AuraTriggers:Invalidate()
                         Reopen(id)
                     end,

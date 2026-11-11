@@ -69,7 +69,7 @@ end
 ---@return boolean
 function CDM:ShowsIcon(layer, style, display)
     if layer.isText then return false end
-    if display and display.type == 'icon' then
+    if display and (display.type == 'icon' or display.type == 'auragroup') then
         return style.IconShow ~= false
     end
     -- an aura overlay on a bar is styled as an icon, not as the bar
@@ -87,7 +87,7 @@ function CDM:ShowsTimerText(layer, style)
     local pick = style.TimerText.Trigger
     if pick then return pick == layer.index end
     local display = layer.owner.id and self:Get(layer.owner.id)
-    local trigger = display and display.Triggers[layer.index]
+    local trigger = display and display.Triggers and display.Triggers[layer.index] -- an aura group has no list of its own
     return not (trigger and trigger.Type == 'auraoverlay')
 end
 

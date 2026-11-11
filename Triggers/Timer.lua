@@ -10,11 +10,11 @@ local format = string.format
 local GetTime = GetTime
 local next = next
 
-local CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
-local IsSpellKnown = C_SpellBook and C_SpellBook.IsSpellKnown
-local GetOverrideSpell = C_Spell and C_Spell.GetOverrideSpell
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
-local NewTimer = C_Timer and C_Timer.NewTimer
+local CreateDuration = C_DurationUtil.CreateDuration
+local IsSpellKnown = C_SpellBook.IsSpellKnown
+local GetOverrideSpell = C_Spell.GetOverrideSpell
+local GetSpellTexture = C_Spell.GetSpellTexture
+local NewTimer = C_Timer.NewTimer
 
 local IsPreviewing = CDM.IsPreviewingLayer
 local PreviewDuration = CDM.PreviewDuration

@@ -9,10 +9,13 @@ local rowH = Theme.rowHeight
 local tinsert = table.insert
 local ipairs = ipairs
 
-local GetMaxStacks = C_Spell and C_Spell.GetSpellMaxCumulativeAuraApplications
+local GetMaxStacks = C_Spell.GetSpellMaxCumulativeAuraApplications
 
 local Shared = NRSKNUI.CDMOptions
-local AURA_BAR_MODES, AURA_SOURCES, AURA_UNITS, CatalogueOptions = Shared.AURA_BAR_MODES, Shared.AURA_SOURCES, Shared.AURA_UNITS, Shared.CatalogueOptions
+local AURA_BAR_MODES = Shared.AURA_BAR_MODES
+local AURA_SOURCES = Shared.AURA_SOURCES
+local AURA_UNITS = Shared.AURA_UNITS
+local CatalogueOptions = Shared.CatalogueOptions
 local CataloguePicker = Shared.CataloguePicker
 local SpellList = NRSKNUI.GUISpellList
 local TriggerRows = Shared.TriggerRows

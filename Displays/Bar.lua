@@ -14,12 +14,12 @@ local CreateFrame = CreateFrame
 local unpack = unpack
 local max = math.max
 
-local CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
+local CreateDuration = C_DurationUtil.CreateDuration
 
-local SMOOTH = Enum and Enum.StatusBarInterpolation.ExponentialEaseOut
-local REMAINING = Enum and Enum.StatusBarTimerDirection.RemainingTime
-local ELAPSED = Enum and Enum.StatusBarTimerDirection.ElapsedTime
-local IMMEDIATE = Enum and Enum.StatusBarInterpolation.Immediate
+local SMOOTH = Enum.StatusBarInterpolation.ExponentialEaseOut
+local REMAINING = Enum.StatusBarTimerDirection.RemainingTime
+local ELAPSED = Enum.StatusBarTimerDirection.ElapsedTime
+local IMMEDIATE = Enum.StatusBarInterpolation.Immediate
 
 local PlaceText = CDM.Text.Place
 local ConfigureText = CDM.Text.Configure

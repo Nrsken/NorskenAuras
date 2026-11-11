@@ -12,8 +12,9 @@ NRSKNUI.CDMOptions = {}
 local Shared = NRSKNUI.CDMOptions
 
 local PAGE = 'cooldownManager'
-local SETTINGS_PAGE = 'cooldownManagerSettings'
 local GENERAL = 'cdm:general'
+local NEW = 'cdm:new'
+local GLOBAL = 'cdm:global'
 local TRINKETS = 'cdm:trinkets'
 local IMPORT = 'cdm:import'
 local SECTION_LOADED = 'cdm:section:loaded'
@@ -43,10 +44,10 @@ local MULTI_TABS = {
     { id = 'load',    text = L['Load'] },
 }
 
--- An aura group only has what the Auras page gave it; its look is split from where it sits.
+-- An aura group edits like a dynamic group of aura icons, with the triggers it draws from.
 local AURA_GROUP_TABS = {
+    { id = 'group',       text = L['Group'] },
     { id = 'display',     text = L['Display'] },
-    { id = 'layout',      text = L['Layout'] },
     { id = 'trigger',     text = L['Trigger'] },
     { id = 'conditions',  text = L['Conditions'] },
     { id = 'load',        text = L['Load'] },
@@ -66,7 +67,6 @@ local expandedGroups = {} -- [group uid] = true, for the session; groups start c
 
 ---@return table? tree
 local function Tree()
-    -- the Settings view swaps the column for its own list, the tree rebuilds on the way back
     local window = NRSKNUI.GUIFrame
     return window and window.content.currentId == PAGE and window.content.miniSidebar or nil
 end
@@ -109,6 +109,11 @@ end
 
 IconPicker.navigate = Reopen
 
+---@param itemKey string? the Global Settings item to open on
+local function ShowGlobalSettings(itemKey)
+    NRSKNUI.GUIFrame:ShowPage(PAGE, { itemKey = GLOBAL, subItemKey = itemKey })
+end
+
 local function RefreshTree()
     local tree = Tree()
     if tree and tree.frame:IsShown() and tree.Render then
@@ -133,7 +138,9 @@ Shared.MULTI_TABS = MULTI_TABS
 Shared.EditTargets = EditTargets
 Shared.Applier = Applier
 Shared.GENERAL = GENERAL
+Shared.GLOBAL = GLOBAL
 Shared.IMPORT = IMPORT
+Shared.NEW = NEW
 Shared.IsCollapsed = IsCollapsed
 Shared.NEW_TILE_HEIGHT = NEW_TILE_HEIGHT
 Shared.NEW_TILE_ICON = NEW_TILE_ICON
@@ -145,7 +152,7 @@ Shared.RefreshTree = RefreshTree
 Shared.Reopen = Reopen
 Shared.SECTION_LOADED = SECTION_LOADED
 Shared.SECTION_UNLOADED = SECTION_UNLOADED
-Shared.SETTINGS_PAGE = SETTINGS_PAGE
+Shared.ShowGlobalSettings = ShowGlobalSettings
 Shared.TABS = TABS
 Shared.TRINKETS = TRINKETS
 Shared.TYPE_NAMES = TYPE_NAMES

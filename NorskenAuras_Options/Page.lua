@@ -4,21 +4,41 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
-local TriggerEditor = NRSKNUI.GUITriggerEditor
 local IconPicker = NRSKNUI.CDMIconPicker
 
 local ipairs = ipairs
 local select = select
 
 local Shared = NRSKNUI.CDMOptions
-local AURA_GROUP_TABS, Applier, BuildAuraGroupLayoutTab, BuildDisplayTab = Shared.AURA_GROUP_TABS, Shared.Applier, Shared.BuildAuraGroupLayoutTab, Shared.BuildDisplayTab
-local BuildGroupTab, BuildImportPage, BuildInformationTab, BuildLoadTab = Shared.BuildGroupTab, Shared.BuildImportPage, Shared.BuildInformationTab, Shared.BuildLoadTab
-local BuildNewPage, BuildTriggerTab, BuildTrinketPage = Shared.BuildNewPage, Shared.BuildTriggerTab, Shared.BuildTrinketPage
-local ContextMenu, IMPORT, MultiContextMenu, PAGE = Shared.ContextMenu, Shared.IMPORT, Shared.MultiContextMenu, Shared.PAGE
-local PreviewLevel, RefreshTree, SectionIcons = Shared.PreviewLevel, Shared.RefreshTree, Shared.SectionIcons
-local TABS, TRINKETS, TreeContent, TriggerChip = Shared.TABS, Shared.TRINKETS, Shared.TreeContent, Shared.TriggerChip
-local TriggerTitle, expandedGroups = Shared.TriggerTitle, Shared.expandedGroups
-local EditTargets, MULTI_TABS, Reopen = Shared.EditTargets, Shared.MULTI_TABS, Shared.Reopen
+local AURA_GROUP_TABS = Shared.AURA_GROUP_TABS
+local Applier = Shared.Applier
+local BuildDisplayTab = Shared.BuildDisplayTab
+local BuildGroupTab = Shared.BuildGroupTab
+local BuildImportPage = Shared.BuildImportPage
+local BuildInformationTab = Shared.BuildInformationTab
+local BuildLoadTab = Shared.BuildLoadTab
+local BuildAuraGroupTriggerTab = Shared.BuildAuraGroupTriggerTab
+local BuildNewPage = Shared.BuildNewPage
+local BuildTriggerTab = Shared.BuildTriggerTab
+local BuildTrinketPage = Shared.BuildTrinketPage
+local BuildHomePage = Shared.BuildHomePage
+local ContextMenu = Shared.ContextMenu
+local IMPORT = Shared.IMPORT
+local MultiContextMenu = Shared.MultiContextMenu
+local NEW = Shared.NEW
+local PAGE = Shared.PAGE
+local PreviewLevel = Shared.PreviewLevel
+local RefreshTree = Shared.RefreshTree
+local SectionIcons = Shared.SectionIcons
+local TABS = Shared.TABS
+local TRINKETS = Shared.TRINKETS
+local TreeContent = Shared.TreeContent
+local TriggerChip = Shared.TriggerChip
+local TriggerTitle = Shared.TriggerTitle
+local expandedGroups = Shared.expandedGroups
+local EditTargets = Shared.EditTargets
+local MULTI_TABS = Shared.MULTI_TABS
+local Reopen = Shared.Reopen
 
 GUI:RegisterPage(PAGE, {
     mode = 'tabs',
@@ -34,6 +54,10 @@ GUI:RegisterPage(PAGE, {
         width = 260,
         create = NRSKNUI.KajiGUI.CreateItemTree,
         items = TreeContent,
+        actions = {
+            { text = L['New'], icon = NRSKNUI.Media.GUITextures .. 'plus-sign.png', onClick = function() Reopen(NEW) end },
+            { text = L['Import'], icon = NRSKNUI.Media.GUITextures .. 'arrow-down-to-line.png', onClick = function() Reopen(IMPORT) end },
+        },
         onSelectionChanged = function(key)
             CDM:SetSelectionPreview(CDM:Get(key) and key or nil)
         end,
@@ -115,7 +139,7 @@ GUI:RegisterPage(PAGE, {
     },
     tabs = function(itemKey)
         local display = CDM:Get(itemKey)
-        -- the new display page has no tabs
+        -- the home, new and other pages have no tabs
         if not display then
             return {}
         end
@@ -152,23 +176,22 @@ GUI:RegisterPage(PAGE, {
         elseif itemKey == IMPORT then
             BuildImportPage(page)
             return
-        elseif not display then
+        elseif itemKey == NEW then
             BuildNewPage(page)
             return
+        elseif not display then
+            BuildHomePage(page)
+            return
         end
-
 
         if tabId == 'group' then
             BuildGroupTab(page, itemKey)
         elseif tabId == 'display' then
             BuildDisplayTab(page, itemKey)
-        elseif tabId == 'layout' then
-            BuildAuraGroupLayoutTab(page, itemKey)
         elseif tabId == 'trigger' and CDM.LAYERED_TYPES[display.type] then
             BuildTriggerTab(page, itemKey)
         elseif tabId == 'trigger' and display.type == 'auragroup' then
-            display.Trigger = display.Trigger or NRSKNUI.AuraTriggers:New()
-            TriggerEditor:Build(page, display.Trigger, { title = L['Tracker'], group = 'all', showUnit = true, onChange = Applier(itemKey) })
+            BuildAuraGroupTriggerTab(page, itemKey)
         elseif tabId == 'conditions' then
             NRSKNUI.CDMConditionsTab:Build(page, itemKey, Applier(itemKey), TriggerTitle, TriggerChip)
         elseif tabId == 'load' then

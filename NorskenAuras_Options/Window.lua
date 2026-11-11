@@ -2,18 +2,17 @@
 local NRSKNUI = _G.NorskenAuras
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
-local Theme = NRSKNUI.Theme
-
-local format = format
 
 local PreviewManager = NRSKNUI.PreviewManager
+local SharedPages = NRSKNUI.GUISharedPages
 local Shared = NRSKNUI.CDMOptions
-local PAGE, SETTINGS_PAGE = Shared.PAGE, Shared.SETTINGS_PAGE
+local GENERAL = Shared.GENERAL
+local PAGE = Shared.PAGE
+local Reopen = Shared.Reopen
+local ShowGlobalSettings = Shared.ShowGlobalSettings
 
-local TEX = NRSKNUI.Media.GUITextures
 local LOGO = 'Interface\\AddOns\\NorskenCore\\Media\\Logo\\'
 local AURAS_MEDIA = 'Interface\\AddOns\\NorskenAuras\\Media\\Logo\\'
-local SOCIAL = 'Interface\\AddOns\\NorskenCore\\Media\\SupportLogos\\'
 
 -- a slider on a position card moves the overlay it belongs to
 GUI.services.positionSync = {
@@ -47,9 +46,6 @@ window = GUI:CreateGUIWindow({
                 color = 'textSecondary'
             },
         },
-        version = NRSKNUI:GetVersionText(),
-        versionAnchor = { 'LEFT', 1, 'RIGHT', 100, -7 },
-        versionColor = 'textSecondary',
     },
     state = {
         load = function()
@@ -75,51 +71,15 @@ window = GUI:CreateGUIWindow({
     end,
 })
 
-window:AddHeaderButton({
-    icon = TEX .. 'NorskenCustomCrossv3.png',
-    glow = TEX .. 'NorskenCustomCrossv3_glow.png',
-    size = 22,
-    rotation = 45,
-    onClick = function()
-        window:Hide()
-    end,
-    tooltip = L['Close Settings'],
-})
-window:AddHeaderButton({
-    icon = TEX .. 'cogwheel.png',
-    glow = TEX .. 'cogwheel_glow.png',
-    size = 20,
-    onClick = function()
-        window:ShowPage(window.content.currentId == SETTINGS_PAGE and PAGE or SETTINGS_PAGE)
-    end,
-    tooltip = L['Cooldown & Aura Manager Settings'],
-})
-window:AddHeaderButton({
-    icon = TEX .. 'anchor.png',
-    glow = TEX .. 'anchor_glow.png',
-    size = 22,
-    onClick = function()
-        NRSKNUI.Anchors:Enter()
-    end,
-    tooltip = L['Open Anchors'],
-})
-window:AddHeaderButton({
-    icon = TEX .. 'fill.png',
-    glow = TEX .. 'fill_glow.png',
-    size = 18,
-    onClick = Shared.ShowTheme,
-    tooltip = L['Open Theme Settings'],
-})
-window:AddHeaderButton({
-    icon = TEX .. 'eye.png',
-    glow = TEX .. 'eye_glow.png',
-    size = 24,
-    onClick = function(btn)
-        PreviewManager:SetForceAll(not PreviewManager:IsForceAll())
-        btn:SetActive(PreviewManager:IsForceAll())
-    end,
-    tooltip = L['Preview Every Display'],
-})
+window:AddHeaderButton(SharedPages:HeaderButton('close', function() window:Hide() end))
+window:AddHeaderButton(SharedPages:HeaderButton('home', function() Reopen(GENERAL) end))
+window:AddHeaderButton(SharedPages:HeaderButton('global', function() ShowGlobalSettings() end))
+window:AddHeaderButton(SharedPages:HeaderButton('theme', function() ShowGlobalSettings(SharedPages.THEME_ITEM) end))
+window:AddHeaderButton(SharedPages:HeaderButton('anchors', function() NRSKNUI.Anchors:Enter() end))
+window:AddHeaderButton(SharedPages:HeaderButton('preview', function(btn)
+    PreviewManager:SetForceAll(not PreviewManager:IsForceAll())
+    btn:SetActive(PreviewManager:IsForceAll())
+end))
 
 window.content.onPageChanged = function(pageId, previousId)
     PreviewManager:SetPage(pageId)
@@ -128,53 +88,6 @@ window.content.onPageChanged = function(pageId, previousId)
     end
 end
 
--- Footer socials: auto-packed left -> right. The copy prompt stays addon-side.
-local function CopyPrompt(title, link, icon, glow)
-    NRSKNUI:CreatePrompt({
-        title = title,
-        text = link,
-        editBox = true,
-        editBoxLabel = L['CTRL-C to copy'],
-        texture = {
-            path = icon,
-            glow = glow,
-            width = 21,
-            height = 21,
-            color = {
-                r = Theme.accent[1],
-                g = Theme.accent[2],
-                b = Theme.accent[3]
-            },
-        },
-    })
-end
-
-window:AddFooterSocial({
-    icon = SOCIAL .. 'twitchv2W.png',
-    glow = SOCIAL .. 'twitchv2W_glow.png',
-    text = 'Twitch',
-    width = 62,
-    onClick = function()
-        CopyPrompt(format(L['Support My %s'], '|cff9146FFTwitch|r'), 'www.twitch.tv/norskenwow', SOCIAL .. 'twitchv2W.png', SOCIAL .. 'twitchv2W_glow.png')
-    end,
-})
-window:AddFooterSocial({
-    icon = SOCIAL .. 'discordv2W.png',
-    glow = SOCIAL .. 'discordv2W_glow.png',
-    text = 'Discord',
-    width = 68,
-    onClick = function()
-        CopyPrompt(format(L['Join My %s'], '|cff5865F2Discord|r'), 'https://discord.com/invite/23bS8pHfuX', SOCIAL .. 'discordv2W.png', SOCIAL .. 'discordv2W_glow.png')
-    end,
-})
-window:AddFooterSocial({
-    icon = SOCIAL .. 'github2W.png',
-    glow = SOCIAL .. 'github2W_glow.png',
-    text = 'GitHub',
-    width = 68,
-    onClick = function()
-        CopyPrompt(format(L['Support My %s'], '|cffffffffGitHub|r'), 'https://github.com/Nrsken/NorskenUI', SOCIAL .. 'github2W.png', SOCIAL .. 'github2W_glow.png')
-    end,
-})
+SharedPages:AddSupportFooter(window, NRSKNUI)
 
 NRSKNUI.GUIFrame = window --[[@as GUIFrame]]

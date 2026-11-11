@@ -18,11 +18,11 @@ local gsub = string.gsub
 local unpack = unpack
 local type = type
 
-local CreateDurationTextBinding = C_DurationUtil and C_DurationUtil.CreateDurationTextBinding
-local GetSpellDisplayCount = C_Spell and C_Spell.GetSpellDisplayCount
-local GetSpellCharges = C_Spell and C_Spell.GetSpellCharges
-local GetSpellCastCount = C_Spell and C_Spell.GetSpellCastCount
-local TruncateWhenZero = C_StringUtil and C_StringUtil.TruncateWhenZero
+local CreateDurationTextBinding = C_DurationUtil.CreateDurationTextBinding
+local GetSpellDisplayCount = C_Spell.GetSpellDisplayCount
+local GetSpellCharges = C_Spell.GetSpellCharges
+local GetSpellCastCount = C_Spell.GetSpellCastCount
+local TruncateWhenZero = C_StringUtil.TruncateWhenZero
 
 local CurveConstants = CurveConstants
 
@@ -42,6 +42,7 @@ local ABBREVIATORS = {
 }
 
 local LITERAL_PERCENT = '\001' -- a typed %%, until the text's kind decides how a percent sign is written
+local CASTER_PATTERN = '%%%d*%.?casterName' -- %casterName or %2.casterName, see CDM:StyleAuraButton
 local args = {}                -- one SetFormattedText argument per token, refilled on every update
 
 local TEXT_ROTATIONS = { LEFT = math.pi / 2, RIGHT = -math.pi / 2 }
@@ -109,7 +110,7 @@ local function FormatName(element, name)
     return name
 end
 
----The text with %n, %N.n, %i, %N.i, \n and {rt1}..{rt8} filled in; %% stays LITERAL_PERCENT until its kind writes the sign.
+---The text with %n, %N.n, %i, %N.i, %casterName, \n and {rt1}..{rt8} filled in; %% stays LITERAL_PERCENT until its kind writes the sign.
 ---@param element table
 ---@param spellName string
 ---@param texture number|string?
@@ -117,6 +118,10 @@ end
 ---@return string
 local function ExpandText(element, spellName, texture, triggers)
     local raw = gsub(element.Text or '', '%%%%', LITERAL_PERCENT)
+    -- only an aura button knows its caster, and only as a whole text of its own; a preview shows the player
+    raw = gsub(raw, CASTER_PATTERN, function()
+        return CDM.previewing and NRSKNUI:FormatCasterName(element.CasterClassColor, element.CasterRealm) or ''
+    end)
     raw = gsub(raw, '\\n', '\n')
     raw = gsub(raw, '{rt(%d)}', RaidMarker)
     raw = gsub(raw, '%%(%d+)%.i', function(index)
@@ -495,6 +500,7 @@ CDM.Text = {
     Configure = ConfigureText,
     Place = PlaceText,
     LITERAL_PERCENT = LITERAL_PERCENT,
+    CASTER_PATTERN = CASTER_PATTERN,
     PINS = TEXT_PINS,
     TIME_SCALES = TIME_SCALES,
 }

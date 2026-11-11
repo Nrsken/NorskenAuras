@@ -11,6 +11,8 @@ local min = math.min
 local tostring = tostring
 local format = string.format
 local CreateFrame = CreateFrame
+local CopyTable = CopyTable
+local ipairs = ipairs
 
 local hosts = {} ---@type table<string, Frame>
 
@@ -20,38 +22,20 @@ Aura groups: a native AuraContainer showing many auras at once, on a host frame 
 
 -- Config --
 
----The container config built from a tracker's settings.
+---The container config built from a tracker's settings; it grows the way a dynamic group with the same Layout does.
+---Its buttons are drawn by CDM:InitAuraGroupButton, so nothing here describes their look.
 ---@param db table
 ---@return table
 function CDM:GetAuraContainerConfig(db)
-    local flowCorner, containerPoint, horizontal, vertical = NRSKNUI:ResolveAuraGrowth(db.horizontalGrowthDirection, db.verticalGrowthDirection)
-    return {
-        maximumLineSize = db.perRow * (db.size + db.elementSpacing),
-        anchorPoint = flowCorner,
-        containerPoint = containerPoint,
-        horizontalGrowthDirection = horizontal,
-        verticalGrowthDirection = vertical,
-        size = db.size,
-        elementSpacing = db.elementSpacing,
-        lineSpacing = db.lineSpacing,
-        maxFrameCount = db.maxFrameCount,
-        sortMethod = AuraContainerSortMethod[db.sortMethod],
-        sortDirection = AuraContainerSortDirection[db.sortDirection],
-        showApplicationCount = db.showApplicationCount,
-        showDurationText = db.showDurationText,
-        durationTextColorCurve = true,
-        drawSwipe = db.drawSwipe,
-        drawEdge = db.drawEdge,
-        reverseSwipe = db.reverseSwipe,
-        showDebuffBorder = db.showBorder or nil,
-        showWithoutDispelType = db.showBorderWithoutDispelType,
-        showDebuffDispelIcon = db.showDebuffDispelIcon,
-        dispelIconSize = db.dispelIconSize,
-        fontDB = db,
-        stackFont = db.StackFont,
-        durationFont = db.DurationFont,
-        tooltipHideInCombat = db.tooltipHideInCombat,
-    }
+    local style = self:GetStyle(db)
+    local config = NRSKNUI:ResolveAuraFlow(db.Layout, style.Width, style.Height)
+    config.width, config.height = style.Width, style.Height
+    -- the layout otherwise reads each button's own size, which a restyle changes after the layout ran
+    config.elementWidth, config.elementHeight = style.Width, style.Height
+    config.maxFrameCount = db.maxFrameCount
+    config.sortMethod = AuraContainerSortMethod[db.sortMethod]
+    config.sortDirection = AuraContainerSortDirection[db.sortDirection]
+    return config
 end
 
 ---Most auras a tracker's settings can put on screen, one group per trigger branch.
@@ -92,12 +76,13 @@ function CDM:BuildAuraContainer(id)
     if not (display and host) or host.container then return end
 
     local config = self:GetAuraContainerConfig(display)
+    config.skin = host.skin
     local container = host:CreateAuraContainer(config)
     if not container then return end
 
     container:ClearAllPoints()
     container:SetPoint(config.containerPoint, host, config.containerPoint)
-    container:AddFilteredGroup(display.Trigger)
+    container:AddFilteredGroup(display.Trigger, { initializeBranchFrame = host.initButton })
     container:SetUnit(self:ResolveAuraUnit(display, self:GetName(id)))
     container:UpdateUnitGate() -- also starts the container watching what can move a gate verdict
     host.container = container
@@ -118,12 +103,41 @@ function CDM:BuildAuraGroup(id)
     end
 
     display.Trigger = display.Trigger or NRSKNUI.AuraTriggers:New()
+    -- saved before aura groups grew and looked like dynamic groups of icons
+    display.Layout = display.Layout or CopyTable(CDM.AURA_GROUP_TEMPLATE.Layout)
+    display.Style = display.Style or CopyTable(CDM.AURA_GROUP_TEMPLATE.Style)
+    display.SubRegions = display.SubRegions or self:DefaultAuraGroupSubRegions()
     local host = hosts[id]
     if not host then
         host = CreateFrame('Frame', nil, UIParent)
         hosts[id] = host
+        local owner = { id = id }
+        host.owner, host.buttons = owner, {}
+        -- the only time the game hands a button over, so it is kept to restyle later
+        host.initButton = function(button, branch)
+            host.buttons[#host.buttons + 1] = self:InitAuraGroupButton(button, owner, branch)
+        end
+        host.restyle = function()
+            for _, layer in ipairs(host.buttons) do
+                self:StyleAuraGroupButton(layer)
+            end
+        end
+        -- a preview stand-in takes the same look, built once and restyled after
+        host.skin = function(button, branch)
+            local layer = button.nuiGroupLayer
+            if layer then
+                layer.index = branch -- a dummy can stand in for another trigger on the next pass
+                self:StyleAuraGroupButton(layer)
+            else
+                button.nuiGroupLayer = self:InitAuraGroupButton(button, owner, branch)
+            end
+        end
     end
-    host:SetSize(NRSKNUI:GetAuraGridSize(display, self:GetAuraPreviewCount(display)))
+    host.owner.style = self:GetStyle(display)
+    host:SetAlpha(host.owner.style.Alpha)
+    local config = self:GetAuraContainerConfig(display)
+    config.skin = host.skin
+    host:SetSize(NRSKNUI:GetAuraGridSize(config, self:GetAuraPreviewCount(display)))
     self:EvaluateGroupConditions(display, host)
     self:Place(host, id, display)
 
@@ -137,8 +151,8 @@ function CDM:BuildAuraGroup(id)
         return
     end
 
-    -- Layout and trigger re-apply live; button appearance only on a reload (see container:ApplyLayout).
-    local config = self:GetAuraContainerConfig(display)
+    -- existing buttons deny access while auras are secret, so a restyle waits for that to end
+    self:QueueAuraRestyle(host, host.restyle)
     container:ClearAllPoints()
     container:SetPoint(config.containerPoint, host, config.containerPoint)
     container:ApplyLayout(config)
@@ -156,7 +170,7 @@ function CDM:ReapplyAuraTriggers()
     for id, host in pairs(hosts) do
         local display, container = self:Get(id), host.container
         if display and container then
-            host:SetSize(NRSKNUI:GetAuraGridSize(display, self:GetAuraPreviewCount(display)))
+            host:SetSize(NRSKNUI:GetAuraGridSize(self:GetAuraContainerConfig(display), self:GetAuraPreviewCount(display)))
             container:SetUnit(self:ResolveAuraUnit(display, self:GetName(id)))
             container:RebindFilteredGroups(display.Trigger)
             container:UpdateUnitGate()

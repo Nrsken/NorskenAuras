@@ -7,11 +7,14 @@ local ipairs, pairs = ipairs, pairs
 local setmetatable = setmetatable
 local CreateFrame = CreateFrame
 local gsub = string.gsub
+local strtrim = strtrim
+local strmatch = string.match
+local tonumber = tonumber
 local unpack = unpack
 local max = math.max
 local next = next
 
-local GetSpellName = C_Spell and C_Spell.GetSpellName
+local GetSpellName = C_Spell.GetSpellName
 
 local PANDEMIC_TEXTURE = NRSKNUI.Media.GUITextures .. 'AuraOverlay.png'
 local PANDEMIC_COLOR = { 1, 0.25, 0.25, 1 }
@@ -29,7 +32,9 @@ local ElementEnabled = CDM.Layer.ElementEnabled
 local ApplyTexCoords = CDM.ApplyTexCoords
 
 local AURA_FILTERS = { player = 'HELPFUL', target = 'HARMFUL' } -- spellID matching only holds for buffs on friends and debuffs on enemies
-local TEXT_KINDS = { 'time', 'count', 'static', 'sourcedText' } -- the fontstrings an aura button's text frame can hold
+local TEXT_KINDS = { 'time', 'count', 'name', 'caster', 'static', 'sourcedText' } -- the fontstrings an aura button's text frame can hold
+local GROUP_TRIGGER = { Type = 'aura', Source = 'custom' } -- an aura group's button has no spell of its own to name
+local CASTER_TEXT = '^' .. CDM.Text.CASTER_PATTERN .. '$' -- the game writes the whole text
 
 --[[
 An aura trigger draws through a one-slot native AuraContainer: the client shows the slot while the
@@ -70,15 +75,17 @@ end
 
 -- AddSlot only returns a secret-wrapped button; this is the one place we get the real one, so it all goes into refs.
 ---@param button table native AuraButton
----@param host Frame
+---@param host Frame? nil for an aura group's button, which the game's flow layout places
 ---@param refs table
 ---@param style table the icon's style; in a chain group the host's own size reads back secret
 local function InitAuraButton(button, host, refs, style)
-    -- Top-left with its own size, so a chain group can measure it; it collapses to nothing while hidden.
-    button:SetPoint('TOPLEFT', host, 'TOPLEFT')
     button:SetSize(style.Width, style.Height)
-    button:SetCollapsesLayout(true)
-    button:EnableMouse(false)
+    -- top-left with its own size, so a chain group can measure it; it collapses to nothing while hidden
+    if host then
+        button:SetPoint('TOPLEFT', host, 'TOPLEFT')
+        button:SetCollapsesLayout(true)
+        button:EnableMouse(false)
+    end
     refs.button = button
 
     -- The icon's own area; the button may be wider by a chain group's spacing.
@@ -253,7 +260,8 @@ function CDM:StyleAuraButton(layer, trigger)
     end
 
     local spellName = spellID and GetSpellName(spellID) or ''
-    local hasTime, hasCount, sourcedCount, ordinal = false, false, 0, 0
+    local group = layer.isGroupButton
+    local hasTime, hasCount, hasName, hasCaster, sourcedCount, ordinal = false, false, false, false, 0, 0
     -- Each text draws from its own frame, at its place in the list. The button denies reparenting its fontstrings
     -- (forbidden aspect ChangeParent), so every text frame makes its own and the button is pointed at the one in use.
     local function Text(entry, key)
@@ -282,13 +290,16 @@ function CDM:StyleAuraButton(layer, trigger)
                 entry.sourced.binding:SetToDefaults()
             end
 
-            if element.Enabled then
+            -- a text naming a trigger reads that one: an aura group's button only shows its own trigger's texts
+            local target = tonumber(strmatch(element.Text or '', '%%(%d+)%.'))
+            local elsewhere = target ~= nil and target ~= layer.index
+            if element.Enabled and not (group and elsewhere) then
                 local raw = ExpandText(element, spellName, self:GetTriggerTexture(trigger), display.Triggers)
                 local isDuration, isCount, source = self:ClassifyText(raw)
                 if source == layer.index then
                     source = nil
                 end
-                local sourceType = source and display.Triggers[source] and self.TriggerTypes[display.Triggers[source].Type]
+                local sourceType = source and display.Triggers and display.Triggers[source] and self.TriggerTypes[display.Triggers[source].Type]
                 if source and (isDuration or isCount) then
                     -- Another trigger's time or charges, fed by UpdateTexts; only a non-aura trigger has any to give.
                     if sourceType and not sourceType.Secret then
@@ -317,6 +328,20 @@ function CDM:StyleAuraButton(layer, trigger)
                     StyleAuraText(fs, element, textParent)
                     button:SetApplicationCount(fs, { formatter = self:StackCountFormatter(display, layer.index, ordinal) })
                     fs:Show()
+                elseif not elsewhere and strmatch(strtrim(element.Text or ''), CASTER_TEXT) then
+                    -- the game writes who cast the aura and keeps it secret, so it takes the whole text
+                    hasCaster = true
+                    local fs = Text(entry, 'caster')
+                    StyleAuraText(fs, element, textParent)
+                    button:SetCasterName(fs, { useClassColors = element.CasterClassColor == true, showRealmName = element.CasterRealm == true })
+                    fs:Show()
+                elseif group and strtrim(element.Text or '') == '%n' then
+                    -- every button shows a different aura, so the game writes its name; it takes the whole text
+                    hasName = true
+                    local fs = Text(entry, 'name')
+                    StyleAuraText(fs, element, textParent)
+                    button:SetSpellName(fs)
+                    fs:Show()
                 elseif not isDuration and not isCount then
                     local fs = Text(entry, 'static')
                     StyleAuraText(fs, element, textParent)
@@ -342,6 +367,12 @@ function CDM:StyleAuraButton(layer, trigger)
     if not hasCount then
         button:ClearApplicationCount()
     end
+    if group and not hasName then
+        button:ClearSpellName()
+    end
+    if not hasCaster then
+        button:ClearCasterName()
+    end
     for i = sourcedCount + 1, #refs.sourced do
         refs.sourced[i] = nil
     end
@@ -352,20 +383,71 @@ function CDM:StyleAuraButton(layer, trigger)
     end
 
     StyleBorders(refs.borders, refs.borderHost, refs.inner, subRegions)
+    -- an aura group's button also shows the aura's dispel type, on its borders and as an icon, and its tooltip
+    if group then
+        -- the game asserts on a texture it already holds, so every pass starts over
+        button:ClearDispelTypeTextures()
+
+        local count = 0
+        for _, element in ipairs(subRegions) do
+            if element.type == 'border' then
+                count = count + 1
+                for _, edge in ipairs(refs.borders[count].edges) do
+                    -- the game tints and hides an edge for the dispel type, which outlasts turning the colour off
+                    edge:SetVertexColor(1, 1, 1, 1)
+                    edge:Show()
+                    if element.Enabled and element.DispelColor then
+                        edge:SetColorTexture(1, 1, 1, 1) -- the type's colour tints white
+                        button:AddDispelTypeTexture(edge, {
+                            style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
+                            showWhenHelpful = true,
+                            showWhenHarmful = true,
+                            showWithoutDispelType = element.DispelUntyped == true,
+                            customDispelColorMap = NRSKNUI.Colors.dispel,
+                        })
+                    end
+                end
+            end
+        end
+
+        local icon = refs.dispelIcon
+        icon:SetShown(style.DispelIcon == true)
+        if style.DispelIcon then
+            -- above every sub element, which are levelled after it
+            icon:GetParent():SetFrameLevel(refs.cooldown:GetFrameLevel() + #subRegions + 2)
+            icon:ClearAllPoints()
+            icon:SetPoint('TOPRIGHT', refs.inner, 'TOPRIGHT', -2, -2)
+            icon:SetSize(style.DispelIconSize, style.DispelIconSize)
+            button:AddDispelTypeTexture(icon, {
+                style = Enum.CustomAuraButtonDispelTypeTextureStyle.Icon,
+                showWhenHelpful = true,
+                showWhenHarmful = true,
+            })
+        end
+
+        button:EnableMouse(style.Tooltip == true)
+        button:SetHideTooltipInCombat(style.TooltipHideInCombat == true)
+    end
 
     -- In a chain group the size comes from the style, since reading it back would be secret: the icon's area,
     -- plus the chain's spacing on the button. Anywhere else it fills its frame, which a matched bar stretches to fit.
     local inner = refs.inner
-    button:ClearAllPoints()
     inner:ClearAllPoints()
-    button:SetPoint('TOPLEFT', layer.auraHost, 'TOPLEFT')
     inner:SetPoint('TOPLEFT', button, 'TOPLEFT')
-    if layer.owner.chainGroup then
+    if group then
+        -- the flow layout placed it, so only its size changes
+        button:SetSize(style.Width, style.Height)
+        inner:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT')
+    elseif layer.owner.chainGroup then
+        button:ClearAllPoints()
+        button:SetPoint('TOPLEFT', layer.auraHost, 'TOPLEFT')
         local pad = layer.owner.chainPad
         local padX, padY = pad and pad[1] or 0, pad and pad[2] or 0
         inner:SetSize(style.Width, style.Height)
         button:SetSize(style.Width + padX, style.Height + padY)
     else
+        button:ClearAllPoints()
+        button:SetPoint('TOPLEFT', layer.auraHost, 'TOPLEFT')
         button:SetPoint('BOTTOMRIGHT', layer.auraHost, 'BOTTOMRIGHT')
         inner:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT')
     end
@@ -400,6 +482,37 @@ function CDM:StyleAuraButton(layer, trigger)
         refs.barOverlay = refs.barOverlay or {}
         self:PaintBarOverlay(layer, refs.barOverlay, button, active)
     end
+end
+
+-- Aura groups --
+
+---Build an aura group's new button, styled like an icon's aura: each button stands in for a layer of its own.
+---@param button table native AuraButton, only ever handed over here
+---@param owner table the group's shared `{ id, style }`
+---@param branch number the trigger whose aura group made it
+---@return table layer what CDM:StyleAuraButton reads for it
+function CDM:InitAuraGroupButton(button, owner, branch)
+    local refs = {}
+    InitAuraButton(button, nil, refs, owner.style)
+
+    local dispelHost = CreateFrame('Frame', nil, button)
+    dispelHost:SetAllPoints(refs.inner)
+    dispelHost:SetFrameLevel(refs.cooldown:GetFrameLevel() + 1)
+    refs.dispelIcon = dispelHost:CreateTexture(nil, 'OVERLAY')
+
+    local layer = { owner = owner, index = branch, auraRefs = refs, isGroupButton = true }
+    self:StyleAuraGroupButton(layer)
+    return layer
+end
+
+---@param layer table from CDM:InitAuraGroupButton
+function CDM:StyleAuraGroupButton(layer)
+    -- a restyle queued for the end of a key can outlive the group it was for
+    local display = self:Get(layer.owner.id)
+    if not display then return end
+
+    layer.subRegions = display.SubRegions
+    self:StyleAuraButton(layer, GROUP_TRIGGER)
 end
 
 -- Slots --

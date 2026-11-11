@@ -67,7 +67,7 @@ L['Final'] = "Final"
 -- AuraGroup
 L['Aura group "%s" has an unusable unit (%s), falling back to player.'] = "Aurengruppe „%s“ hat eine unbrauchbare Einheit (%s), verwende stattdessen den Spieler."
 L['Layout'] = "Layout"
-L['Defensives'] = "Defensivzauber"
+L['Defensives & Externals'] = "Defensivzauber & Externe"
 L['Display'] = "Anzeige"
 L['Focus'] = "Fokus"
 L['Trigger'] = "Auslöser"

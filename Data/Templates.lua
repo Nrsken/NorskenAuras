@@ -202,33 +202,40 @@ function CDM:DefaultBarSubRegions()
     }
 end
 
+---A new aura group's elements: a 1px border, the time in the middle and the stacks in the corner.
+---@param look table? a built-in's own `{ timer, stacks, dispel, caster }`: text sizes, whether the border takes the dispel
+---colour and the trigger whose auras name their caster
+---@return table[]
+function CDM:DefaultAuraGroupSubRegions(look)
+    look = look or {}
+    return {
+        CDM:NewSubRegion('border', { DispelColor = look.dispel, DispelUntyped = look.dispel }),
+        CDM:NewSubRegion('text', { FontSize = look.timer or 18 }),
+        CDM:NewSubRegion('text', { Text = '%s', FontSize = look.stacks or 14, Position = { AnchorFrom = 'AUTO', AnchorTo = 'BOTTOMRIGHT', XOffset = 0, YOffset = 2 } }),
+        look.caster and CDM:NewSubRegion('text', {
+            Text = '%' .. look.caster .. '.casterName',
+            FontSize = 10,
+            CasterClassColor = true,
+            WidthMode = 'fixed', -- a long name is cut at the icon's edge
+            FixedWidth = 48,
+            WordWrap = false,
+            Position = { AnchorFrom = 'AUTO', AnchorTo = 'TOP', XOffset = 0, YOffset = -2 },
+        }) or nil,
+    }
+end
+
 -- Built-in aura groups --
 
 -- What the built-in aura groups share; each one below changes only what sets it apart.
 local BUILTIN_BASE = {
     Enabled = true,
-    size = 50,
-    perRow = 6,
+    -- an aura group's buttons start as its old ones looked: no swipe, a reversed one when turned on, tooltips
+    Style = { Width = 50, Height = 50, DrawSwipe = false, Reverse = true, Tooltip = true, TooltipHideInCombat = false, DispelIcon = false, DispelIconSize = 12 },
+    Layout = { Grow = 'GRID', Align = 'CENTER', Spacing = 1, RowSpacing = 1, GridType = 'LU', GridWidth = 6 },
     maxFrameCount = 6,
     previewLimit = 6,
-    elementSpacing = 1,
-    lineSpacing = 1,
-    horizontalGrowthDirection = 'LEFT',
-    verticalGrowthDirection = 'UP',
     sortMethod = 'ExpirationOnly',
     sortDirection = 'Normal',
-    showApplicationCount = true,
-    showDurationText = true,
-    drawSwipe = false,
-    drawEdge = false,
-    reverseSwipe = true,
-    tooltipHideInCombat = false,
-    UseGlobalFont = true,
-    FontFace = 'Expressway',
-    FontOutline = 'OUTLINE',
-    StackFont = { FontSize = 14, Position = { AnchorFrom = 'BOTTOMRIGHT', XOffset = 0, YOffset = 2 } },
-    DurationFont = { FontSize = 18, Position = { AnchorFrom = 'CENTER', XOffset = 0, YOffset = 0 } },
-    FontShadow = { Enabled = false, Color = { 0, 0, 0, 1 }, OffsetX = 1, OffsetY = -1 },
     anchorFrameType = 'UIPARENT',
     ParentFrame = 'UIParent',
 }
@@ -259,49 +266,48 @@ end
 CDM.BUILTIN_AURA_GROUPS = {
     {
         key = 'builtin:advancedDebuffs',
-        preset = 'preset:advancedDebuffs',
+        presets = { 'preset:advancedDebuffs' },
+        look = { dispel = true },
         display = Builtin({
             name = 'Advanced Debuffs',
             Icon = 1396978,
-            showBorder = true,
-            showBorderWithoutDispelType = true,
-            showDebuffDispelIcon = true,
-            dispelIconSize = 12,
+            Style = { DispelIcon = true },
             Position = { AnchorFrom = 'BOTTOMRIGHT', AnchorTo = 'TOPRIGHT', XOffset = 0, YOffset = 120 },
         }),
     },
     {
         key = 'builtin:defensives',
-        preset = 'preset:defensives',
+        -- the externals are their own trigger, so only they say who cast them
+        presets = { 'preset:personalDefensives', 'preset:externals' },
+        look = { caster = 2 },
         display = Builtin({
-            name = 'Defensives',
+            name = 'Defensives & Externals',
             Icon = 132360,
             Position = { AnchorFrom = 'BOTTOMRIGHT', AnchorTo = 'TOPRIGHT', XOffset = 0, YOffset = 40 },
         }),
     },
     {
         key = 'builtin:generalBuffs',
-        preset = 'preset:generalBuffs',
+        presets = { 'preset:generalBuffs' },
+        look = { timer = 14, stacks = 12 },
         display = Builtin({
             name = 'General Buffs',
             Icon = 4374707,
-            size = 36,
-            perRow = 1,
+            Style = { Width = 36, Height = 36 },
+            Layout = { GridWidth = 1 },
             maxFrameCount = 10,
             previewLimit = 5,
             sortMethod = 'AuraInstanceIDOnly',
-            StackFont = { FontSize = 12 },
-            DurationFont = { FontSize = 14 },
             Position = { AnchorFrom = 'BOTTOMRIGHT', AnchorTo = 'TOPLEFT', XOffset = -30, YOffset = 120 },
         }),
     },
     {
         key = 'builtin:speed',
-        preset = 'preset:speed',
+        presets = { 'preset:speed' },
         display = Builtin({
             name = 'Speed',
             Icon = 648208,
-            size = 42,
+            Style = { Width = 42, Height = 42 },
             Position = { AnchorFrom = 'RIGHT', AnchorTo = 'LEFT', XOffset = -1, YOffset = 0 },
         }),
     },
@@ -323,7 +329,23 @@ function CDM:NewBuiltinAuraGroup(key)
     local display = CopyTable(builtin.display)
     display.type = 'auragroup'
     display.builtin = key
-    display.Trigger = NRSKNUI.AuraTriggers:ToAuraFilter({ Type = NRSKNUI.AuraTriggers.Types.Preset, Preset = builtin.preset, Unit = 'player' })
+    display.SubRegions = self:DefaultAuraGroupSubRegions(builtin.look)
+    -- a trigger per preset, each its own aura group with texts of its own
+    local AuraTriggers = NRSKNUI.AuraTriggers
+    local trigger
+    for _, presetKey in ipairs(builtin.presets) do
+        local added = AuraTriggers:ToAuraFilter({ Type = AuraTriggers.Types.Preset, Preset = presetKey, Unit = 'player' })
+        if not trigger then
+            trigger = added
+        else
+            for _, branch in ipairs(added.branches) do
+                local branchType = branch.type or added.Base
+                branch.type = branchType ~= trigger.Base and branchType or nil
+                trigger.branches[#trigger.branches + 1] = branch
+            end
+        end
+    end
+    display.Trigger = trigger
     display.Load = NRSKNUI.LoadConditions:GetDefaults()
     return display
 end

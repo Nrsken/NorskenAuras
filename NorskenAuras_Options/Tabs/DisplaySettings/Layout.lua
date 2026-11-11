@@ -11,7 +11,8 @@ local pairs, ipairs = pairs, ipairs
 
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
-local Assign, Differ = DisplayTab.Assign, DisplayTab.Differ
+local Assign = DisplayTab.Assign
+local Differ = DisplayTab.Differ
 
 local ANCHOR_TYPES = {
     { value = 'SCREEN',      text = L['Screen Center'] },
@@ -40,7 +41,8 @@ local MATCH_SIDES = {
 ---@param set fun(path: string[], value: any)
 ---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
 ---@param isBar boolean
-local function GeneralSettings(card, style, set, mixed, isBar)
+---@param auraGroup boolean? an aura group's tooltip can stay out of combat
+local function GeneralSettings(card, style, set, mixed, isBar, auraGroup)
     local row = card:Row(rowH)
     row:Slider(L['Alpha'], {
         width = 0.5,
@@ -56,7 +58,49 @@ local function GeneralSettings(card, style, set, mixed, isBar)
         tooltip = isBar and L["The bar's spell or item; power bars have none."] or nil,
         value = style.Tooltip,
         mixed = mixed({ 'Tooltip' }),
-        callback = function(checked) set({ 'Tooltip' }, checked) end,
+        callback = function(checked)
+            set({ 'Tooltip' }, checked)
+            card.page:Refresh()
+        end,
+    })
+    if auraGroup then
+        card.page:SetCondition('cdm:tooltip', function() return style.Tooltip == true or mixed({ 'Tooltip' }) end)
+        card:Row(rowH):Checkbox(L['Hide Tooltip In Combat'], {
+            width = 0.5,
+            conditions = { 'cdm:tooltip' },
+            value = style.TooltipHideInCombat,
+            mixed = mixed({ 'TooltipHideInCombat' }),
+            callback = function(checked) set({ 'TooltipHideInCombat' }, checked) end,
+        })
+    end
+end
+
+---@param card table
+---@param style table
+---@param set fun(path: string[], value: any)
+---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]?
+---@param maxSize number
+---@param widthConditions string[]? a matched bar takes its group's width
+local function SizeRows(card, style, set, mixed, maxSize, widthConditions)
+    local sizeRow = card:Row(rowH)
+    sizeRow:Slider(L['Width'], {
+        width = 0.5,
+        conditions = widthConditions,
+        min = 8,
+        max = maxSize,
+        step = 1,
+        value = style.Width,
+        mixed = mixed({ 'Width' }),
+        callback = function(value) set({ 'Width' }, value) end,
+    })
+    sizeRow:Slider(L['Height'], {
+        width = 0.5,
+        min = 2,
+        max = maxSize,
+        step = 1,
+        value = style.Height,
+        mixed = mixed({ 'Height' }),
+        callback = function(value) set({ 'Height' }, value) end,
     })
 end
 
@@ -144,26 +188,7 @@ local function PositionAndSize(card, page, style, set, mixed, displays, apply, m
     end
 
     if not noSize then
-        local sizeRow = card:Row(rowH)
-        sizeRow:Slider(L['Width'], {
-            width = 0.5,
-            conditions = { unmatchedGroup },
-            min = 8,
-            max = maxSize,
-            step = 1,
-            value = style.Width,
-            mixed = mixed({ 'Width' }),
-            callback = function(value) set({ 'Width' }, value) end,
-        })
-        sizeRow:Slider(L['Height'], {
-            width = 0.5,
-            min = 2,
-            max = maxSize,
-            step = 1,
-            value = style.Height,
-            mixed = mixed({ 'Height' }),
-            callback = function(value) set({ 'Height' }, value) end,
-        })
+        SizeRows(card, style, set, mixed, maxSize, { unmatchedGroup })
     end
     -- A dynamic group places its icons itself, a matched bar sits on its group; elsewhere an icon has its own offsets.
     page:SetCondition(freeGroup, function()
@@ -276,3 +301,4 @@ end
 
 DisplayTab.GeneralSettings = GeneralSettings
 DisplayTab.PositionAndSize = PositionAndSize
+DisplayTab.SizeRows = SizeRows

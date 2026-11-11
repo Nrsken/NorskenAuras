@@ -17,9 +17,9 @@ local tonumber = tonumber
 local GetTime = GetTime
 local next = next
 
-local CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
-local GetSpellTexture = C_Spell and C_Spell.GetSpellTexture
-local GetSpellName = C_Spell and C_Spell.GetSpellName
+local CreateDuration = C_DurationUtil.CreateDuration
+local GetSpellTexture = C_Spell.GetSpellTexture
+local GetSpellName = C_Spell.GetSpellName
 
 CDM.TriggerTypes = {}
 CDM.PREVIEW_LENGTH = 7     -- options preview timer, in seconds

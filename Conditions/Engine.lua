@@ -17,9 +17,9 @@ local unpack = unpack
 local select = select
 local wipe = wipe
 
-local NewTimer = C_Timer and C_Timer.NewTimer
-local CreateColorCurve = C_CurveUtil and C_CurveUtil.CreateColorCurve
-local CreateNumericRuleFormatter = C_StringUtil and C_StringUtil.CreateNumericRuleFormatter
+local NewTimer = C_Timer.NewTimer
+local CreateColorCurve = C_CurveUtil.CreateColorCurve
+local CreateNumericRuleFormatter = C_StringUtil.CreateNumericRuleFormatter
 
 local PROPERTIES = CDM.ConditionProperties
 local SubElement = CDM.ConditionRegions.SubElement

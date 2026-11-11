@@ -12,10 +12,10 @@ local CreateFrame = CreateFrame
 local ipairs = ipairs
 local wipe = wipe
 
-local GetCategorySet = C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCategorySet
-local GetCooldownInfo = C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCooldownInfo
+local GetCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
+local GetCooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo
 
-local Category = Enum and Enum.CooldownViewerCategory
+local Category = Enum.CooldownViewerCategory
 
 ---@class CDMCatalogue
 local Catalogue = {
