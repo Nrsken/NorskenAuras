@@ -2,6 +2,7 @@ package-as: NorskenAuras
 enable-nolib-creation: no
 
 curse-id: 1787597
+wago-id: mKOaeQNx
 
 required-dependencies:
     - norskencore

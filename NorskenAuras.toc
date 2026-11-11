@@ -12,6 +12,7 @@
 ## X-NorskenCore-Minimum: 1
 ## OptionalDeps: NorskenUI
 ## X-Curse-Project-ID: 1787597
+## X-Wago-ID: mKOaeQNx
 
 Core\Init.lua
 Locales\Locales.xml
