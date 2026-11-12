@@ -100,8 +100,8 @@ local function BuildLoadTab(page, id)
                 for _, key in ipairs(owners) do
                     CDM:Get(key).Enabled = not checked
                 end
-                -- only what's loaded changes; a disabled display keeps its frame, so nothing needs rebuilding
-                CDM:RefreshLoad()
+                -- only what's loaded changes; a disabled display keeps its frame, nothing rebuilds
+                CDM:RefreshLoad(true)
             end,
         })
     end
@@ -154,7 +154,7 @@ local function BuildLoadTab(page, id)
             end
             before = CopyTable(first.Load)
 
-            CDM:RefreshLoad()
+            CDM:RefreshLoad(true)
         end,
     })
 end

@@ -376,29 +376,48 @@ function CDM:SetPreview(id, level)
         self.preview[iconId] = level
     end
 
-    self:RefreshLoad()
+    self:RefreshLoad(true) -- a display reads only whether it shows, never its level
 end
 
----The selected display previews at level 1; the previous selection drops back unless it was pinned.
+---The selected display previews at level 1; the last selection drops back unless pinned.
 ---@param id string?
 function CDM:SetSelectionPreview(id)
+    local previous = {}
     for _, key in ipairs(self.selectionPreview) do
-        if self.preview[key] == 1 then
+        previous[key] = true
+    end
+
+    -- what it previews: shown by nothing else or still at the level the selection gave it
+    local wanted, same = {}, true
+    if id and self:Get(id) then
+        for _, iconId in ipairs(self:GetPreviewTargets(id)) do
+            local level = self.preview[iconId] or 0
+            if level == 0 or (level == 1 and previous[iconId]) then
+                wanted[#wanted + 1] = iconId
+                same = same and level == 1
+            end
+        end
+    end
+    if same and #wanted == #self.selectionPreview then return end
+
+    local keep = {}
+    for _, key in ipairs(wanted) do
+        keep[key] = true
+        if (self.preview[key] or 0) == 0 then
+            self.preview[key] = 1
+        end
+    end
+    for key in pairs(previous) do
+        if not keep[key] and self.preview[key] == 1 then
             self.preview[key] = nil
         end
     end
     wipe(self.selectionPreview)
-
-    if id and self:Get(id) then
-        for _, iconId in ipairs(self:GetPreviewTargets(id)) do
-            if (self.preview[iconId] or 0) == 0 then
-                self.preview[iconId] = 1
-                self.selectionPreview[#self.selectionPreview + 1] = iconId
-            end
-        end
+    for i, key in ipairs(wanted) do
+        self.selectionPreview[i] = key
     end
 
-    self:RefreshLoad()
+    self:RefreshLoad(true)
 end
 
 ---@param id string
@@ -490,16 +509,31 @@ end
 -- Apply settings --
 
 ---@param id string
-local function ApplySubtree(id)
+---@param built string[] gets every icon, bar and text built
+local function ApplySubtree(id, built)
     if CDM:IsGroup(id) then
         CDM:BuildContainer(id)
         for _, child in ipairs(CDM:GetChildren(id)) do
-            ApplySubtree(child.key)
+            ApplySubtree(child.key, built)
         end
     elseif CDM:IsAuraGroup(id) then
         CDM:BuildAuraGroup(id)
     else
         CDM:BuildIcon(id)
+        built[#built + 1] = id
+    end
+end
+
+---As RefreshLoad leaves them: a shown one re-reads its triggers, a hidden one stays so.
+---@param ids string[]
+local function ShowBuilt(ids)
+    for _, id in ipairs(ids) do
+        local frame = CDM.icons[id]
+        if frame and frame.shown then
+            CDM:UpdateIcon(id)
+        elseif frame then
+            CDM:ApplyVisibility(id, frame)
+        end
     end
 end
 
@@ -507,8 +541,12 @@ end
 function CDM:ApplySettings(id)
     if not self:IsEnabled() then return end
 
+    -- one display: it and what it holds are current, the rest only if they flip
     if id then
-        ApplySubtree(id)
+        local built = {}
+        ApplySubtree(id, built)
+        ShowBuilt(built)
+        self:RefreshLoad(true)
     else
         -- Parents before children, so every display finds the frame it hangs off.
         local containers = {}
@@ -532,9 +570,36 @@ function CDM:ApplySettings(id)
                 self:BuildAuraGroup(key)
             end
         end
+        self:RefreshLoad()
+    end
+end
+
+---Rebuild what a tree edit touched, each display with everything inside it.
+---@param ids string[] gone ones and ones inside another listed group are skipped
+function CDM:ApplySubtrees(ids)
+    if not self:IsEnabled() then return end
+
+    local listed, done, built = {}, {}, {}
+    for _, id in ipairs(ids) do
+        listed[id] = true
     end
 
-    self:RefreshLoad()
+    for _, id in ipairs(ids) do
+        local skip = done[id] or not self:Get(id)
+        for _, ancestor in ipairs(self:GetAncestors(id)) do
+            if listed[ancestor] then
+                skip = true
+                break
+            end
+        end
+        if not skip then
+            done[id] = true
+            ApplySubtree(id, built)
+        end
+    end
+
+    ShowBuilt(built)
+    self:RefreshLoad(true)
 end
 
 ---Rebuild only these icons, bars and texts after a change to how they look: a style edit can't change what's loaded,
@@ -546,16 +611,7 @@ function CDM:ApplyDisplays(ids)
     for _, id in ipairs(ids) do
         self:BuildIcon(id)
     end
-
-    -- each as RefreshLoad leaves it: a shown one re-reads its triggers, a hidden one stays hidden
-    for _, id in ipairs(ids) do
-        local frame = self.icons[id]
-        if frame and frame.shown then
-            self:UpdateIcon(id)
-        elseif frame then
-            self:ApplyVisibility(id, frame)
-        end
-    end
+    ShowBuilt(ids)
 
     -- dynamic groups and the unit frame anchor follow a size change
     self:SendMessage('NRSKNUI_CDM_LAYOUT_CHANGED')

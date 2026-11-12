@@ -4,8 +4,10 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local IconPicker = NRSKNUI.CDMIconPicker
+local Kaji = NRSKNUI.Kaji
 
 local ipairs = ipairs
+local CreateFrame = CreateFrame
 
 -- What the CDM options files share: page keys, helpers and the trigger lists.
 NRSKNUI.CDMOptions = {}
@@ -95,6 +97,52 @@ local function EditTargets(id)
     return ids, true
 end
 
+local treeDirty = false
+-- made with the tree, so its draw waits for the window to show
+local drawer ---@type Frame
+
+---Draw the tree now, which a queued draw then doesn't repeat.
+---@param tree table
+---@return table leaves
+local function DrawTree(tree)
+    treeDirty = false
+    return tree:SetItems()
+end
+
+local function DrawIfDirty()
+    local tree = Tree()
+    if not (treeDirty and tree) then return end
+
+    if tree.frame:IsVisible() then
+        DrawTree(tree)
+    else
+        drawer:NCScheduleUpdate() -- a slider let go as the window closed
+    end
+end
+
+local function RefreshTree()
+    local tree = Tree()
+    if not tree then return end
+
+    treeDirty = true
+    if not drawer then
+        drawer = CreateFrame('Frame', nil, tree.frame)
+        -- one draw for all of a frame's changes, once the window shows and no slider is held
+        drawer:NCSetScheduledUpdate(function()
+            Kaji.AfterSliderDrag(DrawIfDirty)
+        end, true)
+    end
+    drawer:NCScheduleUpdate()
+end
+
+-- the tree's own drop or rename draws at once: a frame later its rows flash the old state
+local function RedrawTree()
+    local tree = Tree()
+    if tree then
+        DrawTree(tree)
+    end
+end
+
 local function Reopen(selectKey)
     local window = NRSKNUI.GUIFrame
     if not window then return end
@@ -104,7 +152,24 @@ local function Reopen(selectKey)
             expandedGroups[CDM:Get(ancestor).uid] = true
         end
     end
-    window:ShowPage(PAGE, selectKey and { itemKey = selectKey } or nil)
+
+    -- on the open page the tree stays: it draws once and the row is selected as a click does
+    local tree = Tree()
+    if not (tree and window:IsShown()) then
+        window:ShowPage(PAGE, selectKey and { itemKey = selectKey } or nil)
+        return
+    end
+
+    local key = selectKey or tree:GetSelected()
+    CDM:SetSelectionPreview(CDM:Get(key) and key or nil) -- before the draw, so it shows the preview
+    local found = false
+    for _, data in ipairs(DrawTree(tree)) do
+        if data.key == key then
+            found = true
+            break
+        end
+    end
+    tree:Select(found and key or GENERAL, true) -- picks stay while the key is among them
 end
 
 IconPicker.navigate = Reopen
@@ -114,11 +179,13 @@ local function ShowGlobalSettings(itemKey)
     NRSKNUI.GUIFrame:ShowPage(PAGE, { itemKey = GLOBAL, subItemKey = itemKey })
 end
 
-local function RefreshTree()
-    local tree = Tree()
-    if tree and tree.frame:IsShown() and tree.Render then
-        tree:Render()
-    end
+---What rebuilds when a display joins or leaves a group: a dynamic group lays out its
+---displays, a static one draws nothing, so there only the display itself.
+---@param groupId string?
+---@param id string
+---@return string
+local function Holder(groupId, id)
+    return CDM:IsDynamic(groupId) and groupId --[[@as string]] or id
 end
 
 ---@param id string?
@@ -139,6 +206,7 @@ Shared.EditTargets = EditTargets
 Shared.Applier = Applier
 Shared.GENERAL = GENERAL
 Shared.GLOBAL = GLOBAL
+Shared.Holder = Holder
 Shared.IMPORT = IMPORT
 Shared.NEW = NEW
 Shared.IsCollapsed = IsCollapsed
@@ -148,6 +216,7 @@ Shared.NEW_TILE_PREVIEW = NEW_TILE_PREVIEW
 Shared.PAGE = PAGE
 Shared.POWER_MODES = POWER_MODES
 Shared.QUESTION_MARK = QUESTION_MARK
+Shared.RedrawTree = RedrawTree
 Shared.RefreshTree = RefreshTree
 Shared.Reopen = Reopen
 Shared.SECTION_LOADED = SECTION_LOADED

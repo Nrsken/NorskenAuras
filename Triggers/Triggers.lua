@@ -201,10 +201,14 @@ function CDM:GetWarnings(id)
         return warnings
     end
 
+    -- the first child will do: the tree asks this of every group on each draw
     if self:IsGroup(id) then
-        if #self:GetChildren(id) == 0 then
-            warnings[1] = L['This group is empty.']
+        for _, other in pairs(self.db.Displays) do
+            if other.parent == id then
+                return warnings
+            end
         end
+        warnings[1] = L['This group is empty.']
         return warnings
     end
 

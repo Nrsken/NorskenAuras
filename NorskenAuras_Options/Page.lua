@@ -28,6 +28,7 @@ local MultiContextMenu = Shared.MultiContextMenu
 local NEW = Shared.NEW
 local PAGE = Shared.PAGE
 local PreviewLevel = Shared.PreviewLevel
+local RedrawTree = Shared.RedrawTree
 local RefreshTree = Shared.RefreshTree
 local SectionIcons = Shared.SectionIcons
 local TABS = Shared.TABS
@@ -35,8 +36,10 @@ local TRINKETS = Shared.TRINKETS
 local TreeContent = Shared.TreeContent
 local TriggerChip = Shared.TriggerChip
 local TriggerTitle = Shared.TriggerTitle
+local Ungroup = Shared.Ungroup
 local expandedGroups = Shared.expandedGroups
 local EditTargets = Shared.EditTargets
+local Holder = Shared.Holder
 local MULTI_TABS = Shared.MULTI_TABS
 local Reopen = Shared.Reopen
 
@@ -70,7 +73,7 @@ GUI:RegisterPage(PAGE, {
         end,
         onRename = function(key, text)
             CDM:Rename(key, text)
-            RefreshTree()
+            RedrawTree()
         end,
         -- Into a group that can hold it, or next to a display inside one, the top level stays alphabetical.
         canDrop = function(item, target, position)
@@ -90,9 +93,17 @@ GUI:RegisterPage(PAGE, {
                         break
                     end
                 end
-                if not inside then top[#top + 1] = key end
+                if not inside then
+                    top[#top + 1] = key
+                end
             end
-            -- Into a group each one leads it, after a display each one follows it: reversed, they keep their order.
+
+            -- what lays them out where they leave and where they land
+            local touched = {}
+            for _, key in ipairs(top) do
+                touched[#touched + 1] = Holder(CDM:Get(key).parent, key)
+            end
+            -- into a group each leads it, after a display each follows it: reversed, they keep order
             local reverse = position ~= 'before'
             for i = reverse and #top or 1, reverse and 1 or #top, reverse and -1 or 1 do
                 if position == 'into' then
@@ -101,18 +112,20 @@ GUI:RegisterPage(PAGE, {
                     CDM:MoveNextTo(top[i], targetKey, position)
                 end
             end
-            CDM:ApplySettings()
-            RefreshTree()
+            for _, key in ipairs(top) do
+                touched[#touched + 1] = Holder(CDM:Get(key).parent, key)
+            end
+            CDM:ApplySubtrees(touched)
+            RedrawTree()
         end,
         onMoveInGroup = function(key, delta)
             CDM:MoveInGroup(key, delta)
             CDM:ApplySettings(CDM:Get(key).parent)
-            RefreshTree()
+            RedrawTree()
         end,
         onUngroup = function(key)
-            CDM:Ungroup(key)
-            CDM:ApplySettings()
-            RefreshTree()
+            Ungroup(key)
+            RedrawTree()
         end,
         onTogglePreview = function(key)
             CDM:SetPreview(key, CDM:GetPreview(key) == 2 and 0 or 2)
@@ -122,8 +135,10 @@ GUI:RegisterPage(PAGE, {
                 if section.key == sectionKey then
                     local ids = SectionIcons(section)
                     local level = PreviewLevel(ids) ~= 2 and 2 or nil
-                    for _, id in ipairs(ids) do CDM.preview[id] = level end
-                    CDM:RefreshLoad()
+                    for _, id in ipairs(ids) do
+                        CDM.preview[id] = level
+                    end
+                    CDM:RefreshLoad(true)
                 end
             end
         end,

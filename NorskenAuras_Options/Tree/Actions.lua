@@ -11,6 +11,7 @@ local CopyTable = CopyTable
 local RunNextFrame = RunNextFrame
 
 local Shared = NRSKNUI.CDMOptions
+local Holder = Shared.Holder
 local Reopen = Shared.Reopen
 local TRIGGER_DEFAULTS = Shared.TRIGGER_DEFAULTS
 local Tree = Shared.Tree
@@ -70,8 +71,48 @@ local function DuplicateDisplay(id)
     local newId = CDM:Duplicate(id)
     if not newId then return end
 
-    CDM:ApplySettings()
+    CDM:ApplySubtrees({ Holder(CDM:Get(newId).parent, newId) })
     Reopen(newId)
+end
+
+---Take a display out of its group, rebuilding what held it and what holds it now.
+---@param id string
+local function Ungroup(id)
+    local from = CDM:Get(id).parent
+    if not from then return end
+
+    CDM:Ungroup(id)
+    CDM:ApplySubtrees({ Holder(from, id), Holder(CDM:Get(id).parent, id) })
+end
+
+---@param ids string[]
+---@param keepChildren boolean?
+local function DeleteDisplays(ids, keepChildren)
+    -- what held them and what a removed group hands on; Release re-places Match Width bars
+    local touched, kept = {}, {}
+    for _, id in ipairs(ids) do
+        local display = CDM:Get(id)
+        if display then
+            touched[#touched + 1] = Holder(display.parent, id)
+            if keepChildren then
+                for _, child in ipairs(CDM:GetChildren(id)) do
+                    kept[#kept + 1] = child.key
+                end
+            end
+        end
+    end
+
+    for _, id in ipairs(ids) do
+        CDM:Delete(id, keepChildren) -- a child already taken by its group is skipped
+    end
+    for _, key in ipairs(kept) do
+        local display = CDM:Get(key)
+        if display then
+            touched[#touched + 1] = Holder(display.parent, key)
+        end
+    end
+    CDM:ApplySubtrees(touched)
+    Reopen()
 end
 
 local COPY_PARTS = {
@@ -112,11 +153,7 @@ local function DeletePrompt(id, keepChildren)
     GUI:Prompt({
         title = L['Delete'],
         text = text,
-        onAccept = function()
-            CDM:Delete(id, keepChildren)
-            CDM:ApplySettings()
-            Reopen()
-        end,
+        onAccept = function() DeleteDisplays({ id }, keepChildren) end,
         acceptText = L['Delete'],
         cancelText = L['Cancel'],
     })
@@ -144,11 +181,7 @@ local function MultiContextMenu(ids)
                 GUI:Prompt({
                     title = L['Delete All'],
                     text = format(L['Delete %d displays? This cannot be undone.'], count),
-                    onAccept = function()
-                        for _, id in ipairs(ids) do CDM:Delete(id) end -- a child already taken by its group is skipped
-                        CDM:ApplySettings()
-                        Reopen()
-                    end,
+                    onAccept = function() DeleteDisplays(ids) end,
                     acceptText = L['Delete'],
                     cancelText = L['Cancel'],
                 })
@@ -241,8 +274,7 @@ local function ContextMenu(id)
         entries[#entries + 1] = {
             text = L['Remove from Group'],
             onClick = function()
-                CDM:Ungroup(id)
-                CDM:ApplySettings()
+                Ungroup(id)
                 Reopen(id)
             end,
         }
@@ -267,3 +299,4 @@ Shared.NewIcon = NewIcon
 Shared.NewProgressBar = NewProgressBar
 Shared.NewResourceBar = NewResourceBar
 Shared.NewText = NewText
+Shared.Ungroup = Ungroup

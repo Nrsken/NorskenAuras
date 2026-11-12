@@ -154,7 +154,7 @@ local function PositionAndSize(card, page, style, set, mixed, displays, apply, m
             for _, bar in ipairs(bars) do
                 bar[key] = value
             end
-            CDM:ApplySettings()
+            apply() -- a bar's Place reads its group, the group re-places its bars after each layout
             page:Refresh()
         end
         local matchRow = card:Row(rowH)
