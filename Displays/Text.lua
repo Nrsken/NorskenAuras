@@ -17,6 +17,7 @@ local tonumber = tonumber
 local gsub = string.gsub
 local unpack = unpack
 local type = type
+local issecretvalue = issecretvalue
 
 local CreateDurationTextBinding = C_DurationUtil.CreateDurationTextBinding
 local GetSpellDisplayCount = C_Spell.GetSpellDisplayCount
@@ -104,7 +105,7 @@ local function FormatName(element, name)
     if element.NameColor == 'class' then
         return NRSKNUI:ColorTextByClass(name, NRSKNUI.MyClass)
     elseif element.NameColor == 'theme' then
-        return NRSKNUI:ColorTextByTheme(name)
+        return NRSKNUI.GUI:ColorText(name)
     end
 
     return name
@@ -167,7 +168,7 @@ end
 ---@param index number the power trigger
 ---@param max any
 local function PowerColorCurve(text, display, index, max)
-    local plain = not NRSKNUI:IsSecretValue(max)
+    local plain = not issecretvalue(max)
     if plain then
         text.curveMax = max
     end
@@ -376,7 +377,7 @@ local function UpdateText(text, from)
 
         -- a Value condition's share of the max moves when the max does (talents); a secret max keeps the last one
         local max = from.max
-        if text.colorsByValue and not NRSKNUI:IsSecretValue(max) and max ~= text.curveMax then
+        if text.colorsByValue and not issecretvalue(max) and max ~= text.curveMax then
             PowerColorCurve(text, CDM:Get(from.owner.id), from.index, max)
         end
 

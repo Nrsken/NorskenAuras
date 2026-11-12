@@ -34,7 +34,7 @@ local function BuildHomePage(page)
             if checked and CDM:IsEnabled() then
                 CDM:HidePlayerCastBar()
             elseif not checked then
-                NRSKNUI:CreatePrompt({
+                GUI:Prompt({
                     title = L['Reload UI'],
                     text = L["Blizzard's cast bar comes back after a reload. Reload now?"],
                     onAccept = ReloadUI,

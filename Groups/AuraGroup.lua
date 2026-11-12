@@ -42,7 +42,7 @@ end
 ---@param db table
 ---@return number
 function CDM:GetAuraPreviewCount(db)
-    return min(db.maxFrameCount * NRSKNUI:GetTriggerBranchCount(db.Trigger), db.previewLimit)
+    return min(db.maxFrameCount * #NRSKNUI:GetTriggerBranches(db.Trigger), db.previewLimit)
 end
 
 ---The unit a tracker watches, saved variables can outlive the unit list the GUI offers.

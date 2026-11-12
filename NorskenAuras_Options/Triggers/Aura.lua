@@ -8,6 +8,7 @@ local rowH = Theme.rowHeight
 
 local tinsert = table.insert
 local ipairs = ipairs
+local issecretvalue = issecretvalue
 
 local GetMaxStacks = C_Spell.GetSpellMaxCumulativeAuraApplications
 
@@ -120,7 +121,7 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
                 -- The game's own cap, read once here (secret while auras are restricted); editable after.
                 local spellID = CDM:GetTriggerSpell(trigger)
                 local cap = spellID and GetMaxStacks(spellID)
-                trigger.MaxStacks = cap and not NRSKNUI:IsSecretValue(cap) and cap > 0 and cap or 10
+                trigger.MaxStacks = cap and not issecretvalue(cap) and cap > 0 and cap or 10
             end
             apply()
             card:Rebuild()

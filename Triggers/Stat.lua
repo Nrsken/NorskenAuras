@@ -26,6 +26,7 @@ local tostring = tostring
 local unpack = unpack
 local format = string.format
 local next = next
+local issecretvalue = issecretvalue
 local _G = _G
 
 local GATE_LENGTH = 100000000 -- one rating point below another moves a gate ~10000px, well past GATE_REACH / 2
@@ -340,7 +341,7 @@ CDM.TriggerTypes.stat = {
 ---@param value any
 ---@return string
 local function Plain(value)
-    return NRSKNUI:IsSecretValue(value) and 'secret' or format('%.2f', value)
+    return issecretvalue(value) and 'secret' or format('%.2f', value)
 end
 
 ---The gates for the debug report: what each comparison holds and whether its clip reaches the display.
@@ -366,8 +367,8 @@ CDM.TriggerTypes.stat.DebugLines = function(lines, layer)
             local text = fs and fs:GetText()
             lines[#lines + 1] = format('    Gate %s: root %s, visible %s, rects %s, clip edge %s, text %s, vs %s', SECONDARIES[index].key,
                 gate.root:IsShown() and 'shown' or 'hidden', gate.inner:IsVisible() and 'yes' or 'no', valid and 'valid' or 'INVALID',
-                (NRSKNUI:IsSecretValue(edge) or NRSKNUI:IsSecretValue(right)) and 'secret' or (edge and right) and Plain(edge - right) or '-',
-                fs and (NRSKNUI:IsSecretValue(text) and 'secret' or format('"%s" alpha %.2f', tostring(text), fs:GetAlpha())) or 'none',
+                (issecretvalue(edge) or issecretvalue(right)) and 'secret' or (edge and right) and Plain(edge - right) or '-',
+                fs and (issecretvalue(text) and 'secret' or format('"%s" alpha %.2f', tostring(text), fs:GetAlpha())) or 'none',
                 tconcat(bars, ', '))
         end
     end

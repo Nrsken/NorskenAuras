@@ -109,7 +109,7 @@ local function DeletePrompt(id, keepChildren)
         text = format(L["Delete '%s'? This cannot be undone."], name)
     end
 
-    NRSKNUI:CreatePrompt({
+    GUI:Prompt({
         title = L['Delete'],
         text = text,
         onAccept = function()
@@ -141,7 +141,7 @@ local function MultiContextMenu(ids)
                         end
                     end
                 end
-                NRSKNUI:CreatePrompt({
+                GUI:Prompt({
                     title = L['Delete All'],
                     text = format(L['Delete %d displays? This cannot be undone.'], count),
                     onAccept = function()
@@ -172,7 +172,7 @@ local function BuiltinResetEntries(id, entries)
         entries[#entries + 1] = {
             text = L['Reset Spells to Default'],
             onClick = function()
-                NRSKNUI:CreatePrompt({
+                GUI:Prompt({
                     title = L['Reset Spells to Default'],
                     text = L['Remove the spells you added and switch every default spell back on?'],
                     onAccept = function()
@@ -191,7 +191,7 @@ local function BuiltinResetEntries(id, entries)
     entries[#entries + 1] = {
         text = L['Reset Everything to Default'],
         onClick = function()
-            NRSKNUI:CreatePrompt({
+            GUI:Prompt({
                 title = L['Reset Everything to Default'],
                 text = format(L["Put '%s' back to how it shipped, spells, layout and position included?"], CDM:GetName(id)),
                 onAccept = function()
@@ -219,7 +219,7 @@ local function ContextMenu(id)
         text = L['Export'],
         onClick = function()
             local text = CDM:Export(id)
-            if text then NRSKNUI:CreateCopyDialog(format(L['Export %s'], CDM:GetName(id)), text) end
+            if text then GUI:CopyDialog(format(L['Export %s'], CDM:GetName(id)), text) end
         end,
     }
 

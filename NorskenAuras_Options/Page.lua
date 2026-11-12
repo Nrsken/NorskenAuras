@@ -52,7 +52,7 @@ GUI:RegisterPage(PAGE, {
     end,
     sidebar = {
         width = 260,
-        create = NRSKNUI.KajiGUI.CreateItemTree,
+        create = NRSKNUI.Kaji.CreateItemTree,
         items = TreeContent,
         actions = {
             { text = L['New'], icon = NRSKNUI.Media.GUITextures .. 'plus-sign.png', onClick = function() Reopen(NEW) end },

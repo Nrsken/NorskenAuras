@@ -13,6 +13,7 @@ local CreateFrame = CreateFrame
 local GetNetStats = GetNetStats
 local GetTime = GetTime
 local select = select
+local issecretvalue = issecretvalue
 
 local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName
@@ -161,13 +162,13 @@ end
 ---@param duration LuaDurationObject?
 local function ReadTiming(duration)
     local total = duration and duration:GetTotalDuration()
-    if NRSKNUI:IsSecretValue(total) then
+    if issecretvalue(total) then
         total = nil
     end
     cast.total = total
     if cast.kind == 'empower' and total then
         local elapsed = duration:GetElapsedDuration()
-        ScheduleStages(NRSKNUI:IsSecretValue(elapsed) and 0 or elapsed)
+        ScheduleStages(issecretvalue(elapsed) and 0 or elapsed)
     end
 end
 
@@ -249,7 +250,7 @@ end
 ---@param interruptedBy any a GUID, possibly secret
 ---@return 'success'|'interrupted'
 local function StopResult(interruptedBy)
-    if NRSKNUI:IsSecretValue(interruptedBy) or interruptedBy ~= nil then
+    if issecretvalue(interruptedBy) or interruptedBy ~= nil then
         return 'interrupted'
     end
     return 'success'

@@ -12,6 +12,7 @@ Also keeps a display in place on screen when it moves to another group.
 
 local floor, min, max = math.floor, math.min, math.max
 local ipairs = ipairs
+local scrubsecretvalues = scrubsecretvalues
 
 local UIParent = UIParent
 
@@ -47,7 +48,7 @@ function CDM:GetGroupBounds(id)
     for _, leaf in ipairs(self:GetLeaves(id)) do
         local frame = self.icons[leaf] or self.containers[leaf]
         if frame and frame:IsShown() then
-            local x, y, width, height = NRSKNUI:ScrubSecrets(frame:GetRect())
+            local x, y, width, height = scrubsecretvalues(frame:GetRect())
             -- empty slots keep a sliver of size, and an icon holding an aura can have a secret one
             if x and width and width > 1 and height > 1 then
                 local ratio = frame:GetEffectiveScale() / base
@@ -151,7 +152,7 @@ end
 ---@return number? x, number? y screen coordinates
 local function PointCoords(frame, point)
     -- An icon in a group holding an aura has a secret position and size.
-    local left, bottom, width, height = NRSKNUI:ScrubSecrets(frame:GetRect())
+    local left, bottom, width, height = scrubsecretvalues(frame:GetRect())
     if not (left and bottom and width and height) then return end
 
     local scale = frame:GetEffectiveScale()

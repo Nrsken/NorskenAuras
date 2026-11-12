@@ -5,7 +5,7 @@ local addonName = ...
 local _G = _G
 local LibStub = LibStub
 
-local NorskenCore = _G.NorskenCore --[[@as NorskenCoreAPI]]
+local NorskenCore = _G.NorskenCore --[[@as NRSKNUI]]
 NorskenCore:NewAddon(NRSKNUI, addonName, function() return NRSKNUI.db and NRSKNUI.db.global.Theme end, 'AceEvent-3.0')
 _G.NorskenAuras = NRSKNUI
 

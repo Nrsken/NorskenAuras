@@ -11,6 +11,7 @@ local format = string.format
 local GetTime = GetTime
 local select = select
 local type = type
+local issecretvalue = issecretvalue
 
 local IsSpellOverlayed = C_SpellActivationOverlay.IsSpellOverlayed
 local GetSpellCooldownDuration = C_Spell.GetSpellCooldownDuration
@@ -91,7 +92,7 @@ local function ChargeItem(layer)
     local item = layer.chargeItem
     local id = item and item.cooldownID
     -- a pooled frame can be handed to another entry, so the cached one is checked first
-    if item and id ~= nil and not NRSKNUI:IsSecretValue(id) and id == cooldownID then
+    if item and id ~= nil and not issecretvalue(id) and id == cooldownID then
         return item
     end
 
@@ -103,7 +104,7 @@ local function ChargeItem(layer)
         if pool and pool.EnumerateActive then
             for child in pool:EnumerateActive() do
                 local childID = child.cooldownID
-                if childID ~= nil and not NRSKNUI:IsSecretValue(childID) and childID == cooldownID then
+                if childID ~= nil and not issecretvalue(childID) and childID == cooldownID then
                     if not hookedItems[child] and child.CacheCooldownValues then
                         hookedItems[child] = true
                         hooksecurefunc(child, 'CacheCooldownValues', OnItemCached)
@@ -124,7 +125,7 @@ local function ChargesLeft(layer)
     local item = ChargeItem(layer)
     local fromCharges = item and item.wasSetFromCharges
     layer.fromCharges = fromCharges
-    if type(fromCharges) ~= 'boolean' or NRSKNUI:IsSecretValue(fromCharges) then return nil end
+    if type(fromCharges) ~= 'boolean' or issecretvalue(fromCharges) then return nil end
 
     return fromCharges
 end
@@ -284,7 +285,7 @@ CDM.TriggerTypes.spell = {
         if chargesLeft ~= nil then
             -- Blizzard's verdict wins when it gives one: a charge left is never No Charges Left, none is the real cooldown
             lockout = chargesLeft
-        elseif NRSKNUI:IsSecretValue(category) then
+        elseif issecretvalue(category) then
             lockout = cooldown.isOnGCD == nil
         else
             lockout = state.hasCharges and active and category == nil

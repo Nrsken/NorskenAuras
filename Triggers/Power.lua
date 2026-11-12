@@ -22,6 +22,7 @@ local CreateFrame = CreateFrame
 local tContains = tContains
 local GetTime = GetTime
 local select = select
+local issecretvalue = issecretvalue
 
 -- Plain for the player under every addon restriction (probed); the stub has no player exemption.
 local UnitStagger = UnitStagger --[[@as fun(unit: 'player'): number]]
@@ -180,10 +181,10 @@ local essenceRate = 0.2   -- points a second, Blizzard's fallback in EssenceFram
 local function EssenceFill()
     local partial = UnitPartialPower('player', PowerType.Essence)
     local rate = GetPowerRegenForPowerType(PowerType.Essence)
-    if rate and not NRSKNUI:IsSecretValue(rate) and rate > 0 then
+    if rate and not issecretvalue(rate) and rate > 0 then
         essenceRate = rate
     end
-    if NRSKNUI:IsSecretValue(partial) then return nil end
+    if issecretvalue(partial) then return nil end
 
     local length = 1 / essenceRate
     return GetTime() - partial / 1000 * length, length
@@ -252,7 +253,7 @@ local function UpdatePips(layer, trigger)
     if not progress then return end
 
     -- the next point's pip, which Essence and a progress source fill
-    local filling = not NRSKNUI:IsSecretValue(current) and not NRSKNUI:IsSecretValue(max)
+    local filling = not issecretvalue(current) and not issecretvalue(max)
         and current < max and current < count and current + 1 or nil
     if filling and powerType == PowerType.Essence then
         local start, length = EssenceFill()
@@ -329,7 +330,7 @@ CDM.TriggerTypes.power = {
         end
 
         -- a split bar's pips and its progress source
-        local plainMax = not NRSKNUI:IsSecretValue(layer.max)
+        local plainMax = not issecretvalue(layer.max)
         local split = layer.isBar and trigger.Mode ~= nil and SEGMENTED_POWER[powerType] == true
         if split then
             CDM:SetLayerPips(layer, powerType == PowerType.Runes and 6 or plainMax and layer.max or SECRET_MAX_PIPS)

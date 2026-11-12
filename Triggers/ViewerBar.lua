@@ -8,6 +8,7 @@ local CreateFrame = CreateFrame
 local pairs = pairs
 local next = next
 local wipe = wipe
+local issecretvalue = issecretvalue
 
 local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName
@@ -45,7 +46,7 @@ local function FindChild(cooldownID)
 
     for child in pool:EnumerateActive() do
         local id = child.cooldownID
-        if id ~= nil and not NRSKNUI:IsSecretValue(id) and id == cooldownID then
+        if id ~= nil and not issecretvalue(id) and id == cooldownID then
             return child
         end
     end
@@ -57,7 +58,7 @@ local function GetChild(layer)
     local child = layer.viewerChild
     local id = child and child.cooldownID
     -- a pooled frame can be handed to another entry, so the cached one is checked first
-    if child and id ~= nil and not NRSKNUI:IsSecretValue(id) and id == layer.viewerCooldownID then
+    if child and id ~= nil and not issecretvalue(id) and id == layer.viewerCooldownID then
         return child
     end
     layer.viewerChild = FindChild(layer.viewerCooldownID)

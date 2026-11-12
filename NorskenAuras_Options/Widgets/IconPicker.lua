@@ -9,6 +9,7 @@ local tconcat = table.concat
 local tContains = tContains
 local format = string.format
 local strtrim = strtrim
+local issecretvalue = issecretvalue
 local CreateFrame = CreateFrame
 local GetSpellName, GetSpellTexture = C_Spell.GetSpellName, C_Spell.GetSpellTexture
 local GetItemIconByID, GetItemNameByID = C_Item.GetItemIconByID, C_Item.GetItemNameByID
@@ -40,7 +41,7 @@ local function OwnSpells()
     ---@param texture number?
     ---@param name string?
     local function Add(texture, name)
-        if texture == nil or name == nil or NRSKNUI:IsSecretValue(texture) or seen[texture] then return end
+        if texture == nil or name == nil or issecretvalue(texture) or seen[texture] then return end
         seen[texture] = true
         list[#list + 1] = { texture = texture, name = name, search = name:lower() }
     end
@@ -96,10 +97,10 @@ local function WalkSpells(result)
     while misses < SPELL_MISS_LIMIT do
         id = id + 1
         local name = GetSpellName(id)
-        if name and name ~= '' and not NRSKNUI:IsSecretValue(name) then
+        if name and name ~= '' and not issecretvalue(name) then
             misses = 0
             local icon = GetSpellTexture(id)
-            if icon and icon ~= GEAR_ICON and not NRSKNUI:IsSecretValue(icon) then
+            if icon and icon ~= GEAR_ICON and not issecretvalue(icon) then
                 local lower = name:lower()
                 local index = byIcon[icon]
                 if not index then
@@ -344,7 +345,7 @@ function GridMixin:OnRelease()
     self:SetIcons(NO_ICONS)
 end
 
-NRSKNUI.KajiGUI:RegisterWidgetType(GRID_TYPE, function()
+NRSKNUI.Kaji:RegisterWidgetType(GRID_TYPE, function()
     local frame = Mixin(CreateFrame('Frame'), GridMixin)
     frame.icons, frame.buttons, frame.columns = NO_ICONS, {}, 1
 

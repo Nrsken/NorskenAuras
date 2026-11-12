@@ -12,6 +12,7 @@ local tonumber, tostring = tonumber, tostring
 local ipairs, pairs = ipairs, pairs
 local CreateFrame = CreateFrame
 local unpack = unpack
+local issecretvalue = issecretvalue
 local max = math.max
 
 local CreateDuration = C_DurationUtil.CreateDuration
@@ -653,7 +654,7 @@ local function TickFractions(layer, element)
     local scale = 100
     if element.Placement == 'value' then
         scale = layer.max
-        if scale == nil or NRSKNUI:IsSecretValue(scale) or scale <= 0 then
+        if scale == nil or issecretvalue(scale) or scale <= 0 then
             return NO_TICKS
         end
     end

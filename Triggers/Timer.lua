@@ -9,6 +9,7 @@ local CreateFrame = CreateFrame
 local format = string.format
 local GetTime = GetTime
 local next = next
+local issecretvalue = issecretvalue
 
 local CreateDuration = C_DurationUtil.CreateDuration
 local IsSpellKnown = C_SpellBook.IsSpellKnown
@@ -158,7 +159,7 @@ end
 local castFrame ---@type Frame?
 
 local function OnCast(spellID)
-    if NRSKNUI:IsSecretValue(spellID) then return end -- a secret cast can't be matched, so it's skipped
+    if issecretvalue(spellID) then return end -- a secret cast can't be matched, so it's skipped
     local layers = timerIndex[spellID]
     if not layers then return end -- every cast lands here, nearly all of them on spells no timer watches
 
