@@ -46,11 +46,11 @@ function CDM:GetGroupBounds(id)
     local base = UIParent:GetEffectiveScale()
 
     for _, leaf in ipairs(self:GetLeaves(id)) do
-        local frame = self.icons[leaf] or self.containers[leaf]
+        local frame = self.icons[leaf] or self.containers[leaf] or self:GetAuraHost(leaf)
         if frame and frame:IsShown() then
             local x, y, width, height = scrubsecretvalues(frame:GetRect())
             -- empty slots keep a sliver of size, and an icon holding an aura can have a secret one
-            if x and width and width > 1 and height > 1 then
+            if x and y and width and height and width > 1 and height > 1 then
                 local ratio = frame:GetEffectiveScale() / base
                 local l, b, r, t = x * ratio, y * ratio, (x + width) * ratio, (y + height) * ratio
                 left = left and min(left, l) or l
