@@ -108,6 +108,10 @@ local function ResetIcon(_, frame)
         layer.realCooldown, layer.heldGCD = nil, nil
         layer.timerEnd = nil
         layer.previewEnd = nil
+        if layer.previewTimer then
+            layer.previewTimer:Cancel()
+            layer.previewTimer = nil
+        end
         if layer.timerTicker then
             layer.timerTicker:Cancel()
             layer.timerTicker = nil

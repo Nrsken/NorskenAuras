@@ -18,6 +18,7 @@ local GetTime = GetTime
 local next = next
 
 local CreateDuration = C_DurationUtil.CreateDuration
+local NewTimer = C_Timer.NewTimer
 local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName
 
@@ -41,6 +42,16 @@ function CDM.PreviewDuration(layer, length)
     local now = GetTime()
     if not layer.previewEnd or now >= layer.previewEnd - 0.05 then
         layer.previewEnd = now + length
+        -- a hidden layer's Cooldown never fires OnCooldownDone, which is what starts it over
+        if layer.previewTimer then
+            layer.previewTimer:Cancel()
+        end
+        layer.previewTimer = NewTimer(length, function()
+            layer.previewTimer = nil
+            if CDM.IsPreviewingLayer(layer) then
+                CDM:UpdateLayer(layer)
+            end
+        end)
     end
 
     layer.previewDuration = layer.previewDuration or CreateDuration()
