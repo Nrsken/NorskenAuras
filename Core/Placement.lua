@@ -3,6 +3,7 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local Anchors = NRSKNUI.Anchors
+local ToTenths = NRSKNUI.Pixel.ToTenths
 
 --[[
 Where a display sits.
@@ -10,7 +11,7 @@ On the screen with a mover, inside its group or matched to a dynamic group's wid
 Also keeps a display in place on screen when it moves to another group.
 ]]
 
-local floor, min, max = math.floor, math.min, math.max
+local min, max = math.min, math.max
 local ipairs = ipairs
 local scrubsecretvalues = scrubsecretvalues
 
@@ -127,7 +128,8 @@ function CDM:Place(frame, id, display, point)
 
         -- A picked frame wins over the group; the group still owns its visibility.
         local target = display.anchorFrameType == 'SELECTFRAME' and display.ParentFrame and _G[display.ParentFrame] or host
-        frame:NCSetPoint(point or position.AnchorFrom, target, position.AnchorTo, position.XOffset + extraX, position.YOffset + extraY)
+        -- the path a drag places with: anything else hops on release
+        frame:NCSetGridPoint(point or position.AnchorFrom, target, position.AnchorTo, position.XOffset + extraX, position.YOffset + extraY)
         frame:SetFrameStrata(display.Strata or host:GetFrameStrata())
         self:RegisterAnchor(frame, id, self:IsDynamic(display.parent))
         return
@@ -182,6 +184,6 @@ function CDM:KeepPlace(id, parentId)
 
     -- what's on screen includes the offset conditions, which aren't saved
     local scale = frame:GetEffectiveScale()
-    position.XOffset = floor(((fx - hx) / scale - (frame.conditionX or 0)) * 10 + 0.5) / 10
-    position.YOffset = floor(((fy - hy) / scale - (frame.conditionY or 0)) * 10 + 0.5) / 10
+    position.XOffset = ToTenths((fx - hx) / scale - (frame.conditionX or 0))
+    position.YOffset = ToTenths((fy - hy) / scale - (frame.conditionY or 0))
 end

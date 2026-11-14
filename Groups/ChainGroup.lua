@@ -151,6 +151,8 @@ local function Resize(self)
     else
         self:NCSetSize(max(1, cross), max(1, total))
     end
+    -- the grid snap was worked out for the old size
+    self:NCRefreshGridPoint()
     PlaceChain(self)
 end
 
@@ -219,7 +221,7 @@ function ChainMixin:UpdateGroupPosition(source, grow, extraX, extraY)
         parent = _G[source.ParentFrame] or UIParent
     end
     self:ClearAllPoints()
-    self:NCSetPoint(position.SelfPoint or self:GetResolvedAnchor(grow), parent, position.AnchorTo or 'CENTER', (position.XOffset or 0) + (extraX or 0), (position.YOffset or 0) + (extraY or 0))
+    self:NCSetGridPoint(position.SelfPoint or self:GetResolvedAnchor(grow), parent, position.AnchorTo or 'CENTER', (position.XOffset or 0) + (extraX or 0), (position.YOffset or 0) + (extraY or 0))
     self:SetFrameStrata(source.Strata or 'MEDIUM')
 end
 
