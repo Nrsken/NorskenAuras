@@ -619,10 +619,20 @@ end
 
 -- Blizzard frames --
 
+-- each icon takes the mouse for its own tooltip
+---@param viewer table
+---@param item Frame
+local function ApplyItemMouse(viewer, item)
+    item:SetMouseMotionEnabled(viewer.tooltipsShown and not hideViewers)
+end
+
 ---@param viewer table
 local function ApplyViewerVisibility(viewer)
     viewer:SetAlpha(hideViewers and 0 or 1)
     viewer:EnableMouse(not hideViewers)
+    for item in viewer.itemFramePool:EnumerateActive() do
+        ApplyItemMouse(viewer, item)
+    end
 end
 
 ---Fade Blizzard's Cooldown Manager out while ours runs or show it again. It keeps running either way: the
@@ -646,6 +656,9 @@ function CDM:SetBlizzardViewers(hide)
                             bar:SetAlpha(0)
                         end
                     end)
+                    -- not Visibility Hidden: a hidden viewer drops the events our triggers read
+                    hooksecurefunc(viewer, 'OnAcquireItemFrame', ApplyItemMouse)
+                    hooksecurefunc(viewer, 'SetTooltipsShown', ApplyViewerVisibility)
                 end
                 ApplyViewerVisibility(viewer)
             end
