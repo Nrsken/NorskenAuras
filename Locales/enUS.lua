@@ -17,6 +17,7 @@ L['Maelstrom Weapon'] = true
 L['Insanity'] = true
 L['Fury'] = true
 L['Cast Bar'] = true
+L["It matches a group's width, move the group instead."] = true
 
 -- Aura Triggers & Displays --
 L['Display %s'] = true

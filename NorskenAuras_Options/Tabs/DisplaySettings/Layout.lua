@@ -4,6 +4,8 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
+local ToTenths = NRSKNUI.Pixel.ToTenths
+local PixelStepper = NRSKNUI.Pixel.PixelStepper
 local rowH = Theme.rowHeight
 
 local tinsert = table.insert
@@ -267,27 +269,37 @@ local function PositionAndSize(card, page, style, set, mixed, displays, apply, m
         callback = function(value) place({ 'Position', 'AnchorTo' }, value) end,
     })
 
+    local stepper = PixelStepper()
     local offsetRow = card:Row(rowH)
-    offsetRow:Slider(L['X Offset'], {
+    local xSlider = offsetRow:Slider(L['X Offset'], {
         width = 0.5,
         conditions = { freeGroup },
         min = -1000,
         max = 1000,
-        step = 1,
+        step = 0.1,
+        stepper = stepper,
+        showMixedValue = true,
         value = position.XOffset,
         mixed = placed({ 'Position', 'XOffset' }),
-        callback = function(value) place({ 'Position', 'XOffset' }, value) end,
+        callback = function(value) place({ 'Position', 'XOffset' }, ToTenths(value)) end,
     })
-    offsetRow:Slider(L['Y Offset'], {
+    local ySlider = offsetRow:Slider(L['Y Offset'], {
         width = 0.5,
         conditions = { freeGroup },
         min = -1000,
         max = 1000,
-        step = 1,
+        step = 0.1,
+        stepper = stepper,
+        showMixedValue = true,
         value = position.YOffset,
         mixed = placed({ 'Position', 'YOffset' }),
-        callback = function(value) place({ 'Position', 'YOffset' }, value) end,
+        callback = function(value) place({ 'Position', 'YOffset' }, ToTenths(value)) end,
     })
+    -- a drag of its box on screen
+    card:OnExternalRefresh(function()
+        xSlider:SetValueSilent(position.XOffset)
+        ySlider:SetValueSilent(position.YOffset)
+    end)
 
     card:Row(rowH):Dropdown(L['Frame Strata'], {
         width = 1,

@@ -4,6 +4,7 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local Anchors = NRSKNUI.Anchors
 local ToTenths = NRSKNUI.Pixel.ToTenths
+local L = NRSKNUI.Libs.AL
 
 --[[
 Where a display sits.
@@ -19,19 +20,17 @@ local UIParent = UIParent
 
 -- Placing --
 
----Give a display its box in anchors: where the position is saved, how to re-apply it and the group it opens from.
+---Give a display its box for the window: where the position is saved and how to re-apply it.
 ---@param frame Frame
 ---@param id string
----@param locked boolean? a dynamic group places it, so it only selects
+---@param locked boolean|string? something else places it, so it only selects; a string says what
 function CDM:RegisterAnchor(frame, id, locked)
     local display = self:Get(id)
     Anchors:Register(self, id, frame, 'cooldownManager', {
         db = function() return CDM:Get(id) end,
         apply = function(aceModule) aceModule:ApplySettings(id) end,
         displayName = self:GetName(id),
-        shown = function() return CDM:GetLoadState(id) ~= 'unloaded' end,
         bounds = display.type == 'group' and function() return CDM:GetGroupBounds(id) end or nil,
-        parentKey = display.parent,
         locked = locked,
     })
 end
@@ -116,11 +115,11 @@ function CDM:Place(frame, id, display, point)
         frame:NCSetPoint(edge .. 'LEFT', left, groupEdge .. 'LEFT', extraX, y)
         frame:NCSetPoint(edge .. 'RIGHT', right, groupEdge .. 'RIGHT', extraX - padX, y)
         frame:SetFrameStrata(display.Strata or matched:GetFrameStrata())
-        Anchors:Unregister(id)
+        self:RegisterAnchor(frame, id, L["It matches a group's width, move the group instead."])
         return
     end
 
-    -- Inside a group it hangs off the group's frame, its box opens from the group's.
+    -- Inside a group it hangs off the group's frame.
     if parent then
         local host = self.containers[display.parent]
         frame:SetParent(host)

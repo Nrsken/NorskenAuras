@@ -58,6 +58,14 @@ local function BuildHomePage(page)
         })
     end
 
+    local anchors = NRSKNUI:GetAnchorsSettings()
+    page:Card(L['Moving Displays'], 'all'):Row(rowH):Checkbox(L['Nudge With Arrow Keys'], {
+        width = 1,
+        value = anchors.BoxArrowKeys,
+        tooltip = L["The arrow keys move the picked display's box while this window is open, instead of your character."],
+        callback = function(checked) anchors.BoxArrowKeys = checked end,
+    })
+
     page:Card(L['Trinket Blacklist'], 'all'):Row(BUTTON_HEIGHT + 2):Button(L['Open Trinket Blacklist'], {
         width = 1,
         height = BUTTON_HEIGHT,

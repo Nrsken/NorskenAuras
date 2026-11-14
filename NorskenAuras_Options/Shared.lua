@@ -6,7 +6,7 @@ local L = NRSKNUI.Libs.AL
 local IconPicker = NRSKNUI.CDMIconPicker
 local Kaji = NRSKNUI.Kaji
 
-local ipairs = ipairs
+local ipairs, select = ipairs, select
 local CreateFrame = CreateFrame
 
 -- What the CDM options files share: page keys, helpers and the trigger lists.
@@ -174,6 +174,21 @@ end
 
 IconPicker.navigate = Reopen
 
+-- next frame: the page, the tree and what a change rebuilt have all settled by then
+local boxUpdater = CreateFrame('Frame')
+boxUpdater:NCSetScheduledUpdate(function()
+    local window, tree = NRSKNUI.GUIFrame, Tree()
+    local key = tree and window:IsShown() and tree:GetSelected()
+    local alone = key and CDM:Get(key) and not select(2, EditTargets(key))
+    NRSKNUI.Anchors:SetBox(alone and key or nil)
+end)
+
+local function UpdateBox()
+    boxUpdater:NCScheduleUpdate()
+end
+
+NRSKNUI:RegisterMessage('NRSKNUI_CDM_LAYOUT_CHANGED', UpdateBox)
+
 ---@param itemKey string? the Global Settings item to open on
 local function ShowGlobalSettings(itemKey)
     NRSKNUI.GUIFrame:ShowPage(PAGE, { itemKey = GLOBAL, subItemKey = itemKey })
@@ -226,4 +241,5 @@ Shared.TABS = TABS
 Shared.TRINKETS = TRINKETS
 Shared.TYPE_NAMES = TYPE_NAMES
 Shared.Tree = Tree
+Shared.UpdateBox = UpdateBox
 Shared.expandedGroups = expandedGroups

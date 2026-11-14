@@ -42,6 +42,7 @@ local EditTargets = Shared.EditTargets
 local Holder = Shared.Holder
 local MULTI_TABS = Shared.MULTI_TABS
 local Reopen = Shared.Reopen
+local UpdateBox = Shared.UpdateBox
 
 GUI:RegisterPage(PAGE, {
     mode = 'tabs',
@@ -63,6 +64,7 @@ GUI:RegisterPage(PAGE, {
         },
         onSelectionChanged = function(key)
             CDM:SetSelectionPreview(CDM:Get(key) and key or nil)
+            UpdateBox()
         end,
         onToggleExpanded = function(key, expanded)
             if CDM:IsGroup(key) then
@@ -150,6 +152,7 @@ GUI:RegisterPage(PAGE, {
         onPicksChanged = function()
             local tree = Shared.Tree()
             Reopen(tree and tree:GetSelected())
+            UpdateBox()
         end,
     },
     tabs = function(itemKey)

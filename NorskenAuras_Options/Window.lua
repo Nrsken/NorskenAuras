@@ -10,6 +10,7 @@ local GENERAL = Shared.GENERAL
 local PAGE = Shared.PAGE
 local Reopen = Shared.Reopen
 local ShowGlobalSettings = Shared.ShowGlobalSettings
+local UpdateBox = Shared.UpdateBox
 
 local LOGO = 'Interface\\AddOns\\NorskenCore\\Media\\Logo\\'
 local AURAS_MEDIA = 'Interface\\AddOns\\NorskenAuras\\Media\\Logo\\'
@@ -75,14 +76,27 @@ window:AddHeaderButton(SharedPages:HeaderButton('close', function() window:Hide(
 window:AddHeaderButton(SharedPages:HeaderButton('home', function() Reopen(GENERAL) end))
 window:AddHeaderButton(SharedPages:HeaderButton('global', function() ShowGlobalSettings() end))
 window:AddHeaderButton(SharedPages:HeaderButton('theme', function() ShowGlobalSettings(SharedPages.THEME_ITEM) end))
-window:AddHeaderButton(SharedPages:HeaderButton('anchors', function() NRSKNUI.Anchors:Enter() end))
+local gridButton = window:AddHeaderButton(SharedPages:HeaderButton('grid', function(btn)
+    local shown = not NRSKNUI:GetAnchorsSettings().Grid
+    NRSKNUI.Anchors:SetGrid(shown)
+    btn:SetActive(shown)
+end))
 
 window.content.onPageChanged = function(pageId, previousId)
     PreviewManager:SetPage(pageId)
+    UpdateBox()
     if pageId ~= previousId then
         NRSKNUI:PromptPendingReload()
     end
 end
+
+-- the frame's own scripts, so anchors mode putting the window away takes the box too
+window.frame:HookScript('OnShow', function()
+    -- account-wide, anchors mode may have changed it
+    gridButton:SetActive(NRSKNUI:GetAnchorsSettings().Grid)
+    UpdateBox()
+end)
+window.frame:HookScript('OnHide', UpdateBox)
 
 SharedPages:AddSupportFooter(window, NRSKNUI)
 
