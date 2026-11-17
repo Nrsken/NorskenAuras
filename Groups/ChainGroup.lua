@@ -1,22 +1,27 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local Pixel = NRSKNUI.Pixel
 
-local ipairs, pairs, next = ipairs, pairs, next
-local tsort, tremove = table.sort, table.remove
 local CreateFrame = CreateFrame
+local tremove = table.remove
+local UIParent = UIParent
 local floor = math.floor
+local sort = table.sort
+local wipe = table.wipe
+local ipairs = ipairs
 local max = math.max
 local Mixin = Mixin
+local pairs = pairs
+local next = next
 local type = type
-local wipe = wipe
 local _G = _G
 
-local PROBE_TEMPLATE = 'DisableUntrustedLayoutScriptsTemplate' -- anchoring to an aura button needs it
+local PROBE_TEMPLATE = 'DisableUntrustedLayoutScriptsTemplate' -- Anchoring to an aura button needs it
 
--- Per grow: the group's own anchor, the chain's links and which axis the spacing pads.
+-- Per grow, the group's own anchor, the chain's links and which axis the spacing pads
+---@type table<string, CDMChainGrow>
 local GROWS = {
     RIGHT      = { point = 'LEFT', first = 'LEFT', link = 'LEFT', to = 'RIGHT', horizontal = true, shift = 0 },
     LEFT       = { point = 'RIGHT', first = 'RIGHT', link = 'RIGHT', to = 'LEFT', horizontal = true, shift = 1 },
@@ -25,29 +30,27 @@ local GROWS = {
     UP         = { point = 'BOTTOM', first = 'BOTTOM', link = 'BOTTOM', to = 'TOP', horizontal = false, shift = 1 },
     VERTICAL   = { point = 'CENTER', first = 'TOP', link = 'TOP', to = 'BOTTOM', horizontal = false, shift = 0.5 },
 }
-CDM.CHAIN_GROWS = GROWS
-
---[[
-A dynamic group laid out by anchors: each icon sits in a slot chained to the one before, and probe frames
-measure what we can't read (whether an aura is up, a text's size), so nothing secret is compared.
-]]
 
 -- Layout --
 
----A grow point lined up on the cross axis, as DynamicGroup's GROW_POINTS: TOP + LEFT is TOPLEFT, CENTER + LEFT is LEFT.
+-- A grow point lined up on the cross axis, TOP and LEFT make TOPLEFT
 ---@param point string
----@param grow table
+---@param grow CDMChainGrow
 ---@param align string?
 ---@return string
 local function Aligned(point, grow, align)
     local onAxis = grow.horizontal and (align == 'TOP' or align == 'BOTTOM') or not grow.horizontal and (align == 'LEFT' or align == 'RIGHT')
-    if not onAxis then return point end
+    if not onAxis then
+        return point
+    end
     ---@cast align string
-    if point == 'CENTER' then return align end
+    if point == 'CENTER' then
+        return align
+    end
     return grow.horizontal and align .. point or point .. align
 end
 
----Size a frame to its children's bounds without ever reading the result, so secret sizes are fine.
+-- Sized to its children without reading the result back, so secret sizes are fine
 ---@param frame Frame
 local function Measure(frame)
     frame:SetIgnoringChildrenForBounds(false)
@@ -55,17 +58,18 @@ local function Measure(frame)
     frame:ResizeToBoundsRect()
     frame:SetIgnoringChildrenForBounds(true)
 end
-CDM.MeasureBounds = Measure
 
+-- Icons in slots chained one after another, sized by probes so nothing secret is read
 ---@class CDMChainGroup : Frame
 local ChainMixin = {}
 
 ---@param self CDMChainGroup
 ---@return number padX, number padY
 local function Padding(self)
-    local grow = GROWS[self.config.Grow] or GROWS.RIGHT
-    local spacing = self.config.Spacing or 1
-    if grow.horizontal then return spacing, 0 end
+    local spacing = self.config.Spacing
+    if self.grow.horizontal then
+        return spacing, 0
+    end
     return 0, spacing
 end
 
@@ -76,14 +80,14 @@ local function Relink(self)
     for _, record in pairs(self.records) do
         order[#order + 1] = record
     end
-    tsort(order, function(a, b)
+    sort(order, function(a, b)
         if a.order ~= b.order then
             return a.order < b.order
         end
         return a.key < b.key
     end)
 
-    local grow = GROWS[self.config.Grow] or GROWS.RIGHT
+    local grow = self.grow
     local align = self.config.Align
     local first, link, to = Aligned(grow.first, grow, align), Aligned(grow.link, grow, align), Aligned(grow.to, grow, align)
     local previous
@@ -101,9 +105,9 @@ end
 
 ---@param self CDMChainGroup
 local function PlaceChain(self)
-    local grow = GROWS[self.config.Grow] or GROWS.RIGHT
+    local grow = self.grow
     local padX, padY = Padding(self)
-    -- Every slot carries its spacing on its right or bottom, so the anchor takes the leftover gap back.
+    -- Each slot carries its spacing after it, so the anchor takes the last gap back
     local x = grow.horizontal and padX * grow.shift or 0
     local y = grow.horizontal and 0 or -padY * grow.shift
     if grow.shift == 0.5 then
@@ -116,13 +120,15 @@ local function PlaceChain(self)
             end
         end
         local half = total / 2
-        -- With auras or texts in the row we can't tell if it lands on a whole or a half pixel. A quarter pixel off keeps
-        -- it clear of the half either way, where the slots' 0.001 sizes would round an icon and its border apart.
+        -- An odd sized group's centre sits on a half pixel, so the row is snapped from its edge
+        local edge = self.extent / 2
+        -- With auras or texts in the row we can't tell a whole pixel from a half
+        -- So a quarter pixel off clears the half, where 0.001 slots split an icon and its border
         local nudge = unknown and Pixel.GetMult() * 0.25 or 0
         if grow.horizontal then
-            x = floor(x - half + 0.5) + half - nudge
+            x = floor(edge + x - half + 0.5) - edge + half - nudge
         else
-            y = -(floor(-y - half + 0.5) + half) + nudge
+            y = -(floor(edge - y - half + 0.5) - edge + half) + nudge
         end
     end
     local point = Aligned(grow.point, grow, self.config.Align)
@@ -132,7 +138,7 @@ end
 
 ---@param self CDMChainGroup
 local function Resize(self)
-    local grow = GROWS[self.config.Grow] or GROWS.RIGHT
+    local grow = self.grow
     local total, cross, count = 0, 0, 0
     for _, record in ipairs(self.order) do
         if record.loaded then
@@ -141,22 +147,24 @@ local function Resize(self)
             cross = max(cross, grow.horizontal and record.height or record.width)
         end
     end
-    local spacing = self.config.Spacing or 1
     if count > 1 then
-        total = total + (count - 1) * spacing
+        total = total + (count - 1) * self.config.Spacing
     end
-    -- The group's own size is every loaded icon's extent, for its mover and the unit frame anchor; the visible row lives in self.chain.
+    total = max(1, total)
+    self.extent = total
+    -- Every loaded icon's size, for the mover and the unit frame anchor
+    -- The row on screen is self.chain
     if grow.horizontal then
-        self:NCSetSize(max(1, total), max(1, cross))
+        self:NCSetSize(total, max(1, cross))
     else
-        self:NCSetSize(max(1, cross), max(1, total))
+        self:NCSetSize(max(1, cross), total)
     end
-    -- the grid snap was worked out for the old size
+    -- The grid snap was worked out for the old size
     self:NCRefreshGridPoint()
     PlaceChain(self)
 end
 
--- What we can know (loaded, a readable trigger on show) is sized here; an aura opens its slot by itself while it's up.
+-- Sizes what Lua can know, an aura opens its own slot while it's up
 ---@param record CDMChainRecord
 ---@param padX number
 ---@param padY number
@@ -167,7 +175,7 @@ local function SizeRecord(record, padX, padY)
     else
         record.measure:SetSize(0.001, 0.001)
     end
-    -- A text sizes itself, so the slot reaches to its far corner plus the spacing.
+    -- A text sizes itself, so the slot reaches to its far corner plus the spacing
     local slot = record.slot
     if fits then
         local probe = slot.textProbe or CreateFrame('Frame', nil, slot)
@@ -183,7 +191,7 @@ local function SizeRecord(record, padX, padY)
         slot:SetSize(0.001, 0.001)
     end
 
-    -- reused, since this runs every time an icon shows or hides
+    -- Reused, since this runs every time an icon shows or hides
     local pad = record.child.chainPad or {}
     pad[1], pad[2] = padX, padY
     record.child.chainPad = pad
@@ -191,8 +199,10 @@ end
 
 -- Group --
 
+---@param config CDMLayout
 function ChainMixin:SetConfig(config)
-    self.config = config or {}
+    self.config = config
+    self.grow = GROWS[config.Grow]
     local padX, padY = Padding(self)
     for _, record in pairs(self.records) do
         SizeRecord(record, padX, padY)
@@ -201,31 +211,27 @@ function ChainMixin:SetConfig(config)
     Resize(self)
 end
 
----@param grow string?
+---@param grow string
 ---@return string
 function ChainMixin:GetResolvedAnchor(grow)
-    local info = GROWS[grow or self.config.Grow] or GROWS.RIGHT
-    return Aligned(info.point, info, self.config.Align)
+    local entry = GROWS[grow]
+    return Aligned(entry.point, entry, self.config.Align)
 end
 
----Same placement as a DynamicGroup at the top level.
----@param source table
----@param grow string?
----@param extraX number? added to the saved offset, not stored
----@param extraY number?
+---Same placement as a DynamicGroup at the top level
+---@param source CDMDisplay
+---@param grow string
+---@param extraX number added to the saved offset, not stored
+---@param extraY number
 function ChainMixin:UpdateGroupPosition(source, grow, extraX, extraY)
     local position = source.Position
-    if not position then return end
-    local parent = UIParent
-    if source.anchorFrameType == 'SELECTFRAME' and source.ParentFrame then
-        parent = _G[source.ParentFrame] or UIParent
-    end
+    local parent = source.anchorFrameType == 'SELECTFRAME' and _G[source.ParentFrame] or UIParent
     self:ClearAllPoints()
-    self:NCSetGridPoint(position.SelfPoint or self:GetResolvedAnchor(grow), parent, position.AnchorTo or 'CENTER', (position.XOffset or 0) + (extraX or 0), (position.YOffset or 0) + (extraY or 0))
+    self:NCSetGridPoint(position.SelfPoint or self:GetResolvedAnchor(grow), parent, position.AnchorTo, position.XOffset + extraX, position.YOffset + extraY)
     self:SetFrameStrata(source.Strata or 'MEDIUM')
 end
 
----@param child Frame
+---@param child CDMIcon
 ---@param key string
 ---@param order number?
 function ChainMixin:AttachChild(child, key, order)
@@ -260,12 +266,11 @@ function ChainMixin:AttachChild(child, key, order)
     child.chainGroup = self
     local padX, padY = Padding(self)
     SizeRecord(record, padX, padY)
-    -- an aura button made before the icon joined still has to open its slot
-    for _, layer in ipairs(child.layers or {}) do
-        for _, slot in pairs(layer.auraSlots or {}) do
-            if slot.refs.button then
-                self:WatchAuraButton(key, slot.refs.button)
-            end
+    -- An aura button made before the icon joined still has to open its slot
+    for _, layer in ipairs(child.layers) do
+        local refs = layer.auraRefs
+        if refs and refs.button then
+            self:WatchAuraButton(key, refs.button)
         end
     end
     Relink(self)
@@ -307,7 +312,7 @@ function ChainMixin:DetachChild(childOrKey)
     if child.chainGroup == self then
         child.chainGroup = nil
         child.chainPad = nil
-        child:ClearAllPoints() -- still anchored to the slot, its size keeps reading back secret
+        child:ClearAllPoints() -- Still on the slot its size reads back secret
         child:SetParent(NRSKNUI.HiddenFrame)
     end
     Relink(self)
@@ -335,7 +340,7 @@ function ChainMixin:NotifyChildResized(childOrKey, width, height)
     Resize(self)
 end
 
----Whether the icon is loaded (its slot exists) and whether one of its readable triggers is on show.
+---Loaded gives the icon a slot, logic is a trigger Lua can see on show
 ---@param key string
 ---@param loaded boolean
 ---@param logic boolean
@@ -345,14 +350,14 @@ function ChainMixin:SetChildVisible(key, loaded, logic)
     logic = loaded and logic
     if record.loaded == loaded and record.logic == logic then return end
     record.loaded, record.logic = loaded, logic
-    -- The slot stays shown at zero size: a hidden one mid-chain drops every slot after it from the row's size.
+    -- Kept shown at zero size, a hidden slot drops every slot after it from the row
     record.child:SetShown(loaded)
     record.measure:SetShown(logic)
     SizeRecord(record, Padding(self))
     Resize(self)
 end
 
----Measure an aura button too, so the slot opens while the aura is up.
+---Measure an aura button too, so the slot opens while the aura is up
 ---@param key string
 ---@param button table the real aura button, from its initializeFrame
 function ChainMixin:WatchAuraButton(key, button)
@@ -362,16 +367,16 @@ function ChainMixin:WatchAuraButton(key, button)
     probe:SetSize(0.001, 0.001)
     probe:SetPoint('TOPLEFT', button, 'BOTTOMRIGHT')
     record.auraProbes[button] = probe
-    PlaceChain(self) -- an aura in the row changes how it centres
+    PlaceChain(self) -- An aura in the row changes how it centres
 end
 
 -- Measuring --
 
--- An aura button shows and hides without telling us, so every loaded slot is measured each frame.
+-- An aura button shows and hides unseen, so every loaded slot is measured each frame
 ---@param self CDMChainGroup
 local function OnUpdate(self)
-    -- Collapse the centred row before the slots: measured at last frame's width, its float noise fed back
-    -- into this frame's and the icons wobbled a hair every frame, shaking texts that sit on a pixel edge.
+    -- Collapse the row first, as last frame's width feeds its float noise back
+    -- and texts on a pixel edge shake
     self.chain:SetSize(0.001, 0.001)
     for _, record in ipairs(self.order) do
         if record.loaded then
@@ -381,7 +386,7 @@ local function OnUpdate(self)
     Measure(self.chain)
 end
 
----A chained dynamic group for every grow but Grid.
+---A chained dynamic group for every grow but Grid, laid out by its first SetConfig
 ---@return CDMChainGroup
 function CDM:CreateChainGroup()
     local group = CreateFrame('Frame', nil, UIParent) --[[@as CDMChainGroup]]
@@ -393,8 +398,13 @@ function CDM:CreateChainGroup()
     group.records = {}
     group.order = {}
     group.spare = {}
-    group.config = {}
+    group.extent = 1
     Mixin(group, ChainMixin)
     group:SetScript('OnUpdate', OnUpdate)
     return group
 end
+
+-- Exports --
+
+CDM.CHAIN_GROWS = GROWS
+CDM.MeasureBounds = Measure

@@ -1,22 +1,20 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
-local pairs, ipairs = pairs, ipairs
 local CreateFrame = CreateFrame
 local tremove = table.remove
-
 local UIParent = UIParent
+local ipairs = ipairs
+local pairs = pairs
 
-local STATIC_GROUP_SIZE = 32 -- a static group draws nothing; this is what its mover grabs
+-- A static group draws nothing, so this is what its mover grabs
+local STATIC_GROUP_SIZE = 32
 
---[[
-The frames groups live in.
-A plain frame for a group, a dynamic group or a chain group when its icons can't be measured.
-]]
+-- Containers --
 
----A dynamic group (not Grid) holding an aura or a text is chained instead, as their sizes can be secret.
+---A dynamic group holding an aura or a text is chained, as their sizes can be secret
 ---@param id string
 ---@return boolean
 function CDM:WantsChain(id)
@@ -41,7 +39,9 @@ end
 ---@param id string
 function CDM:BuildContainer(id)
     local display = self:Get(id)
-    if not display then return self:Release(id) end
+    if not display then
+        return self:Release(id)
+    end
 
     if display.parent and not self.containers[display.parent] then
         self:BuildContainer(display.parent)
@@ -51,7 +51,7 @@ function CDM:BuildContainer(id)
     local chained = dynamic and self:WantsChain(id)
     local frame = self.containers[id]
     if frame and dynamic and (frame.isChain == true) ~= chained then
-        -- Grid and the chain are different containers: hand the icons over through a clean detach.
+        -- Grid and the chain are different containers, so the icons move over through a clean detach
         for _, icon in pairs(self.icons) do
             if icon.groupId == id then
                 frame:DetachChild(icon)
@@ -78,7 +78,7 @@ function CDM:BuildContainer(id)
     self:EvaluateGroupConditions(display, frame)
 
     if dynamic then
-        ---@cast frame NRSKNUI.DynamicGroup
+        ---@cast frame NorskenCore.DynamicGroup
         if not chained then
             frame.onLayout = function()
                 self:PlaceMatchedBars(id)
@@ -95,7 +95,7 @@ function CDM:BuildContainer(id)
     self:PlaceMatchedBars(id)
 end
 
----Bars matching a group's width follow its frame, which a rebuild or release can swap.
+---Bars matching a group's width follow its frame, which a rebuild or release can swap
 ---@param groupId string
 function CDM:PlaceMatchedBars(groupId)
     for id, display in pairs(self.db.Displays) do

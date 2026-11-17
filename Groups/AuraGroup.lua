@@ -1,201 +1,128 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local L = NRSKNUI.Libs.AL
-local AuraPreview = NRSKNUI.AuraPreview
 local Anchors = NRSKNUI.Anchors
+local Apply = NRSKNUI.Enum.Apply
 
+local UIParent = UIParent
 local pairs = pairs
-local min = math.min
-local tostring = tostring
-local format = string.format
-local CreateFrame = CreateFrame
-local CopyTable = CopyTable
-local ipairs = ipairs
 
-local hosts = {} ---@type table<string, Frame>
+-- An aura group's button has no spell of its own to name
+local AURA_GROUP_TRIGGER = { Type = 'aura', Source = 'custom' }
 
---[[
-Aura groups: a native AuraContainer showing many auras at once, on a host frame placed like any display.
-]]
+local groups = {} ---@type table<string, { aura: AuraDisplay, owner: { id: string, style: NorskenCore.IconStyle } }>
 
--- Config --
-
----The container config built from a tracker's settings; it grows the way a dynamic group with the same Layout does.
----Its buttons are drawn by CDM:InitAuraGroupButton, so nothing here describes their look.
----@param db table
----@return table
-function CDM:GetAuraContainerConfig(db)
-    local style = self:GetStyle(db)
-    local config = NRSKNUI:ResolveAuraFlow(db.Layout, style.Width, style.Height)
-    config.width, config.height = style.Width, style.Height
-    -- the layout otherwise reads each button's own size, which a restyle changes after the layout ran
-    config.elementWidth, config.elementHeight = style.Width, style.Height
-    config.maxFrameCount = db.maxFrameCount
-    config.sortMethod = AuraContainerSortMethod[db.sortMethod]
-    config.sortDirection = AuraContainerSortDirection[db.sortDirection]
-    return config
-end
-
----Most auras a tracker's settings can put on screen, one group per trigger branch.
----@param db table
----@return number
-function CDM:GetAuraPreviewCount(db)
-    return min(db.maxFrameCount * #NRSKNUI:GetTriggerBranches(db.Trigger), db.previewLimit)
-end
-
----The unit a tracker watches, saved variables can outlive the unit list the GUI offers.
----@param db table
----@param name string
----@return string
-function CDM:ResolveAuraUnit(db, name)
-    local unit = db.Trigger and db.Trigger.Unit
-    if not unit then return 'player' end
-
-    if not NRSKNUI:IsValidUnitToken(unit) then
-        NRSKNUI:Print(format(L['Aura group "%s" has an unusable unit (%s), falling back to player.'], name, tostring(unit)))
-        return 'player'
-    end
-
-    return unit
-end
+-- Host --
 
 ---@param id string
 ---@return Frame?
 function CDM:GetAuraHost(id)
-    return hosts[id]
+    local group = groups[id]
+    return group and group.aura.host
+end
+
+-- Show --
+
+-- With the options open a previewed group shows dummies, otherwise what's loaded shows
+---@param id string
+---@param aura AuraDisplay
+local function ShowAuraGroup(id, aura)
+    local previewed = CDM:IsPreviewed(id)
+    local shown
+    if CDM.previewing then
+        shown = previewed
+    else
+        shown = CDM:GetLoadState(id) == 'loaded'
+    end
+    aura.host:SetShown(shown)
+    aura:SetPreview(shown and previewed)
+end
+
+function CDM:RefreshAuraGroups()
+    for id, group in pairs(groups) do
+        ShowAuraGroup(id, group.aura)
+    end
 end
 
 -- Build --
 
----Attach the native container to an aura group's host.
+---Create or re-apply an aura group, a part re-applies only what it names
 ---@param id string
-function CDM:BuildAuraContainer(id)
-    local display, host = self:Get(id), hosts[id]
-    if not (display and host) or host.container then return end
-
-    local config = self:GetAuraContainerConfig(display)
-    config.skin = host.skin
-    local container = host:CreateAuraContainer(config)
-    if not container then return end
-
-    container:ClearAllPoints()
-    container:SetPoint(config.containerPoint, host, config.containerPoint)
-    container:AddFilteredGroup(display.Trigger, { initializeBranchFrame = host.initButton })
-    container:SetUnit(self:ResolveAuraUnit(display, self:GetName(id)))
-    container:UpdateUnitGate() -- also starts the container watching what can move a gate verdict
-    host.container = container
-
-    AuraPreview:Attach(container, host, config.containerPoint)
-    AuraPreview:Update(container, config, self:GetAuraPreviewCount(display), display.Trigger)
-    host.previewShown = nil
-    self:RefreshAuraGroups()
-end
-
----Create or re-apply an aura group, its host is placed like any display, the container follows its settings.
----@param id string
-function CDM:BuildAuraGroup(id)
+---@param part NorskenCore.Apply
+function CDM:BuildAuraGroup(id, part)
     local display = self:Get(id)
-    if not display then return self:Release(id) end
+    if not display then
+        return self:Release(id)
+    end
     if display.parent and not self.containers[display.parent] then
         self:BuildContainer(display.parent)
     end
 
-    display.Trigger = display.Trigger or NRSKNUI.AuraTriggers:New()
-    -- saved before aura groups grew and looked like dynamic groups of icons
-    display.Layout = display.Layout or CopyTable(CDM.AURA_GROUP_TEMPLATE.Layout)
-    display.Style = display.Style or CopyTable(CDM.AURA_GROUP_TEMPLATE.Style)
-    display.SubRegions = display.SubRegions or self:DefaultAuraGroupSubRegions()
-    local host = hosts[id]
-    if not host then
-        host = CreateFrame('Frame', nil, UIParent)
-        hosts[id] = host
+    local group, created = groups[id], false
+    if not group then
         local owner = { id = id }
-        host.owner, host.buttons = owner, {}
-        -- the only time the game hands a button over, so it is kept to restyle later
-        host.initButton = function(button, branch)
-            host.buttons[#host.buttons + 1] = self:InitAuraGroupButton(button, owner, branch)
-        end
-        host.restyle = function()
-            for _, layer in ipairs(host.buttons) do
-                self:StyleAuraGroupButton(layer)
-            end
-        end
-        -- a preview stand-in takes the same look, built once and restyled after
-        host.skin = function(button, branch)
-            local layer = button.nuiGroupLayer
-            if layer then
-                layer.index = branch -- a dummy can stand in for another trigger on the next pass
-                self:StyleAuraGroupButton(layer)
-            else
-                button.nuiGroupLayer = self:InitAuraGroupButton(button, owner, branch)
-            end
-        end
-    end
-    host.owner.style = self:GetStyle(display)
-    host:SetAlpha(host.owner.style.Alpha)
-    local config = self:GetAuraContainerConfig(display)
-    config.skin = host.skin
-    host:SetSize(NRSKNUI:GetAuraGridSize(config, self:GetAuraPreviewCount(display)))
-    self:EvaluateGroupConditions(display, host)
-    self:Place(host, id, display)
+        group = { owner = owner }
+        group.aura = NRSKNUI:NewAuraDisplay(UIParent, {
+            shape = 'group',
+            style = function(entry)
+                -- A button handed over before the container parks can outlive its group
+                local saved = self:Get(id)
+                if not saved then return end
 
-    local container = host.container
-    if not container then
-        -- one function per host, so building again in combat doesn't queue another
-        host.buildContainer = host.buildContainer or function()
-            self:BuildAuraContainer(id)
-        end
-        NRSKNUI:RunWhenSafe(host.buildContainer)
-        return
+                -- Each button stands in for a layer of its own, styled like an icon's aura
+                local layer = entry.layer
+                if not layer then
+                    layer = { owner = owner, auraRefs = entry.refs, isGroupButton = true } --[[@as CDMLayer]]
+                    entry.layer = layer
+                end
+                layer.index = entry.branch
+                layer.subRegions = saved.SubRegions
+                self:StyleAuraButton(layer, AURA_GROUP_TRIGGER)
+            end,
+        })
+        groups[id] = group
+        created = true
     end
 
-    -- existing buttons deny access while auras are secret, so a restyle waits for that to end
-    self:QueueAuraRestyle(host, host.restyle)
-    container:ClearAllPoints()
-    container:SetPoint(config.containerPoint, host, config.containerPoint)
-    container:ApplyLayout(config)
-    container:SetUnit(self:ResolveAuraUnit(display, self:GetName(id)))
-    container:RebindFilteredGroups(display.Trigger)
-    container:UpdateUnitGate()
-    AuraPreview:Attach(container, host, config.containerPoint)
-    AuraPreview:Update(container, config, self:GetAuraPreviewCount(display), display.Trigger)
+    local all = created or part == Apply.All
+    local looks = all or not (part == Apply.Position or part == Apply.Visibility)
+    -- Set before the display reads it, as SetTrigger can hand a button over at once
+    local style = display.Style
+    group.owner.style = style
+    local aura, host = group.aura, group.aura.host
+    if looks then
+        aura:Restyle()
+        host:SetAlpha(style.Alpha)
+    end
+    if all or part == Apply.Layout then
+        aura:SetLayout(NRSKNUI:GetAuraGroupConfig(display, style), NRSKNUI:GetAuraPreviewCount(display))
+    end
+    if all or part == Apply.Visibility then
+        aura:SetTrigger(display.Trigger)
+        aura:SetUnit(display.Trigger.Unit)
+        self:EvaluateGroupConditions(display, host)
+    end
+    -- A condition can move it too
+    if all or part == Apply.Layout or part == Apply.Position or part == Apply.Visibility then
+        self:Place(host, id, display)
+    end
+    if created then
+        ShowAuraGroup(id, aura)
+    end
 end
 
 -- Refresh --
 
----Re-read every aura group's trigger; one trigger page edit can reach any of them.
+---Re-read every aura group's trigger, as one trigger page edit can reach any of them
 function CDM:ReapplyAuraTriggers()
-    for id, host in pairs(hosts) do
-        local display, container = self:Get(id), host.container
-        if display and container then
-            host:SetSize(NRSKNUI:GetAuraGridSize(self:GetAuraContainerConfig(display), self:GetAuraPreviewCount(display)))
-            container:SetUnit(self:ResolveAuraUnit(display, self:GetName(id)))
-            container:RebindFilteredGroups(display.Trigger)
-            container:UpdateUnitGate()
-        end
-    end
-end
-
----Show what is loaded, while the options are open a previewed aura group swaps its live auras for dummies.
-function CDM:RefreshAuraGroups()
-    for id, host in pairs(hosts) do
-        local previewed = self:IsPreviewed(id)
-        local shown
-        if self.previewing then
-            shown = previewed
-        else
-            shown = self:GetLoadState(id) == 'loaded'
-        end
-        host:SetShown(shown)
-
-        local container = host.container
-        local preview = shown and previewed
-        if container and host.previewShown ~= preview then
-            host.previewShown = preview
-            AuraPreview:SetShown(container, preview)
-            container:SetShown(not preview)
+    for id, group in pairs(groups) do
+        local display = self:Get(id)
+        if display then
+            local aura = group.aura
+            aura:SetLayout(NRSKNUI:GetAuraGroupConfig(display, display.Style), NRSKNUI:GetAuraPreviewCount(display))
+            aura:SetTrigger(display.Trigger)
+            aura:SetUnit(display.Trigger.Unit)
         end
     end
 end
@@ -204,23 +131,18 @@ end
 
 ---@param id string
 function CDM:ReleaseAuraGroup(id)
-    local host = hosts[id]
-    if not host then return end
-    -- A container can't be torn down, so the host is parked hidden and stops processing; a new display gets a fresh one.
-    host:Hide()
-    host:ClearAllPoints()
-    hosts[id] = nil
+    local group = groups[id]
+    if not group then return end
+
+    -- A new display gets a fresh one, this one stays parked
+    group.aura:Release()
+    group.aura.host:ClearAllPoints()
+    groups[id] = nil
     Anchors:Unregister(id)
-    local container = host.container
-    if container then
-        NRSKNUI:RunWhenSafe(function()
-            container:SetEnabled(false)
-        end)
-    end
 end
 
 function CDM:ReleaseAuraGroups()
-    for id in pairs(hosts) do
+    for id in pairs(groups) do
         self:ReleaseAuraGroup(id)
     end
 end
