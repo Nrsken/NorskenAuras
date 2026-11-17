@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -35,8 +35,10 @@ local PreviewDuration = CDM.PreviewDuration
 local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
 
 local inCooldownEvent = false
-local gcdEnds = 0               -- steps each time OnGCDEnd sees the GCD end
+local gcdEnds = 0               -- steps each time a GCD ends
 local gcdPassTime
+local gcdStart = 0              -- the running GCD's start, which a press's every event shares
+local gcdWaitEnd = 0            -- when the GCD the rechecked layers wait on ends
 local changedSpell, changedBase -- the spell the running SPELL_UPDATE_COOLDOWN names
 local gcdAtEvent = false
 local namedAt = {} ---@type table<number, number> spellID -> when a SPELL_UPDATE_COOLDOWN last named it
@@ -50,12 +52,13 @@ The game only tells a GCD from a real cooldown inside SPELL_UPDATE_COOLDOWN, so 
 
 -- GCD --
 
--- No event fires when the GCD ends, so the layers last read on a guess are re-read then.
+-- No event fires when the GCD ends, so the layers last read on a guess are re-read then;
+-- 61304 is never secret (/gcdprobe), so its end is known even with the next GCD queued.
 local gcdEndFrame ---@type Frame
 
 ---@param frame Frame
 local function OnGCDEnd(frame)
-    if GetSpellCooldown(GCD_SPELL).isActive then
+    if GetTime() < gcdWaitEnd then
         return frame:NCScheduleUpdate()
     end
 
@@ -64,6 +67,13 @@ local function OnGCDEnd(frame)
         recheck[layer] = nil
         CDM:UpdateLayer(layer)
     end
+end
+
+local function WaitForGCDEnd()
+    local gcd = GetSpellCooldown(GCD_SPELL)
+    ---@diagnostic disable-next-line: secret-arithmetic
+    gcdWaitEnd = gcd.startTime + gcd.duration
+    gcdEndFrame:NCScheduleUpdate()
 end
 
 -- Blizzard's charge verdict --
@@ -253,7 +263,7 @@ CDM.TriggerTypes.spell = {
             layer.readInGCD = gcdAtEvent
             if layer.heldGCD then
                 recheck[layer] = true
-                gcdEndFrame:NCScheduleUpdate()
+                WaitForGCDEnd()
             else
                 recheck[layer] = nil
             end
@@ -264,7 +274,7 @@ CDM.TriggerTypes.spell = {
                     state.onGCD = true -- a GCD its cooldown event hasn't reached yet: SPELL_UPDATE_CHARGES fires before it
                 end
                 recheck[layer] = true
-                gcdEndFrame:NCScheduleUpdate()
+                WaitForGCDEnd()
             else
                 -- the API can still read active the frame its swipe ends; Blizzard's viewer trusts its end time there (IsExpired)
                 if layer.timerDone then
@@ -342,7 +352,7 @@ CDM.TriggerTypes.spell = {
             if state.onCooldown or state.recharging then
                 alpha = duration:EvaluateTotalDuration(NRSKNUI.curves.CountdownAlpha, Enum.DurationTimeModifier.RealTime) --[[@as number]]
             end
-            for i = 1, layer.textCount or 0 do
+            for i = 1, layer.textCount do
                 local text = layer.texts[i]
                 if text.kind == 'duration' and not text.source then
                     text.fs:SetAlpha(alpha)
@@ -413,6 +423,13 @@ local handlers = {
         if not spellID or (gcd and now ~= gcdPassTime) then
             if gcd then
                 gcdPassTime = now
+                -- a new GCD ended the last one, maybe this frame before OnGCDEnd ran
+                local start = GetSpellCooldown(GCD_SPELL).startTime
+                ---@diagnostic disable-next-line: secret-comparison
+                if start ~= gcdStart then
+                    gcdStart = start
+                    gcdEnds = gcdEnds + 1
+                end
             end
             CDM:UpdateAllTriggers(CDM.SPELL_TYPES)
         else

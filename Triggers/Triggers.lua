@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -232,18 +232,23 @@ function CDM:GetWarnings(id)
     end
 
     local dropped = self:DroppedAuraTexts(display)
+    -- an aura group's %N. reads its trigger's branch N
+    local readable = #triggers
+    if display.type == 'auragroup' then
+        readable = NRSKNUI:CountTriggerBranches(display.Trigger)
+    end
     local textIndex = 0
-    for _, element in ipairs(display.SubRegions or {}) do
+    for _, element in ipairs(display.SubRegions) do
         if element.type == 'text' then
             textIndex = textIndex + 1
             for source in (element.Text or ''):gmatch('%%(%d+)%.[ptsn]') do
                 local n = tonumber(source)
-                if not triggers[n] then
+                if n < 1 or n > readable then
                     warnings[#warnings + 1] = format(L['Text %d reads trigger %d, which does not exist.'], textIndex, n)
                 end
             end
             if dropped[element] then
-                warnings[#warnings + 1] = format(L["Text %d stays empty: an earlier text already shows the aura's timer or stacks."], textIndex)
+                warnings[#warnings + 1] = format(L["Text %d stays empty: an earlier text already shows the aura's timer, stacks, caster or name."], textIndex)
             end
         end
     end
@@ -415,7 +420,7 @@ function CDM:ApplyVisibility(id, frame)
         return
     end
 
-    ---@cast group NRSKNUI.DynamicGroup?
+    ---@cast group NorskenCore.DynamicGroup?
     if group then
         if visible then
             group:ActivateChild(id)

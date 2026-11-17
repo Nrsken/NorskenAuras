@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -9,11 +9,11 @@ local UnitCastingInfo, UnitChannelInfo = UnitCastingInfo, UnitChannelInfo
 local UnitEmpoweredStagePercentages = UnitEmpoweredStagePercentages
 local UnitEmpoweredChannelDuration = UnitEmpoweredChannelDuration
 local pairs, ipairs = pairs, ipairs
+local issecretvalue = issecretvalue
 local CreateFrame = CreateFrame
 local GetNetStats = GetNetStats
 local GetTime = GetTime
 local select = select
-local issecretvalue = issecretvalue
 
 local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName

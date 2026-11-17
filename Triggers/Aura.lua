@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -21,38 +21,12 @@ local PreviewDuration = CDM.PreviewDuration
 
 local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
 local PREVIEW_PANDEMIC = CDM.PREVIEW_PANDEMIC
-local QUESTION_MARK = 134400
+local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
 
 --[[
 Aura and Aura Overlay triggers. The game shows the aura through an aura button and never tells us it's up,
 so this file points the button at its spells and draws the options preview and placeholder with the layer's own parts.
 ]]
-
--- Restyle --
-
----Restyle a layer's aura button now or once the restriction lifts: existing buttons deny tainted access while
----auras are secret, not just in combat. The restriction queue keeps every entry, so a layer waits there once with its latest.
----@param layer CDMLayer|Frame a layer, or an aura group's host restyling all its buttons
----@param restyle fun()
-function CDM:QueueAuraRestyle(layer, restyle)
-    if not NRSKNUI:AreAurasSecret() then
-        restyle()
-        return
-    end
-
-    layer.restyleAura = restyle
-    if NRSKNUI:IsRestricted() and not layer.restyleQueued then
-        layer.restyleQueued = true
-        NRSKNUI:DeferUntilUnrestricted(0, function()
-            layer.restyleQueued = nil
-            local queued = layer.restyleAura
-            layer.restyleAura = nil
-            if queued then
-                queued()
-            end
-        end)
-    end
-end
 
 -- Stand-in --
 
@@ -78,7 +52,7 @@ local function PaintStandIn(layer, display, style, changes, textsShown)
         layer.Bar.bg:SetVertexColor(unpack(changes.backgroundColor or style.BackgroundColor))
     end
     local borders, texts = 0, 0
-    for n, element in ipairs(display.SubRegions or {}) do
+    for n, element in ipairs(display.SubRegions) do
         local visible = changes['sub.' .. n .. '.visible']
         local color = changes['sub.' .. n .. '.color'] or element.Color
         if element.type == 'border' then
@@ -146,7 +120,7 @@ local function AuraKey(trigger, spellIDs)
         ids[#ids + 1] = spellID
     end
     tsort(ids)
-    return tconcat(ids, ',') .. '|' .. tostring(trigger.Unit) .. '|' .. tostring(trigger.OwnOnly)
+    return tconcat(ids, ',') .. '|' .. tostring(trigger.Unit) .. '|' .. tostring(trigger.OwnOnly) .. '|' .. CDM:GetAuraBase(trigger)
 end
 
 -- Trigger --
@@ -169,21 +143,16 @@ CDM.TriggerTypes.aura = {
         end
 
         local key = AuraKey(trigger, spellIDs)
-        local configured = layer.auraKey == key
         layer.auraKey = key
-        local function Restyle()
-            if layer.auraKey == key then
-                CDM:StyleAuraButton(layer, trigger)
-            end
-        end
         local function Apply()
             if layer.auraKey ~= key then return end
-            if not configured then
+            -- read when it runs: a later resolve in the same combat replaces this one
+            if layer.auraConfigured ~= key then
                 CDM:ConfigureAuraLayer(layer, trigger, spellIDs)
+                layer.auraConfigured = key
             end
-            if configured or NRSKNUI:AreAurasSecret() then
-                CDM:QueueAuraRestyle(layer, Restyle)
-            end
+            layer.auraTrigger = trigger -- an edit can keep the key, with new settings
+            layer.aura:Restyle()
         end
         -- Re-resolved on every catalogue change: a fresh closure each time would pile up in the combat queue.
         layer.applyAura = Apply
@@ -218,8 +187,8 @@ CDM.TriggerTypes.aura = {
         if layer.isBar then
             layer.Bar:SetShown(preview)
         end
-        if layer.auraHost then
-            layer.auraHost:SetShown(not preview and layer.auraKey ~= nil)
+        if layer.aura then
+            layer.aura.host:SetShown(not preview and layer.auraKey ~= nil)
         end
         if overlay and display and display.type == 'bar' and (preview or layer.previewOverlayShown) then
             layer.previewOverlay = layer.previewOverlay or {}
@@ -295,7 +264,7 @@ CDM.TriggerTypes.aura = {
         CDM:UpdateTexts(layer)
         if overlay and display then
             local ordinal = 0
-            for index, element in ipairs(display.SubRegions or {}) do
+            for index, element in ipairs(display.SubRegions) do
                 if element.type == 'text' then
                     ordinal = ordinal + 1
                     local text = layer.texts[ordinal]
@@ -319,7 +288,7 @@ CDM.TriggerTypes.aura = {
             end
         end
         if display then
-            for index, element in ipairs(display.SubRegions or {}) do
+            for index, element in ipairs(display.SubRegions) do
                 if element.type == 'glow' then
                     local key = 'sub.' .. index .. '.visible'
                     local shown = active[key]
@@ -356,7 +325,7 @@ CDM.TriggerTypes.aura = {
             local host = CreateFrame('Frame', nil, layer)
             host:SetAllPoints()
             border = host:CreateTexture(nil, 'OVERLAY')
-            border:SetTexture(CDM.PANDEMIC_TEXTURE)
+            border:SetTexture(NRSKNUI.AURA_OVERLAY_TEXTURE)
             border:NCSetInside(layer)
             layer.previewPandemic = border
         end

@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -371,7 +371,7 @@ CDM.TriggerTypes.power = {
     ---@param style table
     Update = function(layer, style, trigger)
         local powerType = layer.powerType
-        if (layer.pipCount or 0) > 0 then
+        if layer.pipCount > 0 then
             UpdatePips(layer, trigger)
             CDM:UpdateTexts(layer)
             return
@@ -475,7 +475,7 @@ local function OnPowerEvent(_, event)
             if event ~= 'UNIT_POWER_FREQUENT' and event ~= 'RUNE_POWER_UPDATE' and event ~= 'UNIT_POWER_POINT_CHARGE' and not aura then
                 powerTrigger.Resolve(layer, trigger)
             end
-            if (layer.pipCount or 0) > 0 or layer.powerType == MAELSTROM_WEAPON then
+            if layer.pipCount > 0 or layer.powerType == MAELSTROM_WEAPON then
                 CDM:UpdateLayer(layer)
             else
                 powerTrigger.Update(layer, layer.owner.style, trigger)

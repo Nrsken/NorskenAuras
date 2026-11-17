@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -155,7 +155,7 @@ end
 local function GatedTexts(layer, statLayer)
     local pattern = '%%' .. statLayer.index .. '%.[npt]'
     local gated
-    for i = 1, layer.textCount or 0 do
+    for i = 1, layer.textCount do
         local element = layer.texts[i].element
         if layer == statLayer or (element and strfind(element.Text or '', pattern)) then
             gated = gated or {}
@@ -202,7 +202,7 @@ local function StyleGates(layer, statLayer, gated)
             fill:SetFrameLevel(layer.Bar:GetFrameLevel() + 1)
             fill:SetStatusBarTexture(NRSKNUI:GetStatusbar(style))
             fill:SetOrientation(style.Orientation == 'VERTICAL' and 'VERTICAL' or 'HORIZONTAL')
-            fill:SetReverseFill(style.ReverseFill == true)
+            fill:SetReverseFill(style.ReverseFill)
 
             local color = layer.barColor or style.BarColor
             fill:SetStatusBarColor(unpack(color))
