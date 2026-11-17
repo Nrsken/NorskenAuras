@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -6,11 +6,7 @@ local CDM = NRSKNUI:GetModule('CDM')
 local CreateFrame = CreateFrame
 local ipairs = ipairs
 
---[[
-A text display's frame follows its text's size, so a group can lay it out like an icon.
-]]
-
----Size a text display's frame to the shown text through anchors; the size turns secret with the text, so it's never read back.
+-- Anchored to the shown text, as its size turns secret with the text and is never read back
 ---@param frame CDMIcon
 local function FitText(frame)
     local layer = frame.activeLayer or frame.layers[1]
@@ -27,11 +23,11 @@ local function FitText(frame)
     CDM.MeasureBounds(frame)
 end
 
----Size a text display's frame to its text each frame, unless it sits in a Grid dynamic group.
+---A text display's frame follows its text, unless it sits in a Grid dynamic group
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 function CDM:SetupTextFit(frame, display)
-    -- A Grid dynamic group reads its children's sizes, so a text there keeps the style's box.
+    -- A Grid dynamic group reads its children's sizes, so a text there keeps the style's box
     local fits = display.type == 'text' and not (self:IsDynamic(display.parent) and not self:WantsChain(display.parent))
     if fits and not frame.fitProbes then
         frame.fitProbes = {}
@@ -41,8 +37,11 @@ function CDM:SetupTextFit(frame, display)
             frame.fitProbes[i] = probe
         end
     end
-    for _, probe in ipairs(frame.fitProbes or {}) do
-        probe:SetShown(fits)
+    -- Made the first time a text fits
+    if frame.fitProbes then
+        for _, probe in ipairs(frame.fitProbes) do
+            probe:SetShown(fits)
+        end
     end
     frame.fitsText, frame.fitText = fits, nil
     frame:SetScript('OnUpdate', fits and FitText or nil)

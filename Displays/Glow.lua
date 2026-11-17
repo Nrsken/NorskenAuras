@@ -1,35 +1,31 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local WHITE = NRSKNUI.WhiteTexture
 
-local min, abs, ceil = math.min, math.abs, math.ceil
-local pairs, ipairs = pairs, ipairs
 local setmetatable = setmetatable
 local CreateFrame = CreateFrame
+local wipe = table.wipe
+local ceil = math.ceil
+local ipairs = ipairs
 local unpack = unpack
-local wipe = wipe
+local abs = math.abs
+local min = math.min
+local pairs = pairs
 
 local ICON_ALERT = 'Interface\\SpellActivationOverlay\\IconAlert'
 local ICON_ALERT_ANTS = 'Interface\\SpellActivationOverlay\\IconAlertAnts'
 local SHINE = 'Interface\\Artifacts\\Artifacts'
-local SHINE_COORDS = { 0.8115234375, 0.9169921875, 0.8798828125, 0.9853515625 } -- LibCustomGlow's retail sparkle
-local WHITE = NRSKNUI.WhiteTexture
-local MASK_HOLE = 'Interface\\AdventureMap\\BrokenIsles\\AM_29' -- LibCustomGlow's mask: clear inside, white outside when clamped
+-- LibCustomGlow's retail sparkle
+local SHINE_COORDS = { 0.8115234375, 0.9169921875, 0.8798828125, 0.9853515625 }
+-- LibCustomGlow's mask, clear inside and white outside when clamped
+local MASK_HOLE = 'Interface\\AdventureMap\\BrokenIsles\\AM_29'
 local GOLD = { 0.95, 0.95, 0.32, 1 }
-
--- a glow saved before a setting existed draws that setting from the template
----@type table
-CDM.GLOW_DEFAULTS = CDM.SUBREGION_TEMPLATES.glow
-
---[[
-Glow sub elements: Blizzard's proc and assisted-combat art, the classic ants, a pixel border and autocast sparkles.
-All of it runs on animation groups, since a glow inside an aura button never gets an OnUpdate.
-]]
 
 -- Parts --
 
----@param settings table
+---@param settings NorskenCore.SubElement
 ---@param tintable boolean flipbooks keep their own art color unless a color is picked
 ---@return number[]? color nil for the art's own color
 local function ResolveColor(settings, tintable)
@@ -57,8 +53,8 @@ end
 local Glow = {}
 Glow.__index = Glow
 
----A texture kept for the glow's lifetime; unused ones go to alpha 0, never Hide, since a pandemic
----region's shown state belongs to the client.
+---A texture kept for the glow's lifetime, unused ones go to alpha 0 and never Hide
+---A pandemic region's shown state belongs to the client
 ---@param key string
 ---@param layer DrawLayer?
 ---@param parent Frame? a frame of the glow's own, see Glow:Frame
@@ -77,7 +73,7 @@ function Glow:Part(key, layer, parent)
     return texture
 end
 
----A plain frame inside the glow, for parts that need one (a clipping strip).
+---A plain frame inside the glow, for parts that need one like a clipping strip
 ---@param key string
 ---@return Frame
 function Glow:Frame(key)
@@ -89,7 +85,7 @@ function Glow:Frame(key)
     return frame
 end
 
----A mask that hides everything further than `inset` inside the glow's edge.
+---A mask hiding everything further than inset inside the glow's edge
 ---@param index number
 ---@param inset number
 ---@return MaskTexture
@@ -151,9 +147,10 @@ end
 
 -- Types --
 
+-- Animation groups only, as a glow inside an aura button never gets an OnUpdate
 local BUILDERS = {}
 
--- Blizzard's proc glow (ActionButtonSpellAlerts.xml): a loop 20% outside the icon, a start burst first.
+-- Blizzard's proc glow (ActionButtonSpellAlerts.xml), a loop 20% outside after a burst
 function BUILDERS.modern(self, settings, width, height, starting)
     local loop = self:Part('procLoop')
     loop:SetAtlas('UI-HUD-ActionBar-Proc-Loop-Flipbook')
@@ -186,10 +183,10 @@ function BUILDERS.modern(self, settings, width, height, starting)
     end
 end
 
--- The assisted-combat ants (ActionButtonComponentTemplate.xml): a 66px flipbook on a 45px button.
+-- Assisted combat ants (ActionButtonComponentTemplate.xml), 66px on a 45px button
 function BUILDERS.gcd(self, settings, width, height)
     local color = ResolveColor(settings, false)
-    -- The blue art desaturates to a dark grey; an additive second copy lifts a picked color back to full brightness.
+    -- The blue art desaturates to dark grey, so an additive copy lifts a picked color back
     local keys = color and { 'gcdAnts', 'gcdAntsBoost' } or { 'gcdAnts' }
     local groups, restart = {}, false
     for i, key in ipairs(keys) do
@@ -206,7 +203,8 @@ function BUILDERS.gcd(self, settings, width, height)
         groups[i] = group
         restart = restart or not group:IsPlaying()
     end
-    if restart then -- both copies start together so their frames line up
+    -- Both copies start together so their frames line up
+    if restart then
         for _, group in ipairs(groups) do
             group:Stop()
             group:Play()
@@ -223,7 +221,8 @@ local function Ants(self, settings, width, height)
     ants:SetAlpha(1)
     self:Group('alertAnts', ants, function(group)
         group:SetLooping('REPEAT')
-        FlipBook(group, 5, 5, 22, 0.66, 48, 48) -- 48px frames on a 256px sheet
+        -- 48px frames on a 256px sheet
+        FlipBook(group, 5, 5, 22, 0.66, 48, 48)
     end):Play()
 end
 
@@ -231,7 +230,7 @@ function BUILDERS.classic(self, settings, width, height)
     Ants(self, settings, width, height)
 end
 
--- LibCustomGlow's action button glow at rest: the outer halo and the ants.
+-- LibCustomGlow's action button glow at rest, the outer halo and the ants
 function BUILDERS.button(self, settings, width, height)
     local halo = self:Part('alertHalo', 'ARTWORK')
     halo:SetTexture(ICON_ALERT)
@@ -242,7 +241,7 @@ function BUILDERS.button(self, settings, width, height)
     Ants(self, settings, width, height)
 end
 
--- LibCustomGlow's pixel glow on native animations, since an aura button never runs our OnUpdate; clockwise from the bottom left.
+-- LibCustomGlow's pixel glow on native animations, clockwise from the bottom left
 local EDGES = {
     { key = 'left',   from = 'BOTTOMLEFT',  to = 'TOPLEFT',     anchor = 'BOTTOM', dx = 0,  dy = 1 },
     { key = 'top',    from = 'TOPLEFT',     to = 'TOPRIGHT',    anchor = 'LEFT',   dx = 1,  dy = 0 },
@@ -250,14 +249,20 @@ local EDGES = {
     { key = 'bottom', from = 'BOTTOMRIGHT', to = 'BOTTOMLEFT',  anchor = 'RIGHT',  dx = -1, dy = 0 },
 }
 
+---@param self CDMGlow
+---@param settings NorskenCore.SubElement
+---@param width number
+---@param height number
 function BUILDERS.pixel(self, settings, width, height)
     local color = ResolveColor(settings, true)
     local th = settings.Thickness
     local length = min(settings.Length, width, height)
     local spacing = 2 * (width + height) / settings.Lines
-    local step = 1 / settings.Frequency / settings.Lines -- seconds for a line to reach the next one's place
+    -- Seconds for a line to reach the next one's place
+    local step = 1 / settings.Frequency / settings.Lines
     local shape = width .. ':' .. height .. ':' .. th .. ':' .. length .. ':' .. settings.Lines .. ':' .. settings.Frequency
-    local restart = self.pixelShape ~= shape -- restyles start the glow again; only a new shape may restart the lines
+    -- Restyles start the glow again, only a new shape may restart the lines
+    local restart = self.pixelShape ~= shape
     local groups = {}
     local along = 0
     for _, edge in ipairs(EDGES) do
@@ -274,7 +279,8 @@ function BUILDERS.pixel(self, settings, width, height)
             strip:SetWidth(th)
         end
 
-        local scale = (size - th) / size -- a line's start only runs over size - th, so its end lands on the corner
+        -- A line's start only runs over size - th, so its end lands on the corner
+        local scale = (size - th) / size
         local gap = spacing * scale
         local dash = length * scale + th
         local phase = ((along + length / 2) * scale) % gap
@@ -304,7 +310,8 @@ function BUILDERS.pixel(self, settings, width, height)
         end
         along = along + size
     end
-    if restart then -- every line starts together so they stay evenly spaced
+    -- Every line starts together so they stay evenly spaced
+    if restart then
         for _, group in ipairs(groups) do
             group:Stop()
             group.slide:SetOffset(group.dx, group.dy)
@@ -329,8 +336,8 @@ function BUILDERS.pixel(self, settings, width, height)
     end
 end
 
--- LibCustomGlow's four rings of four sparkles, each moving corner to corner on chained translations.
--- Ring n laps n times slower and starts a quarter lap on, so the rings drift apart instead of travelling as one.
+-- LibCustomGlow's four rings of four sparkles, corner to corner on chained translations
+-- Ring n laps n times slower and starts a quarter lap on, so the rings drift apart
 local SPARKLE_SIZES = { 7, 6, 5, 4 }
 local AUTOCAST_LAP = 2
 local CORNERS = { 'TOPLEFT', 'TOPRIGHT', 'BOTTOMRIGHT', 'BOTTOMLEFT' }
@@ -338,7 +345,7 @@ local CORNERS = { 'TOPLEFT', 'TOPRIGHT', 'BOTTOMRIGHT', 'BOTTOMLEFT' }
 function BUILDERS.autocast(self, settings, width, height)
     local color = ResolveColor(settings, true)
     local perimeter = 2 * (width + height)
-    -- Clockwise moves from each corner, as offsets.
+    -- Clockwise moves from each corner, as offsets
     local moves = { { width, 0 }, { 0, -height }, { -width, 0 }, { 0, height } }
     for ring, size in ipairs(SPARKLE_SIZES) do
         local lap = AUTOCAST_LAP * ring
@@ -376,21 +383,11 @@ end
 
 -- Glow --
 
----@param settings table
+---@param settings NorskenCore.SubElement
 ---@param width number
 ---@param height number
 ---@param starting boolean? play a start animation, when the type has one
 function Glow:Start(settings, width, height, starting)
-    local saved = settings
-    settings = setmetatable({}, {
-        __index = function(_, key)
-            local value = saved[key]
-            if value == nil then
-                return CDM.GLOW_DEFAULTS[key]
-            end
-            return value
-        end
-    })
     local previous = self.active
     self.active = {}
     local build = BUILDERS[settings.Type] or BUILDERS.modern
@@ -416,7 +413,7 @@ function Glow:Stop()
     wipe(self.active)
 end
 
----A glow drawing on `host`, which the caller sizes and places; `onTexture` sees every texture it makes.
+---A glow on a host the caller sizes and places, onTexture sees every texture it makes
 ---@param host Frame
 ---@param onTexture fun(texture: Texture)?
 ---@return CDMGlow
