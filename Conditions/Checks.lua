@@ -1,20 +1,19 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local LoadConditions = NRSKNUI.LoadConditions
 
 --[[
-What a condition can check on each trigger type and how it reads the answer.
-A trigger type adds its own checks to CDM.ConditionChecks.
-A curve check reads a secret time, percent or stack count, so we never run it ourselves: its Text Color changes become a curve or count formatter the game evaluates.
+What a condition can check on each trigger type, each trigger file adds its own
+A curve check reads a secret, so the game runs it through a curve or count formatter
 ]]
 
 local UnitCanAttack = UnitCanAttack
 local UnitExists = UnitExists
 local pairs = pairs
 
----@type table<string, table<string, { type: 'bool'|'number'|'select', secret?: boolean, curve?: boolean, talents?: boolean, negatable?: boolean, get?: (fun(layer: CDMLayer, trigger: table, pip: CDMPip?): any), match?: (fun(value: any, layer: CDMLayer?, check: table): boolean), options?: string }>>
+---@type table<string, table<string, CDMCheckDef>>
 CDM.ConditionChecks = {}
 
 CDM.ConditionChecks.global = {
@@ -23,19 +22,20 @@ CDM.ConditionChecks.global = {
     attackable = { type = 'bool', get = function() return UnitCanAttack('player', 'target') == true end },
 }
 
--- Player/Unit checks; spec and talents can't change in combat, so a group can move on them.
+-- Player and Unit checks
+-- Spec and talents can't change in combat, so a group can move on them
 CDM.ConditionChecks.group = {
-    -- negatable: the pick takes an = / ~= in check.op, so it can also ask for a class missing from the group
+    -- Negatable takes = or ~= in check.op, to ask for a missing class too
     classInGroup = { type = 'select', options = 'class', negatable = true, match = function(class) return NRSKNUI:IsClassInGroup(class) end },
     spec = { type = 'select', options = 'spec', match = function(specID) return LoadConditions:GetSpecID() == specID end },
-    -- check.entries holds the picks: [entryID] = true must have, false must not
+    -- check.entries maps entryID to true for must have, false for must not
     talent = {
         type = 'select',
         options = 'spec',
         talents = true,
         match = function(specID, _, check)
             if LoadConditions:GetSpecID() ~= specID then return false end
-            for entryID, wanted in pairs(check.entries or {}) do
+            for entryID, wanted in pairs(check.entries) do
                 if LoadConditions:HasTalent(entryID) ~= wanted then return false end
             end
             return true
@@ -43,17 +43,17 @@ CDM.ConditionChecks.group = {
     },
 }
 
--- What a group's conditions can check: nothing that flips in combat, where a group holding aura buttons can't move.
+-- A group holding aura buttons can't move in combat, so it checks only these
 CDM.GROUP_CHECKS = { spec = true, talent = true }
 
--- Stand-in triggers, so a global or group check finds its checks through Type like any trigger.
+-- Stand-in triggers, so global and group checks resolve through Type
 CDM.GLOBAL_TRIGGER = { Type = 'global' }
 CDM.GROUP_TRIGGER = { Type = 'group' }
 
----The trigger a check reads; 0 is global, -1 is group.
----@param display table
+---The trigger a check reads, 0 being global and -1 group
+---@param display CDMDisplay
 ---@param index number?
----@return table?
+---@return CDMTrigger?
 function CDM:GetCheckTrigger(display, index)
     if index == 0 then
         return self.GLOBAL_TRIGGER
@@ -62,5 +62,5 @@ function CDM:GetCheckTrigger(display, index)
         return self.GROUP_TRIGGER
     end
 
-    return index and display.Triggers and display.Triggers[index] -- a group has no triggers
+    return index and display.Triggers and display.Triggers[index] -- A group has no triggers
 end

@@ -1,112 +1,36 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-
---[[
-Runs a display's conditions and puts their changes on it, taking them back off once they stop matching.
-Also keeps conditions pointing at the right triggers and sub elements when those move.
-]]
-
-local ipairs, pairs, next = ipairs, pairs, next
-local tremove, tsort = table.remove, table.sort
-local CreateColor = CreateColor
-local tonumber = tonumber
-local GetTime = GetTime
-local unpack = unpack
-local select = select
-local wipe = wipe
-
-local NewTimer = C_Timer.NewTimer
-local CreateColorCurve = C_CurveUtil.CreateColorCurve
-local CreateNumericRuleFormatter = C_StringUtil.CreateNumericRuleFormatter
-
 local PROPERTIES = CDM.ConditionProperties
 local SubElement = CDM.ConditionRegions.SubElement
 local PaintRegion = CDM.ConditionRegions.PaintRegion
+local Apply = NRSKNUI.Enum.Apply
+
+--[[
+Runs a display's conditions, putting their changes on and taking them back off
+Also keeps conditions on the right triggers and sub elements when those move
+]]
+
+local CreateColor = CreateColor
+local tremove = table.remove
+local tonumber = tonumber
+local GetTime = GetTime
+local sort = table.sort
+local wipe = table.wipe
+local ipairs = ipairs
+local select = select
+local unpack = unpack
+local pairs = pairs
+local next = next
+
+local CreateNumericRuleFormatter = C_StringUtil.CreateNumericRuleFormatter
+local CreateColorCurve = C_CurveUtil.CreateColorCurve
+local NewTimer = C_Timer.NewTimer
+
+local LuaCurveType = Enum.LuaCurveType
+
 CDM.COMBINATIONS = { AND = true, OR = true }
-
--- Curve checks --
-
----@param display table
----@param check table
----@return table?
-local function CheckDef(display, check)
-    local trigger = CDM:GetCheckTrigger(display, check.trigger)
-    local checks = trigger and CDM.ConditionChecks[trigger.Type]
-    return checks and checks[check.variable]
-end
-
----@param display table
----@param check table
----@return boolean
-local function IsCurve(display, check)
-    local def = CheckDef(display, check)
-    return def ~= nil and def.curve == true
-end
-
----The curve part of an All of, the one check the game decides in it.
----@param display table
----@param check table
----@return table?
-local function CurvePart(display, check)
-    if check.variable ~= 'AND' then return nil end
-
-    for _, sub in ipairs(check.checks or {}) do
-        if IsCurve(display, sub) then
-            return sub
-        end
-    end
-end
-
----Whether the game decides this check out of our sight (an aura's own checks, the colour curves), so Else If can't follow it.
----@param display table
----@param check table
----@return boolean
-local function GameDecided(display, check)
-    local def = CheckDef(display, CurvePart(display, check) or check)
-    return def ~= nil and (def.secret == true or def.curve == true)
-end
-
----The check a condition's curve follows: the check itself or the one curve part of an All of whose other parts are spec
----and talent checks that all match now. Those can't change in combat, so the curve is rebuilt when they do.
----@param display table
----@param check table
----@return table?
-local function CurveCheck(display, check)
-    if check.variable ~= 'AND' then
-        return check
-    end
-
-    local curve
-    for _, sub in ipairs(check.checks or {}) do
-        if sub.trigger == -1 and CDM.GROUP_CHECKS[sub.variable] then
-            if not CheckDef(display, sub).match(sub.value, nil, sub) then return nil end
-        elseif curve or not IsCurve(display, sub) then
-            return nil
-        else
-            curve = sub
-        end
-    end
-    return curve
-end
-
----Which of the display's spec or talent gated curves build right now, as '10'; nil when it has none.
----A build keeps it, so a player change only rebuilds the displays where it moved.
----@param display table
----@return string?
-function CDM:CurveGates(display)
-    local gates
-    for _, condition in ipairs(display.Conditions or {}) do
-        local check = condition.check or {}
-        if CurvePart(display, check) then
-            gates = (gates or '') .. (CurveCheck(display, check) and '1' or '0')
-        end
-    end
-    return gates
-end
-
--- Evaluate --
 
 local OPERATORS = {
     ['<']  = function(a, b) return a < b end,
@@ -117,15 +41,54 @@ local OPERATORS = {
     ['~='] = function(a, b) return a ~= b end,
 }
 
----@param check table
----@param display table
+---@param display CDMDisplay
+---@param check CDMCheck
+---@return CDMCheckDef?
+local function CheckDef(display, check)
+    local trigger = CDM:GetCheckTrigger(display, check.trigger)
+    local checks = trigger and CDM.ConditionChecks[trigger.Type]
+    return checks and checks[check.variable]
+end
+
+---@param display CDMDisplay
+---@param check CDMCheck
+---@return boolean
+local function IsCurve(display, check)
+    local def = CheckDef(display, check)
+    return def ~= nil and def.curve == true
+end
+
+-- The one curve check inside an All of
+---@param display CDMDisplay
+---@param check CDMCheck
+---@return CDMCheck?
+local function CurvePart(display, check)
+    if check.variable ~= 'AND' then return nil end
+
+    for _, sub in ipairs(check.checks) do
+        if IsCurve(display, sub) then
+            return sub
+        end
+    end
+end
+
+---@param display CDMDisplay
+---@param check CDMCheck
+---@return boolean
+local function GameDecided(display, check)
+    local def = CheckDef(display, CurvePart(display, check) or check)
+    return def ~= nil and (def.secret == true or def.curve == true)
+end
+
+---@param check CDMCheck
+---@param display CDMDisplay
 ---@param frame CDMIcon|Frame a group's frame has no layers
 ---@param pip CDMPip? a split bar's pip, read instead of the whole bar
 ---@return boolean? matched nil when the check can't run here
 local function Matches(check, display, frame, pip)
     if CDM.COMBINATIONS[check.variable] then
         local isAnd = check.variable == 'AND'
-        local subs = check.checks or {}
+        local subs = check.checks
         if not subs[1] then return false end
         for _, sub in ipairs(subs) do
             local matched = Matches(sub, display, frame, pip) == true
@@ -155,15 +118,52 @@ local function Matches(check, display, frame, pip)
     return op ~= nil and op(value, tonumber(check.value) or 0)
 end
 
----When a remaining-time check next flips, so the display re-runs without an event.
----@param check table
+-- Later changes win, Else If stops at the first match
+---@param conditions CDMCondition[]
+---@param display CDMDisplay
+---@param frame CDMIcon|Frame
+---@param pip CDMPip?
+---@param overrides table<string, any> property to the value it takes
+---@param matches table<number, boolean> by condition index
+local function Collect(conditions, display, frame, pip, overrides, matches)
+    local chainMatched, lastDecided = false, false
+    for index, condition in ipairs(conditions) do
+        local check = condition.check
+        local matched = Matches(check, display, frame, pip) == true
+        -- An Else If chain breaks around a check the game decides
+        local decided = GameDecided(display, check)
+        if condition.linked and index > 1 and not (decided or lastDecided) then
+            matched = matched and not chainMatched
+            chainMatched = chainMatched or matched
+        else
+            chainMatched = matched
+        end
+        lastDecided = decided
+        matches[index] = matched
+
+        if matched then
+            for _, change in ipairs(condition.changes) do
+                if change.property and change.property ~= 'sound' then
+                    overrides[change.property] = change.value
+                end
+            end
+        end
+    end
+end
+
+-- Evaluate --
+
+local pipOverrides, pipMatches, pipKeys = {}, {}, {}
+
+-- Seconds until a remaining-time check flips
+---@param check CDMCheck
 ---@param frame CDMIcon
 ---@param now number
 ---@return number? seconds from now
 local function NextFlip(check, frame, now)
     if CDM.COMBINATIONS[check.variable] then
         local soonest
-        for _, sub in ipairs(check.checks or {}) do
+        for _, sub in ipairs(check.checks) do
             local flip = NextFlip(sub, frame, now)
             if flip and (not soonest or flip < soonest) then
                 soonest = flip
@@ -184,46 +184,12 @@ local function NextFlip(check, frame, now)
     end
 end
 
----Later changes win, Else If stops at the first match.
----@param conditions table[]?
----@param display table
----@param frame CDMIcon|Frame
----@param pip CDMPip?
----@param overrides table
----@param matches table
-local function Collect(conditions, display, frame, pip, overrides, matches)
-    local chainMatched, lastDecided = false, false
-    for index, condition in ipairs(conditions or {}) do
-        local check = condition.check or {}
-        local matched = Matches(check, display, frame, pip) == true
-        -- nothing knows whether a check the game decides matched, so a chain breaks on either side of it
-        local decided = GameDecided(display, check)
-        if condition.linked and index > 1 and not (decided or lastDecided) then
-            matched = matched and not chainMatched
-            chainMatched = chainMatched or matched
-        else
-            chainMatched = matched
-        end
-        lastDecided = decided
-        matches[index] = matched
-
-        if matched then
-            for _, change in ipairs(condition.changes or {}) do
-                if change.property and change.property ~= 'sound' then
-                    overrides[change.property] = change.value
-                end
-            end
-        end
-    end
-end
-
----Move a display by its offset conditions; inside a dynamic group the group owns its slot.
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 local function PlaceOffset(frame, display)
     if CDM:IsDynamic(display.parent) then return end
 
-    -- one function per frame, as the combat queue dedupes by identity
+    -- One per frame, the combat queue dedupes by identity
     frame.placeOffset = frame.placeOffset or function()
         local current = CDM:Get(frame.id)
         if current and not CDM:IsDynamic(current.parent) then
@@ -231,8 +197,8 @@ local function PlaceOffset(frame, display)
         end
     end
 
-    -- Our own frames move fine in combat, which is when an In Combat offset matters. Only one hanging off a picked frame,
-    -- itself or through a group, can join a protected frame's anchor family, so that one waits for combat to end.
+    -- Hung off a picked frame it can join a protected anchor family,
+    -- so it waits for combat to end
     local current = display
     while current do
         if current.anchorFrameType == 'SELECTFRAME' and current.ParentFrame and current.ParentFrame ~= 'UIParent' then
@@ -244,13 +210,11 @@ local function PlaceOffset(frame, display)
     frame.placeOffset()
 end
 
-local pipOverrides, pipMatches, pipKeys = {}, {}, {}
-
----A change decided per pip: Visible or Color of an Each Rune text or border.
----@param display table
+-- An Each Rune text or border change, decided per pip
+---@param display CDMDisplay
 ---@param layer CDMLayer
 ---@param key string
----@return table? element, number? ordinal, string? name
+---@return NorskenCore.SubElement? element, number? ordinal, string? name
 local function PipRegionChange(display, layer, key)
     local name, sub = CDM:SplitProperty(key)
     if not sub or (name ~= 'visible' and name ~= 'subColor') then return nil end
@@ -261,10 +225,10 @@ local function PipRegionChange(display, layer, key)
     return element, ordinal, name
 end
 
----Apply the display's conditions over what its triggers drew.
+---Apply the display's conditions over what its triggers drew
 ---@param id string
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 function CDM:EvaluateConditions(id, frame, display)
     local conditions = display.Conditions
     local applied = frame.conditionApplied or {}
@@ -277,30 +241,30 @@ function CDM:EvaluateConditions(id, frame, display)
         frame.conditionTimer = nil
     end
 
-    -- Runs before the layer check: Show Display can bring a standby layer up.
+    -- Show Display can bring a standby layer up
     local overrides, matches = {}, {}
     Collect(conditions, display, frame, nil, overrides, matches)
 
-    -- Re-run when a remaining-time check next flips.
+    -- Re-run when a remaining-time check flips
     local now, soonest = GetTime(), nil
-    for _, condition in ipairs(conditions or {}) do
-        local flip = NextFlip(condition.check or {}, frame, now)
+    for _, condition in ipairs(conditions) do
+        local flip = NextFlip(condition.check, frame, now)
         if flip and (not soonest or flip < soonest) then
             soonest = flip
         end
     end
 
-    -- Max Stacks is the display's, not a layer's: an aura bar is never the active layer, nothing can read its aura
+    -- Max Stacks on every layer, an aura bar is never active
     local maxStacks = overrides.maxStacks
     overrides.maxStacks = nil
     if frame.conditionMaxStacks ~= maxStacks then
         frame.conditionMaxStacks = maxStacks
-        for _, each in ipairs(frame.layers or {}) do
+        for _, each in ipairs(frame.layers) do
             PROPERTIES.maxStacks.apply(frame, each, maxStacks, display)
         end
     end
 
-    -- Offsets are the display's too: a cast bar has no layer between casts, so they'd reset every cast and wait out combat to come back
+    -- On the frame, a cast bar has no layer between casts
     local x, y = tonumber(overrides.xOffset) or 0, tonumber(overrides.yOffset) or 0
     overrides.xOffset, overrides.yOffset = nil, nil
     if (frame.conditionX or 0) ~= x or (frame.conditionY or 0) ~= y then
@@ -308,8 +272,8 @@ function CDM:EvaluateConditions(id, frame, display)
         PlaceOffset(frame, display)
     end
 
-    -- Alpha is the display's frame, ours and outside the aura button the game locks, so it reaches a lone aura that never
-    -- has an active layer; set on every pass while a condition holds it, as restyling the frame puts the style's back
+    -- On our frame, so a lone aura gets it too
+    -- Set every pass, a restyle puts the style's alpha back
     local alpha = overrides.alpha
     overrides.alpha = nil
     if alpha ~= nil or frame.conditionAlpha ~= nil then
@@ -327,14 +291,14 @@ function CDM:EvaluateConditions(id, frame, display)
     end
     frame.forceHidden = show == false
 
-    -- A split bar decides Bar Color and Each Rune regions per pip, so the whole bar's pass skips them.
+    -- Per pip changes wait for the pip pass below
     local pipCount = layer and layer.isBar and layer.pipCount or 0
     if pipCount > 0 then
         ---@cast layer CDMLayer
         overrides.barColor = nil
         wipe(pipKeys)
-        for _, condition in ipairs(conditions or {}) do
-            for _, change in ipairs(condition.changes or {}) do
+        for _, condition in ipairs(conditions) do
+            for _, change in ipairs(condition.changes) do
                 if change.property and PipRegionChange(display, layer, change.property) then
                     pipKeys[change.property] = true
                 end
@@ -346,11 +310,11 @@ function CDM:EvaluateConditions(id, frame, display)
         end
     end
 
-    -- Sounds play once when a condition starts matching on a shown display.
-    for index, condition in ipairs(conditions or {}) do
+    -- Play sounds once, on the first match
+    for index, condition in ipairs(conditions) do
         local matched = layer ~= nil and not frame.forceHidden and matches[index]
         if matched and not wasActive[index] then
-            for _, change in ipairs(condition.changes or {}) do
+            for _, change in ipairs(condition.changes) do
                 if change.property == 'sound' and change.value then
                     NRSKNUI:PlaySafeSound(change.value)
                 end
@@ -359,7 +323,7 @@ function CDM:EvaluateConditions(id, frame, display)
         wasActive[index] = matched or nil
     end
 
-    -- A different layer shows now, so the old one gets its own look back.
+    -- Restore the look of a layer no longer shown
     local lastLayer = frame.conditionLayer
     if lastLayer and lastLayer ~= layer then
         for key in pairs(applied) do
@@ -373,7 +337,7 @@ function CDM:EvaluateConditions(id, frame, display)
     end
     frame.conditionLayer = layer
 
-    -- Put new changes on and take off the ones that stopped matching.
+    -- Apply new changes, remove stopped ones
     if layer then
         for key, value in pairs(overrides) do
             if applied[key] ~= value then
@@ -397,13 +361,13 @@ function CDM:EvaluateConditions(id, frame, display)
             end
         end
 
-        -- The trigger resets desaturation every update, so an override is re-applied every pass too.
+        -- The trigger resets desaturation every update
         if overrides.desaturate ~= nil then
             PROPERTIES.desaturate.apply(frame, layer, overrides.desaturate, display)
         end
     end
 
-    -- Each pip of a split bar runs the conditions again with itself as the bar.
+    -- Run the conditions again for each pip
     if pipCount > 0 then
         ---@cast layer CDMLayer
         for i = 1, pipCount do
@@ -428,7 +392,7 @@ function CDM:EvaluateConditions(id, frame, display)
     end
 
     if soonest then
-        frame.conditionTimer = NewTimer(soonest + 0.01, function() -- just past the flip, so the check reads flipped
+        frame.conditionTimer = NewTimer(soonest + 0.01, function() -- Just past the flip, so it reads flipped
             frame.conditionTimer = nil
             if frame.id == id then
                 self:Derive(id)
@@ -437,7 +401,7 @@ function CDM:EvaluateConditions(id, frame, display)
     end
 end
 
----Drop everything conditions put on a frame, when it goes back to the pool.
+---Drop what conditions put on a frame, as it returns to the pool
 ---@param frame CDMIcon
 function CDM:ResetConditions(frame)
     if frame.conditionTimer then
@@ -451,34 +415,19 @@ end
 
 -- Groups --
 
----Put a group's offset conditions on its frame, read by Place.
----@param display table
----@param frame Frame
----@return boolean changed
-function CDM:EvaluateGroupConditions(display, frame)
-    ---@cast frame CDMPlaced
-    local overrides, matches = {}, {}
-    Collect(display.Conditions, display, frame, nil, overrides, matches)
-
-    local x, y = tonumber(overrides.xOffset) or 0, tonumber(overrides.yOffset) or 0
-    if frame.conditionX == x and frame.conditionY == y then return false end
-    frame.conditionX, frame.conditionY = x, y
-    return true
-end
-
 local movedGroups, rebuiltCurves = {}, {}
 
--- Builds the displays whose gated curves changed; one function for the combat queue, a loading screen can come in combat.
+-- Stable functions, the combat queue dedupes by identity
 local function RebuildCurves()
     local ids = {}
     for id in pairs(rebuiltCurves) do
         ids[#ids + 1] = id
     end
     wipe(rebuiltCurves)
-    CDM:ApplyDisplays(ids)
+    -- The curves live in the texts
+    CDM:ApplySettings(Apply.Text, ids)
 end
 
--- One function for the combat queue, which dedupes by identity; spec and talents can't change in combat, a loading screen can.
 local function PlaceMovedGroups()
     for id in pairs(movedGroups) do
         local display = CDM:Get(id)
@@ -495,7 +444,22 @@ local function PlaceMovedGroups()
     wipe(movedGroups)
 end
 
----Spec or talents changed: re-run every condition that reads them.
+---Put a group's offset conditions on its frame, read by Place
+---@param display CDMDisplay
+---@param frame Frame
+---@return boolean changed
+function CDM:EvaluateGroupConditions(display, frame)
+    ---@cast frame CDMPlaced
+    local overrides, matches = {}, {}
+    Collect(display.Conditions, display, frame, nil, overrides, matches)
+
+    local x, y = tonumber(overrides.xOffset) or 0, tonumber(overrides.yOffset) or 0
+    if frame.conditionX == x and frame.conditionY == y then return false end
+    frame.conditionX, frame.conditionY = x, y
+    return true
+end
+
+---Re-run the conditions that read spec or talents
 function CDM:RefreshPlayerConditions()
     for id, display in pairs(self.db.Displays) do
         if self:ConditionsUse(display, -1, 'spec') or self:ConditionsUse(display, -1, 'talent') then
@@ -507,13 +471,14 @@ function CDM:RefreshPlayerConditions()
                 movedGroups[id] = true
             end
 
-            -- a gated curve is built into the texts, so those are styled again
+            -- Gated curves live in the texts, restyle them
             if frame and self:CurveGates(display) ~= frame.curveGates then
                 rebuiltCurves[id] = true
             end
         end
     end
 
+    -- A loading screen can come in combat
     if next(rebuiltCurves) then
         NRSKNUI:RunWhenSafe(RebuildCurves)
     end
@@ -525,20 +490,61 @@ end
 
 -- Curves --
 
----The step curve a text's colour follows from its curve checks on one trigger, nil when no condition colours it that way.
----@param display table
+local EDGE = 0.001 -- Seconds either side of a color change
+
+-- Nil while a spec or talent check beside the curve fails
+---@param display CDMDisplay
+---@param check CDMCheck
+---@return CDMCheck?
+local function CurveCheck(display, check)
+    if check.variable ~= 'AND' then
+        return check
+    end
+
+    local curve
+    for _, sub in ipairs(check.checks) do
+        if sub.trigger == -1 and CDM.GROUP_CHECKS[sub.variable] then
+            if not CheckDef(display, sub).match(sub.value, nil, sub) then return nil end
+        elseif curve or not IsCurve(display, sub) then
+            return nil
+        else
+            curve = sub
+        end
+    end
+    return curve
+end
+
+---Which gated curves build now, as '10', nil without any
+---A build keeps it, so a spec change rebuilds only where it moved
+---@param display CDMDisplay
+---@return string?
+function CDM:CurveGates(display)
+    local gates
+    for _, condition in ipairs(display.Conditions) do
+        local check = condition.check
+        if CurvePart(display, check) then
+            gates = (gates or '') .. (CurveCheck(display, check) and '1' or '0')
+        end
+    end
+    return gates
+end
+
+---A text's color curve from its curve checks on one trigger
+---@param display CDMDisplay
 ---@param triggerIndex number the trigger whose time or power the text shows
----@param scales table<string, number> the checks it follows, each with what divides its threshold into what the game reads
+---@param scales table<string, number> what turns each check's threshold into the game's number
 ---@param ordinal number the text's place among the display's texts
----@param base table the text's own colour, where no condition matches
----@return LuaColorCurveObject?
-function CDM:TextColorCurve(display, triggerIndex, scales, ordinal, base)
-    local steps -- only made when a condition colours this text, since a cast restyles %n texts every time
-    for _, condition in ipairs(display.Conditions or {}) do
-        local check = CurveCheck(display, condition.check or {}) or {}
-        local scale = check.trigger == triggerIndex and scales[check.variable]
+---@param ownColor number[] the text's own color
+---@param baseCurve LuaColorCurveObject? the shared Duration Text curve when the text follows it
+---@return LuaColorCurveObject? curve nil or the base curve when no condition steps over it
+function CDM:TextColorCurve(display, triggerIndex, scales, ordinal, ownColor, baseCurve)
+    -- Lazy, a cast restyles %n texts every time
+    local steps
+    for _, condition in ipairs(display.Conditions) do
+        local check = CurveCheck(display, condition.check)
+        local scale = check and check.trigger == triggerIndex and scales[check.variable]
         if scale then
-            for _, change in ipairs(condition.changes or {}) do
+            for _, change in ipairs(condition.changes) do
                 local name, sub = self:SplitProperty(change.property or '')
                 if name == 'subColor' then
                     local element, textOrdinal = SubElement(display, sub)
@@ -551,17 +557,22 @@ function CDM:TextColorCurve(display, triggerIndex, scales, ordinal, base)
             end
         end
     end
-    if not steps then return nil end
+    if not steps then
+        return baseCurve
+    end
 
-    -- later conditions win, same as when the conditions are checked directly
+    -- Later conditions win
     local function ColorAt(value)
-        local color = base
+        local color
         for _, step in ipairs(steps) do
             if (step.above and value > step.at) or (not step.above and value < step.at) then
                 color = step.color
             end
         end
-        return color
+        if color then
+            return CreateColor(unpack(color))
+        end
+        return baseCurve and baseCurve:Evaluate(value) or CreateColor(unpack(ownColor))
     end
 
     local points, seen = {}, {}
@@ -571,31 +582,55 @@ function CDM:TextColorCurve(display, triggerIndex, scales, ordinal, base)
             points[#points + 1] = step.at
         end
     end
-    tsort(points)
 
-    -- a step holds from its point up to the next one, read halfway; the first starts below zero, where nothing reads
+    if baseCurve then
+        for _, point in ipairs(baseCurve:GetPoints()) do
+            if not seen[point.x] then
+                seen[point.x] = true
+                points[#points + 1] = point.x
+            end
+        end
+        sort(points)
+
+        -- Read either side of each change, so a linear curve
+        -- holds steps flat and keeps the base's fade between them
+        local curve = CreateColorCurve()
+        local last
+        for _, at in ipairs(points) do
+            for _, x in ipairs({ at - EDGE, at + EDGE }) do
+                if not last or x > last then
+                    curve:AddPoint(x, ColorAt(x))
+                    last = x
+                end
+            end
+        end
+        return curve
+    end
+    sort(points)
+
+    -- Read each step halfway to the next, the first below 0
     local curve = CreateColorCurve()
-    curve:SetType(Enum.LuaCurveType.Step)
+    curve:SetType(LuaCurveType.Step)
     local first = (points[1] < 0 and points[1] or 0) - 1
-    curve:AddPoint(first, CreateColor(unpack(ColorAt(first))))
+    curve:AddPoint(first, ColorAt(first))
     for i, at in ipairs(points) do
         local after = points[i + 1]
-        curve:AddPoint(at, CreateColor(unpack(ColorAt(after and (at + after) / 2 or at + 1))))
+        curve:AddPoint(at, ColorAt(after and (at + after) / 2 or at + 1))
     end
     return curve
 end
 
----The formatter an aura's stack count follows from its Stacks checks, nil when no condition colours this text that way.
----@param display table
+---A stack text's formatter from its Stacks checks, nil when none color it
+---@param display CDMDisplay
 ---@param triggerIndex number the aura trigger whose count the text shows
 ---@param ordinal number the text's place among the display's texts
----@return table? formatter a NumericRuleFormatter for SetApplicationCount
+---@return NumericRuleFormatter? formatter for SetApplicationCount
 function CDM:StackCountFormatter(display, triggerIndex, ordinal)
     local steps
-    for _, condition in ipairs(display.Conditions or {}) do
-        local check = CurveCheck(display, condition.check or {}) or {}
-        if check.trigger == triggerIndex and check.variable == 'stacks' then
-            for _, change in ipairs(condition.changes or {}) do
+    for _, condition in ipairs(display.Conditions) do
+        local check = CurveCheck(display, condition.check)
+        if check and check.trigger == triggerIndex and check.variable == 'stacks' then
+            for _, change in ipairs(condition.changes) do
                 local name, sub = self:SplitProperty(change.property or '')
                 if name == 'subColor' then
                     local element, textOrdinal = SubElement(display, sub)
@@ -609,7 +644,8 @@ function CDM:StackCountFormatter(display, triggerIndex, ordinal)
     end
     if not steps then return nil end
 
-    -- the count is secret, so the game picks the breakpoint and its colour code; later conditions win
+    -- The count is secret, so the game picks the color
+    -- Later conditions win
     local function FormatAt(value)
         local color
         for _, step in ipairs(steps) do
@@ -620,7 +656,7 @@ function CDM:StackCountFormatter(display, triggerIndex, ordinal)
         return color and CreateColor(unpack(color)):WrapTextInColorCode('%d') or '%d'
     end
 
-    -- every step starts a breakpoint, so each one reads the same colour across its whole range
+    -- One breakpoint per step, one color across each range
     local points, seen = { 2 }, { [2] = true }
     for _, step in ipairs(steps) do
         if step.at > 2 and not seen[step.at] then
@@ -628,9 +664,9 @@ function CDM:StackCountFormatter(display, triggerIndex, ordinal)
             points[#points + 1] = step.at
         end
     end
-    tsort(points)
+    sort(points)
 
-    -- a single stack stays blank, as Blizzard draws a count without a formatter
+    -- One stack stays blank, as Blizzard's own count does
     local breakpoints = { { threshold = 0, format = '' } }
     for _, at in ipairs(points) do
         breakpoints[#breakpoints + 1] = { threshold = at, format = FormatAt(at) }
@@ -643,48 +679,50 @@ end
 
 -- Remap --
 
----Follow triggers that moved: `map(old)` gives the new index, nil drops checks on a deleted one.
----@param display table
+---Follow triggers that moved, nil from map drops their checks
+---@param display CDMDisplay
 ---@param map fun(index: number): number?
 function CDM:RemapConditionTriggers(display, map)
     if display.DynamicTrigger then
         display.DynamicTrigger = map(display.DynamicTrigger)
     end
 
-    local timer = display.Style and display.Style.TimerText
-    if timer and timer.Trigger then
+    local timer = display.Style.TimerText
+    if timer.Trigger then
         timer.Trigger = map(timer.Trigger)
     end
 
     ---@return boolean keep false when its trigger is gone
-    local function remap(check)
-        for i = #(check.checks or {}), 1, -1 do
-            if not remap(check.checks[i]) then
-                tremove(check.checks, i)
+    local function Remap(check)
+        if CDM.COMBINATIONS[check.variable] then
+            for i = #check.checks, 1, -1 do
+                if not Remap(check.checks[i]) then
+                    tremove(check.checks, i)
+                end
             end
+            return true
         end
 
-        if not check.trigger then return true end
-        local new = check.trigger <= 0 and check.trigger or map(check.trigger) -- global and group checks stay put
+        local new = check.trigger <= 0 and check.trigger or map(check.trigger) -- Global and group checks stay put
         check.trigger = new
         return new ~= nil
     end
 
-    local conditions = display.Conditions or {}
+    local conditions = display.Conditions
     for index = #conditions, 1, -1 do
         local check = conditions[index].check
-        if check and not remap(check) then
+        if check and not Remap(check) then
             tremove(conditions, index)
         end
     end
 end
 
----Follow sub elements that moved: `map(old)` gives an element's new index, nil drops changes to a deleted one.
----@param display table
+---Follow sub elements that moved, nil from map drops their changes
+---@param display CDMDisplay
 ---@param map fun(index: number): number?
 function CDM:RemapConditionSubRegions(display, map)
-    for _, condition in ipairs(display.Conditions or {}) do
-        local changes = condition.changes or {}
+    for _, condition in ipairs(display.Conditions) do
+        local changes = condition.changes
         for i = #changes, 1, -1 do
             local index, name = (changes[i].property or ''):match('^sub%.(%d+)%.(%a+)$')
             if index then
@@ -701,22 +739,29 @@ end
 
 -- Queries --
 
----Whether any condition uses this check, so a trigger can skip work nobody reads.
----@param display table
+---@param check CDMCheck
 ---@param triggerIndex number
 ---@param variable string
 ---@return boolean
-function CDM:ConditionsUse(display, triggerIndex, variable)
-    local function uses(check)
-        if check.trigger == triggerIndex and check.variable == variable then return true end
-        for _, sub in ipairs(check.checks or {}) do
-            if uses(sub) then return true end
+local function Uses(check, triggerIndex, variable)
+    if CDM.COMBINATIONS[check.variable] then
+        for _, sub in ipairs(check.checks) do
+            if Uses(sub, triggerIndex, variable) then return true end
         end
         return false
     end
 
-    for _, condition in ipairs(display.Conditions or {}) do
-        if condition.check and uses(condition.check) then return true end
+    return check.trigger == triggerIndex and check.variable == variable
+end
+
+---Whether any condition reads this check, so unread work can be skipped
+---@param display CDMDisplay
+---@param triggerIndex number
+---@param variable string
+---@return boolean
+function CDM:ConditionsUse(display, triggerIndex, variable)
+    for _, condition in ipairs(display.Conditions) do
+        if Uses(condition.check, triggerIndex, variable) then return true end
     end
     return false
 end
