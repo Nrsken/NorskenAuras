@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -24,7 +25,7 @@ function TriggerRows.power(card, typeRow, display, trigger, id, apply)
             trigger.PowerType = value ~= 'primary' and value or nil
             if not CDM.SEGMENTED_POWER[trigger.PowerType] then trigger.Mode = nil end
             if trigger.PowerType == CDM.MAELSTROM_WEAPON and trigger.Mode == 'progress' then trigger.Mode = 'static' end
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end,
     })
@@ -47,7 +48,7 @@ function TriggerRows.power(card, typeRow, display, trigger, id, apply)
         value = trigger.Mode or 'bar',
         callback = function(value)
             trigger.Mode = value ~= 'bar' and value or nil
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end,
     })
@@ -61,7 +62,7 @@ function TriggerRows.power(card, typeRow, display, trigger, id, apply)
             value = trigger.ProgressCooldownID or 0,
             callback = function(value)
                 trigger.ProgressCooldownID = value ~= 0 and value or nil
-                apply()
+                apply(Apply.All)
             end,
         })
     end

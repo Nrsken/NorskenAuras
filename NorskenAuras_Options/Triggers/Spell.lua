@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -25,7 +26,7 @@ function TriggerRows.spell(card, typeRow, display, trigger, id, apply)
         value = trigger.ShowOn or 'always',
         callback = function(value)
             trigger.ShowOn = value ~= 'always' and value or nil
-            apply()
+            apply(Apply.Visibility)
         end,
     })
     row:Checkbox(L['Ignore Override'], {
@@ -34,7 +35,7 @@ function TriggerRows.spell(card, typeRow, display, trigger, id, apply)
         value = trigger.IgnoreOverride,
         callback = function(checked)
             trigger.IgnoreOverride = checked or nil
-            apply()
+            apply(Apply.All)
         end,
     })
 end

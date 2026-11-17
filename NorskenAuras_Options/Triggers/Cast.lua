@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -22,7 +23,7 @@ function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
         value = mode,
         callback = function(value)
             trigger.Casts = value
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end,
     })
@@ -32,7 +33,7 @@ function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
         local source = SpellList:ArraySource(trigger, function() return trigger.SpellIDs or {} end, function(ids)
             trigger.SpellIDs = ids[1] and ids or nil
         end, function()
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end)
         SpellList:BuildAdd(card, source)
@@ -51,7 +52,7 @@ function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
         value = trigger.HoldTime or 0,
         callback = function(value)
             trigger.HoldTime = value
-            apply()
+            apply(Apply.All)
         end,
     })
     row:Checkbox(L['Show Latency'], {
@@ -60,7 +61,7 @@ function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
         value = trigger.ShowLatency,
         callback = function(checked)
             trigger.ShowLatency = checked
-            apply()
+            apply(Apply.All)
         end,
     })
 end

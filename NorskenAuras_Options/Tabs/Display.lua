@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 
 local ipairs = ipairs
@@ -46,7 +47,7 @@ local function BuildDisplayTab(page, id)
     -- A look change rebuilds only these, wherever they sit; a full apply on every slider step was the multi edit lag.
     local DisplayTab = NRSKNUI.CDMDisplayTab
     if kinds <= 1 then
-        DisplayTab:Build(page, ids, function() CDM:ApplyDisplays(ids) end, RefreshTree, TriggerChip)
+        DisplayTab:Build(page, ids, function(part) CDM:ApplySettings(part, ids) end, RefreshTree, TriggerChip)
         return
     end
 
@@ -54,13 +55,13 @@ local function BuildDisplayTab(page, id)
     for _, kind in ipairs(TYPE_ORDER) do
         local list = byType[kind]
         if list then
-            DisplayTab:Build(page, list, function() CDM:ApplyDisplays(list) end, RefreshTree, TriggerChip, {
+            DisplayTab:Build(page, list, function(part) CDM:ApplySettings(part, list) end, RefreshTree, TriggerChip, {
                 title = format(TYPE_TITLES[kind], #list),
                 noGeneral = true,
             })
         end
     end
-    DisplayTab:BuildShared(page, ids, function() CDM:ApplyDisplays(ids) end)
+    DisplayTab:BuildShared(page, ids, function(part) CDM:ApplySettings(part, ids) end)
 end
 
 Shared.BuildDisplayTab = BuildDisplayTab

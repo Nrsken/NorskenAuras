@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -15,7 +16,7 @@ local Reopen = Shared.Reopen
 local TYPE_NAMES = Shared.TYPE_NAMES
 
 local IMPORT_BOX_HEIGHT = 120
-local importState = { text = '', mode = 'update', picked = {} } ---@type { text: string, plan: table?, error: string?, mode: 'update'|'copy', picked: table<string, boolean> }
+local importState = { text = '', mode = 'update', picked = {} } ---@type { text: string, plan: CDMImportPlan?, error: string?, mode: 'update'|'copy', picked: table<string, boolean> }
 
 ---@param text string
 local function ReadImport(text)
@@ -133,7 +134,7 @@ local function BuildImportSummary(card)
             NRSKNUI:RunWhenSafe(function()
                 local id = CDM:ApplyImport(plan, mode, picked)
                 ReadImport('')
-                CDM:ApplySettings()
+                CDM:ApplySettings(Apply.All)
                 Reopen(id)
             end)
         end,

@@ -1,2 +1,2 @@
 -- Russian ruRU localization file.
-local L = (_G.NorskenAuras --[[@as NRSKNUI]]):NewLocale('ruRU')
+local L = (_G.NorskenAuras --[[@as NorskenAuras]]):NewLocale('ruRU')

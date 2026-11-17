@@ -1,13 +1,14 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowHL = Theme.rowHeightLast
 local Shared = NRSKNUI.CDMOptions
 
-local Assign = NRSKNUI.CDMDisplayTab.Assign
+local Assign = NRSKNUI.GUIAuraLook.Assign
 
 local pairs, ipairs = pairs, ipairs
 local type = type
@@ -101,7 +102,7 @@ local function BuildLoadTab(page, id)
                     CDM:Get(key).Enabled = not checked
                 end
                 -- only what's loaded changes; a disabled display keeps its frame, nothing rebuilds
-                CDM:RefreshLoad(true)
+                CDM:ApplySettings(Apply.Visibility, owners)
             end,
         })
     end
@@ -154,7 +155,7 @@ local function BuildLoadTab(page, id)
             end
             before = CopyTable(first.Load)
 
-            CDM:RefreshLoad(true)
+            CDM:ApplySettings(Apply.Visibility, iconIds)
         end,
     })
 end

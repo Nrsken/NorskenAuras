@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 
@@ -35,7 +36,7 @@ local function PositionConfig(id)
         -- a dynamic group's saved AnchorFrom was never read, so its pick has a key of its own
         dbKeys = dynamic and { selfPoint = 'SelfPoint' } or nil,
         defaults = dynamic and { selfPoint = frame and CDM:GroupPoint(frame, display) } or nil,
-        onChangeCallback = Applier(id),
+        onChangeCallback = function() CDM:ApplySettings(Apply.Position, id) end,
     }
 end
 
@@ -162,7 +163,7 @@ end
 ---@param exact boolean only the untouched one we added, not one the user has built on
 ---@return boolean
 local function IsOverlayIcon(condition, index, exact)
-    local check, changes = condition.check or {}, condition.changes or {}
+    local check, changes = condition.check, condition.changes
     if check.trigger ~= index or check.variable ~= 'active' or check.value == false or check.checks then return false end
 
     for _, change in ipairs(changes) do
@@ -179,7 +180,6 @@ end
 local function NormalizeAuraTypes(display)
     local triggers = display.Triggers
     local alone = #triggers == 1
-    display.Conditions = display.Conditions or {}
     local conditions = display.Conditions
     for index, trigger in ipairs(triggers) do
         if trigger.Type == 'aura' and not alone then
@@ -251,7 +251,7 @@ end
 ---@param trigger table
 ---@param display table
 ---@param id string
----@param apply fun()
+---@param apply fun(part: NorskenCore.Apply)
 ---@return fun(cooldownID: number)
 local function CataloguePicker(trigger, display, id, apply)
     return function(cooldownID)
@@ -263,7 +263,7 @@ local function CataloguePicker(trigger, display, id, apply)
         end
         trigger.SpellID = info.spellID
         trigger.CooldownID = cooldownID
-        apply()
+        apply(Apply.All)
         Reopen(id)
     end
 end

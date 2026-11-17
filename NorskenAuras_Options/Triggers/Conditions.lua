@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local rowH = NRSKNUI.Theme.rowHeight
 
@@ -31,7 +32,7 @@ function TriggerRows.conditions(card, _, _, trigger, _, apply)
                 value = states[state.key],
                 callback = function(value)
                     states[state.key] = value
-                    apply()
+                    apply(Apply.All)
                 end,
             })
         end
@@ -45,7 +46,7 @@ function TriggerRows.conditions(card, _, _, trigger, _, apply)
         value = group ~= nil,
         callback = function(checked)
             conditions.Group = checked and { Types = {} } or nil
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end,
     })
@@ -67,7 +68,7 @@ function TriggerRows.conditions(card, _, _, trigger, _, apply)
             for _, groupType in ipairs(values) do
                 group.Types[groupType] = true
             end
-            apply()
+            apply(Apply.All)
         end,
     })
 end

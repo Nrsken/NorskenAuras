@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -23,7 +24,7 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
         value = trigger.Item,
         callback = function(value)
             trigger.Item = value
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end,
     })
@@ -35,7 +36,7 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
             value = trigger.HidePassive,
             callback = function(checked)
                 trigger.HidePassive = checked
-                apply()
+                apply(Apply.All)
             end,
         })
         trinketRow:Button(L['Trinket Blacklist'], {
@@ -55,7 +56,7 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
             value = trigger.ItemID and tostring(trigger.ItemID) or '',
             callback = function(text)
                 trigger.ItemID = tonumber(text)
-                apply()
+                apply(Apply.All)
                 card:Rebuild()
             end,
         })
@@ -76,7 +77,7 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
         value = trigger.ShowOn or 'always',
         callback = function(value)
             trigger.ShowOn = value ~= 'always' and value or nil
-            apply()
+            apply(Apply.Visibility)
         end,
     })
     if trigger.Item ~= 'trinket1' and trigger.Item ~= 'trinket2' then
@@ -86,7 +87,7 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
             value = trigger.ShowNotOwned,
             callback = function(checked)
                 trigger.ShowNotOwned = checked or nil
-                apply()
+                apply(Apply.All)
             end,
         })
     end

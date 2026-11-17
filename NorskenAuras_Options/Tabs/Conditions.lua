@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Kaji = NRSKNUI.Kaji
 local Theme = NRSKNUI.Theme
@@ -16,6 +17,7 @@ local GetSpecializationInfoForClassID = GetSpecializationInfoForClassID
 local GetNumClasses = GetNumClasses
 local setmetatable = setmetatable
 local CopyTable = CopyTable
+local select = select
 local ipairs, pairs = ipairs, pairs
 
 local CHECK_ORDER = {
@@ -226,7 +228,7 @@ local function PropertyList(display)
 
     -- Max Stacks only means something on a bar counting an aura's stacks
     local stacksBar = false
-    for _, trigger in ipairs(display.Triggers or {}) do
+    for _, trigger in ipairs(display.Triggers) do
         if trigger.Type == 'aura' and trigger.BarMode == 'stacks' then
             stacksBar = true
         end
@@ -244,7 +246,7 @@ local function PropertyList(display)
     end
 
     local counts = {}
-    for n, element in ipairs(display.SubRegions or {}) do
+    for n, element in ipairs(display.SubRegions) do
         counts[element.type] = (counts[element.type] or 0) + 1
         local name = kind == 'text' and L['Text'] or format('%s %d', SUB_NAMES[element.type] or element.type, counts[element.type])
         -- An overlay holds glows and texts, never a border: borders belong to the icon's frame.
@@ -313,7 +315,7 @@ end
 local function CurvePart(display, check)
     if check.variable ~= 'AND' then return nil end
 
-    for _, sub in ipairs(check.checks or {}) do
+    for _, sub in ipairs(check.checks) do
         local _, def = CheckDef(display, sub)
         if def and def.curve then
             return sub
@@ -359,12 +361,12 @@ end
 ---@param triggerChip fun(index: number, trigger: table): string
 ---@return string title, string? summary
 local function Title(index, condition, byKey, display, triggerChip)
-    local check = condition.check or {}
+    local check = condition.check
     local trigger, def = CheckDef(display, check)
     local name = CHECK_NAMES[check.variable]
     local ifText
     if CDM.COMBINATIONS[check.variable] then
-        ifText = format('%s (%d)', check.variable == 'AND' and L['All of'] or L['Any of'], #(check.checks or {}))
+        ifText = format('%s (%d)', check.variable == 'AND' and L['All of'] or L['Any of'], #check.checks)
     elseif def and def.secret and trigger then
         ifText = format(AURA_TITLES[check.variable], triggerChip(check.trigger, trigger))
     elseif def and name then
@@ -381,7 +383,9 @@ local function Title(index, condition, byKey, display, triggerChip)
             end
             if def.talents then
                 local picks = 0
-                for _ in pairs(check.entries or {}) do picks = picks + 1 end
+                for _ in pairs(check.entries) do
+                    picks = picks + 1
+                end
                 name = format(L['%s (%d picked)'], name, picks)
             end
         end
@@ -391,7 +395,7 @@ local function Title(index, condition, byKey, display, triggerChip)
 
     local secret = def ~= nil and def.secret == true
     local names = {}
-    for _, change in ipairs(condition.changes or {}) do
+    for _, change in ipairs(condition.changes) do
         local entry = change.property and byKey[change.property]
         local value = change.value
         local text = entry and (secret and check.variable ~= 'missing' and entry.overlayText or entry.text)
@@ -430,12 +434,14 @@ end
 local function IfOptions(display, triggerTitle, depth, removable, parent, own)
     -- a top All of takes one curve check while its other parts are spec and talent checks, which the curve is built from
     local curveSlot, besideCurve = parent ~= nil and depth == 1 and parent.variable == 'AND', false
-    for _, sub in ipairs(curveSlot and parent.checks or {}) do
-        local _, def = CheckDef(display, sub)
-        if sub ~= own and def and def.curve then
-            besideCurve = true
-        elseif sub ~= own and not (sub.trigger == -1 and CDM.GROUP_CHECKS[sub.variable]) then
-            curveSlot = false
+    if curveSlot then
+        for _, sub in ipairs(parent.checks) do
+            local _, def = CheckDef(display, sub)
+            if sub ~= own and def and def.curve then
+                besideCurve = true
+            elseif sub ~= own and not (sub.trigger == -1 and CDM.GROUP_CHECKS[sub.variable]) then
+                curveSlot = false
+            end
         end
     end
     curveSlot = curveSlot and not besideCurve
@@ -503,8 +509,8 @@ end
 ---@param row table
 ---@param check table
 ---@param def table
----@param apply fun()
-local function ValueControls(row, check, def, apply)
+---@param onChange fun()
+local function ValueControls(row, check, def, onChange)
     if def.type == 'select' then
         if def.negatable then
             row:Dropdown(nil, {
@@ -513,7 +519,7 @@ local function ValueControls(row, check, def, apply)
                 value = check.op or '==',
                 callback = function(value)
                     check.op = value
-                    apply()
+                    onChange()
                 end,
             })
         end
@@ -523,7 +529,7 @@ local function ValueControls(row, check, def, apply)
             value = check.value,
             callback = function(value)
                 check.value = value
-                apply()
+                onChange()
             end,
         })
     elseif def.type == 'number' then
@@ -533,7 +539,7 @@ local function ValueControls(row, check, def, apply)
             value = check.op or '<',
             callback = function(value)
                 check.op = value
-                apply()
+                onChange()
             end,
         })
         local range = CHECK_RANGES[check.variable]
@@ -546,7 +552,7 @@ local function ValueControls(row, check, def, apply)
                 value = tonumber(check.value) or 0,
                 callback = function(value)
                     check.value = value
-                    apply()
+                    onChange()
                 end,
             })
         else
@@ -555,7 +561,7 @@ local function ValueControls(row, check, def, apply)
                 value = tostring(check.value or 0),
                 callback = function(text)
                     check.value = tonumber(text) or 0
-                    apply()
+                    onChange()
                 end,
             })
         end
@@ -566,7 +572,7 @@ local function ValueControls(row, check, def, apply)
             value = tostring(check.value ~= false),
             callback = function(value)
                 check.value = value == 'true'
-                apply()
+                onChange()
             end,
         })
     end
@@ -657,12 +663,11 @@ end
 ---The Conditions tab for one icon.
 ---@param page table
 ---@param id string
----@param apply fun()
+---@param apply fun(part: NorskenCore.Apply)
 ---@param triggerTitle fun(index: number, trigger: table): string
 ---@param triggerChip fun(index: number, trigger: table): string the trigger's icon and name, which names the layer it draws
 function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
     local display = CDM:Get(id)
-    display.Conditions = display.Conditions or {} -- a group gets its list on first visit
     local conditions = display.Conditions
     -- only ever alone: beside other triggers it's an overlay (NormalizeAuraTypes)
     local loneAura = display.Triggers ~= nil and display.Triggers[1] ~= nil and display.Triggers[1].Type == 'aura'
@@ -670,18 +675,22 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
     local opened = condOpen[display.uid]
 
     local firstCheck
-    for index, trigger in ipairs(display.Triggers or {}) do
-        local _, variable = CheckOptions(trigger)
-        if variable and not firstCheck then firstCheck = { trigger = index, variable = variable, value = true } end
-    end
-    if not CDM.LAYERED_TYPES[display.type] then
+    if CDM.LAYERED_TYPES[display.type] then
+        for index, trigger in ipairs(display.Triggers) do
+            local _, variable = CheckOptions(trigger)
+            if variable and not firstCheck then
+                firstCheck = { trigger = index, variable = variable, value = true }
+            end
+        end
+    else
         firstCheck = { trigger = -1, variable = 'spec', value = LoadConditions:GetSpecID() }
     end
 
     page:Card(L['Conditions'], 'all'):Rebuild(function(card)
+        -- a list edit changes what the display reads, so it builds again
         local function Edit(fn)
             fn()
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end
 
@@ -722,7 +731,6 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                 ValueControls(row, check, def, def.talents and function() Edit(function() check.entries = {} end) end or onChange)
             end
             if def and def.talents then
-                check.entries = check.entries or {}
                 local width = card.real and card.real.content and card.real.content:GetWidth() or 0
                 -- the card hasn't been laid out yet
                 if width <= 0 then
@@ -742,7 +750,6 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
             end
             if not combination then return end
 
-            check.checks = check.checks or {}
             local join = check.variable == 'AND' and L['and %s'] or L['or %s']
             local joinWord = check.variable == 'AND' and L['and'] or L['or']
             for i, sub in ipairs(check.checks) do
@@ -774,9 +781,13 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
             local decider = CurvePart(display, check) or check
             local _, deciderDef = CheckDef(display, decider)
             -- Else If needs to know whether the one above matched, which the game keeps to itself for these
-            local noElseIf = index > 1 and (GameDecided(display, check) or GameDecided(display, conditions[index - 1].check or {}))
-            local linked = condition.linked and index > 1 and not noElseIf
-            local _, aboveDef = CheckDef(display, index > 1 and conditions[index - 1].check or {})
+            local above = index > 1 and conditions[index - 1].check
+            local noElseIf = above and (GameDecided(display, check) or GameDecided(display, above))
+            local linked = condition.linked and above and not noElseIf
+            local aboveDef
+            if above then
+                aboveDef = select(2, CheckDef(display, above))
+            end
             local besideAura = secret or (aboveDef ~= nil and aboveDef.secret == true)
 
             local open = opened[index]
@@ -833,8 +844,10 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                     header:SetSummary(newSummary)
                     header:SetTitle(newTitle)
                 end
+                -- the game decides some checks, built into the buttons and texts; the rest decide
+                -- when the changes apply
                 local function ApplyValue()
-                    apply()
+                    apply(GameDecided(display, check) and Apply.Look or Apply.Visibility)
                     Retitle()
                 end
                 -- A change's value only moves what the engine puts on, so re-running the conditions is enough; sliders call
@@ -855,7 +868,6 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                 end
                 IfLine(check, ApplyValue, 0, ifLabel)
 
-                condition.changes = condition.changes or {}
                 for changeIndex, change in ipairs(condition.changes) do
                     local used = {}
                     for other, otherChange in ipairs(condition.changes) do

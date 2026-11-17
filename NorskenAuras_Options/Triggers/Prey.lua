@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 
 local Shared = NRSKNUI.CDMOptions
@@ -19,7 +20,7 @@ function TriggerRows.prey(_, typeRow, _, trigger, _, apply)
         value = trigger.Text or 'title',
         callback = function(value)
             trigger.Text = value ~= 'title' and value or nil
-            apply()
+            apply(Apply.All)
         end,
     })
 end

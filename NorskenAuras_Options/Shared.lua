@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local IconPicker = NRSKNUI.CDMIconPicker
 local Kaji = NRSKNUI.Kaji
@@ -21,7 +22,7 @@ local TRINKETS = 'cdm:trinkets'
 local IMPORT = 'cdm:import'
 local SECTION_LOADED = 'cdm:section:loaded'
 local SECTION_UNLOADED = 'cdm:section:unloaded'
-local QUESTION_MARK = 134400
+local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
 local NEW_TILE_HEIGHT = 104
 local NEW_TILE_ICON = 44
 local NEW_TILE_PREVIEW = 74 -- a picture's width: fills a tile at the narrowest window
@@ -204,9 +205,9 @@ local function Holder(groupId, id)
 end
 
 ---@param id string?
----@return fun()
+---@return fun(part: NorskenCore.Apply)
 local function Applier(id)
-    return function() CDM:ApplySettings(id) end
+    return function(part) CDM:ApplySettings(part, id) end
 end
 
 ---@param key string

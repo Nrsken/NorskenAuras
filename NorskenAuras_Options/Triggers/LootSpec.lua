@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 
 local Shared = NRSKNUI.CDMOptions
@@ -20,7 +21,7 @@ function TriggerRows.lootSpec(_, typeRow, _, trigger, _, apply)
         value = trigger.SpecIDs,
         callback = function(value)
             trigger.SpecIDs = value
-            apply()
+            apply(Apply.All)
         end,
     })
 
@@ -31,7 +32,7 @@ function TriggerRows.lootSpec(_, typeRow, _, trigger, _, apply)
         value = trigger.CurrentSpec or 'any',
         callback = function(value)
             trigger.CurrentSpec = value ~= 'any' and value or nil
-            apply()
+            apply(Apply.All)
         end,
     })
 end

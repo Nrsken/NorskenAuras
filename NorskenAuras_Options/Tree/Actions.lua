@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
 
@@ -21,7 +22,7 @@ local Tree = Shared.Tree
 ---Select a display that was just created and open its name for editing in the tree.
 ---@param id string
 local function SelectAndRename(id)
-    CDM:ApplySettings(id)
+    CDM:ApplySettings(Apply.All, id)
     Reopen(id)
     RunNextFrame(function()
         local tree = Tree()
@@ -61,7 +62,7 @@ end
 local function ToggleDisplay(id)
     local display = CDM:Get(id)
     display.Enabled = not display.Enabled
-    CDM:ApplySettings(id)
+    CDM:ApplySettings(Apply.Visibility, id)
     local tree = Tree()
     Reopen(tree and tree:GetSelected() or id)
 end
@@ -71,7 +72,7 @@ local function DuplicateDisplay(id)
     local newId = CDM:Duplicate(id)
     if not newId then return end
 
-    CDM:ApplySubtrees({ Holder(CDM:Get(newId).parent, newId) })
+    CDM:ApplySettings(Apply.All, { Holder(CDM:Get(newId).parent, newId) })
     Reopen(newId)
 end
 
@@ -82,7 +83,7 @@ local function Ungroup(id)
     if not from then return end
 
     CDM:Ungroup(id)
-    CDM:ApplySubtrees({ Holder(from, id), Holder(CDM:Get(id).parent, id) })
+    CDM:ApplySettings(Apply.All, { Holder(from, id), Holder(CDM:Get(id).parent, id) })
 end
 
 ---@param ids string[]
@@ -111,7 +112,7 @@ local function DeleteDisplays(ids, keepChildren)
             touched[#touched + 1] = Holder(display.parent, key)
         end
     end
-    CDM:ApplySubtrees(touched)
+    CDM:ApplySettings(Apply.All, touched)
     Reopen()
 end
 
@@ -132,7 +133,7 @@ local clipboard ---@type { source: table, part: table }? -- kept for the session
 ---@param id string
 local function PasteSettings(id)
     CDM:PasteSettings(clipboard.source, id, clipboard.part.part)
-    CDM:ApplySettings(id)
+    CDM:ApplySettings(Apply.All, id)
     Reopen(id)
 end
 
@@ -229,7 +230,7 @@ local function BuiltinResetEntries(id, entries)
                 text = format(L["Put '%s' back to how it shipped, spells, layout and position included?"], CDM:GetName(id)),
                 onAccept = function()
                     CDM:ResetBuiltin(id)
-                    CDM:ApplySettings(id)
+                    CDM:ApplySettings(Apply.All, id)
                     NRSKNUI.AuraTriggers:Invalidate()
                     Reopen(id)
                 end,

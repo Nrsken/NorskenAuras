@@ -1,8 +1,9 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 
 local ipairs, pairs, tonumber, tostring = ipairs, pairs, tonumber, tostring
 local tconcat = table.concat
@@ -22,7 +23,7 @@ local GRID_HEIGHT = 420
 local SEARCH_DELAY = 0.15
 local MAX_RESULTS = 500 -- keeps a broad search responsive
 local ICON_PATH = 'Interface\\Icons\\'
-local QUESTION_MARK = 134400
+local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
 local PREVIEW_SIZE = 24 -- the icon beside an Icon ID or Search box
 
 ---@class CDMIconPicker
@@ -429,7 +430,7 @@ function IconPicker:Build(page)
         selected = state.value,
         onPick = function(texture)
             if state.apply then state.apply(texture) end
-            if CDM:Get(state.returnKey) then CDM:ApplySettings(state.returnKey) end
+            if CDM:Get(state.returnKey) then CDM:ApplySettings(Apply.All, state.returnKey) end
             Back()
         end,
     })

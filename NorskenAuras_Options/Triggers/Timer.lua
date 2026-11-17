@@ -1,5 +1,6 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -22,7 +23,7 @@ function TriggerRows.timer(card, typeRow, display, trigger, id, apply)
         trigger.SpellID = ids[1]
         trigger.AlsoSpellIDs = extra[1] and extra or nil
     end, function()
-        apply()
+        apply(Apply.All)
         card:Rebuild()
     end)
     SpellList:BuildAdd(card, source)
@@ -39,7 +40,7 @@ function TriggerRows.timer(card, typeRow, display, trigger, id, apply)
         value = trigger.Duration,
         callback = function(value)
             trigger.Duration = value
-            apply()
+            apply(Apply.All)
         end,
     })
     row:Checkbox(L['Ignore Override'], {
@@ -48,7 +49,7 @@ function TriggerRows.timer(card, typeRow, display, trigger, id, apply)
         value = trigger.IgnoreOverride,
         callback = function(checked)
             trigger.IgnoreOverride = checked or nil
-            apply()
+            apply(Apply.All)
         end,
     })
 end

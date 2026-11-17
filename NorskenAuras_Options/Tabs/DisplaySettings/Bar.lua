@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -14,6 +14,8 @@ local tonumber = tonumber
 ---@class NRSKNUI.CDMDisplayTab
 local DisplayTab = NRSKNUI.CDMDisplayTab
 local ICON_SOURCES = DisplayTab.ICON_SOURCES
+
+local Apply = NRSKNUI.Enum.Apply
 
 local BAR_COLOR_MODES = {
     { value = 'custom', text = L['Custom'] },
@@ -59,8 +61,8 @@ end
 ---@param card table
 ---@param page table
 ---@param style table read side
----@param set fun(path: string[], value: any, more: boolean?)
----@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
+---@param set fun(path: string[], value: any, part: NorskenCore.Apply?, more: boolean?)
+---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (AuraLook.Differ)
 local function BarSettings(card, page, style, set, mixed)
     page:SetCondition('cdm:customBar', function() return style.UseGlobalBar == false or mixed({ 'UseGlobalBar' }) end)
 
@@ -70,7 +72,7 @@ local function BarSettings(card, page, style, set, mixed)
         value = style.UseGlobalBar ~= false,
         mixed = mixed({ 'UseGlobalBar' }),
         callback = function(checked)
-            set({ 'UseGlobalBar' }, checked)
+            set({ 'UseGlobalBar' }, checked, Apply.Look)
             page:Refresh()
         end,
     })
@@ -81,12 +83,12 @@ local function BarSettings(card, page, style, set, mixed)
         conditions = { 'cdm:customBar' },
         value = style.StatusBarTexture,
         mixed = mixed({ 'StatusBarTexture' }),
-        callback = function(key) set({ 'StatusBarTexture' }, key) end,
+        callback = function(key) set({ 'StatusBarTexture' }, key, Apply.Look) end,
     })
 
     local direction
     for _, option in ipairs(DIRECTIONS) do
-        if option.orientation == style.Orientation and option.reverse == (style.ReverseFill == true) then direction = option.value end
+        if option.orientation == style.Orientation and option.reverse == style.ReverseFill then direction = option.value end
     end
     local directionRow = card:Row(rowH)
     directionRow:Dropdown(L['Orientation'], {
@@ -97,8 +99,8 @@ local function BarSettings(card, page, style, set, mixed)
         callback = function(value)
             for _, option in ipairs(DIRECTIONS) do
                 if option.value == value then
-                    set({ 'Orientation' }, option.orientation, true)
-                    set({ 'ReverseFill' }, option.reverse)
+                    set({ 'Orientation' }, option.orientation, Apply.Layout, true)
+                    set({ 'ReverseFill' }, option.reverse, Apply.Layout)
                 end
             end
             card:Rebuild()
@@ -108,7 +110,7 @@ local function BarSettings(card, page, style, set, mixed)
         width = 0.5,
         value = style.Inverse,
         mixed = mixed({ 'Inverse' }),
-        callback = function(checked) set({ 'Inverse' }, checked) end,
+        callback = function(checked) set({ 'Inverse' }, checked, Apply.Look) end,
     })
 
     card:Row(rowH):Checkbox(L['Smooth'], {
@@ -116,15 +118,15 @@ local function BarSettings(card, page, style, set, mixed)
         tooltip = L['Ease the bar to a new value or a new cast instead of jumping.'],
         value = style.Smooth,
         mixed = mixed({ 'Smooth' }),
-        callback = function(checked) set({ 'Smooth' }, checked) end,
+        callback = function(checked) set({ 'Smooth' }, checked, Apply.Look) end,
     })
 end
 
 ---@param card table
 ---@param page table
 ---@param style table read side
----@param set fun(path: string[], value: any)
----@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
+---@param set fun(path: string[], value: any, part: NorskenCore.Apply)
+---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (AuraLook.Differ)
 ---@param displays table[] the bars being edited
 local function BarColorSettings(card, page, style, set, mixed, displays)
     page:SetCondition('cdm:customBarColor', function() return style.BarColorMode ~= 'power' or mixed({ 'BarColorMode' }) end)
@@ -138,7 +140,7 @@ local function BarColorSettings(card, page, style, set, mixed, displays)
         value = style.BarColorMode,
         mixed = mixed({ 'BarColorMode' }),
         callback = function(value)
-            set({ 'BarColorMode' }, value)
+            set({ 'BarColorMode' }, value, Apply.Color)
             page:Refresh()
         end,
     })
@@ -147,7 +149,7 @@ local function BarColorSettings(card, page, style, set, mixed, displays)
         conditions = { 'cdm:customBarColor' },
         value = style.BarColor,
         mixed = mixed({ 'BarColor' }),
-        callback = function(r, g, b, a) set({ 'BarColor' }, { r, g, b, a }) end,
+        callback = function(r, g, b, a) set({ 'BarColor' }, { r, g, b, a }, Apply.Color) end,
     })
 
     local backgroundRow = card:Row(rowH)
@@ -155,7 +157,7 @@ local function BarColorSettings(card, page, style, set, mixed, displays)
         width = 0.5,
         value = style.BackgroundColor,
         mixed = mixed({ 'BackgroundColor' }),
-        callback = function(r, g, b, a) set({ 'BackgroundColor' }, { r, g, b, a }) end,
+        callback = function(r, g, b, a) set({ 'BackgroundColor' }, { r, g, b, a }, Apply.Color) end,
     })
     if hasCast then
         backgroundRow:ColorPicker(L['Latency Color'], {
@@ -163,7 +165,7 @@ local function BarColorSettings(card, page, style, set, mixed, displays)
             tooltip = L["Shown while the cast trigger's Show Latency is on."],
             value = style.LatencyColor,
             mixed = mixed({ 'LatencyColor' }),
-            callback = function(r, g, b, a) set({ 'LatencyColor' }, { r, g, b, a }) end,
+            callback = function(r, g, b, a) set({ 'LatencyColor' }, { r, g, b, a }, Apply.Color) end,
         })
     end
 end
@@ -171,8 +173,8 @@ end
 ---@param card table
 ---@param page table
 ---@param style table read side
----@param set fun(path: string[], value: any)
----@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
+---@param set fun(path: string[], value: any, part: NorskenCore.Apply)
+---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (AuraLook.Differ)
 local function SparkSettings(card, page, style, set, mixed)
     local function spark() return style.Spark == true or mixed({ 'Spark' }) end
     page:SetCondition('cdm:spark', spark)
@@ -184,7 +186,7 @@ local function SparkSettings(card, page, style, set, mixed)
         value = style.Spark,
         mixed = mixed({ 'Spark' }),
         callback = function(checked)
-            set({ 'Spark' }, checked)
+            set({ 'Spark' }, checked, Apply.Visibility)
             page:Refresh()
         end,
     })
@@ -199,7 +201,7 @@ local function SparkSettings(card, page, style, set, mixed)
         value = style.UseGlobalSpark ~= false,
         mixed = mixed({ 'UseGlobalSpark' }),
         callback = function(checked)
-            set({ 'UseGlobalSpark' }, checked)
+            set({ 'UseGlobalSpark' }, checked, Apply.Look)
             page:Refresh()
         end,
     })
@@ -212,7 +214,7 @@ local function SparkSettings(card, page, style, set, mixed)
         mixed = mixed({ 'SparkTexture' }),
         callback = function(key)
             local hadWidth = style.SparkTexture == 'Solid' or mixed({ 'SparkTexture' }) ~= nil
-            set({ 'SparkTexture' }, key)
+            set({ 'SparkTexture' }, key, Apply.Look)
             if (key == 'Solid') ~= hadWidth then card:Rebuild() end
         end,
     })
@@ -223,7 +225,7 @@ local function SparkSettings(card, page, style, set, mixed)
         conditions = { 'cdm:customSpark' },
         value = style.SparkColor,
         mixed = mixed({ 'SparkColor' }),
-        callback = function(r, g, b, a) set({ 'SparkColor' }, { r, g, b, a }) end,
+        callback = function(r, g, b, a) set({ 'SparkColor' }, { r, g, b, a }, Apply.Color) end,
     })
     sizeRow:Slider(L['Scale'], {
         width = 0.5,
@@ -234,7 +236,7 @@ local function SparkSettings(card, page, style, set, mixed)
         step = 0.05,
         value = style.SparkScale,
         mixed = mixed({ 'SparkScale' }),
-        callback = function(value) set({ 'SparkScale' }, value) end,
+        callback = function(value) set({ 'SparkScale' }, value, Apply.Look) end,
         callbackOnRelease = true,
     })
     if style.SparkTexture == 'Solid' or mixed({ 'SparkTexture' }) then
@@ -246,7 +248,7 @@ local function SparkSettings(card, page, style, set, mixed)
             step = 1,
             value = style.SparkWidth,
             mixed = mixed({ 'SparkWidth' }),
-            callback = function(value) set({ 'SparkWidth' }, value) end,
+            callback = function(value) set({ 'SparkWidth' }, value, Apply.Look) end,
         })
     end
 end
@@ -254,8 +256,8 @@ end
 ---Settings only a split power bar has: the spacing between its runes.
 ---@param card table
 ---@param style table read side
----@param set fun(path: string[], value: any)
----@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
+---@param set fun(path: string[], value: any, part: NorskenCore.Apply)
+---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (AuraLook.Differ)
 local function PipSettings(card, style, set, mixed)
     card:Row(rowH):Slider(L['Spacing'], {
         width = 1,
@@ -264,18 +266,18 @@ local function PipSettings(card, style, set, mixed)
         step = 1,
         value = style.PipSpacing,
         mixed = mixed({ 'PipSpacing' }),
-        callback = function(value) set({ 'PipSpacing' }, value) end,
+        callback = function(value) set({ 'PipSpacing' }, value, Apply.Layout) end,
     })
 end
 
 ---@param card table
 ---@param page table
 ---@param style table read side
----@param set fun(path: string[], value: any)
----@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (DisplayTab.Differ)
+---@param set fun(path: string[], value: any, part: NorskenCore.Apply)
+---@param mixed fun(path: (string|number)[], default: any?): KajiGUIMixedEntry[]? where the displays edited together disagree (AuraLook.Differ)
 ---@param refreshTree fun()
 local function BarIconSettings(card, page, style, set, mixed, refreshTree)
-    page:SetCondition('cdm:barIcon', function() return style.IconShow == true or mixed({ 'IconShow' }) end)
+    page:SetCondition('cdm:barIcon', function() return style.IconShow or mixed({ 'IconShow' }) end)
     local vertical = style.Orientation == 'VERTICAL'
     local side = style.IconSide
     if vertical and (side == 'LEFT' or side == 'RIGHT') then side = side == 'LEFT' and 'TOP' or 'BOTTOM' end
@@ -287,7 +289,7 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         value = style.IconShow,
         mixed = mixed({ 'IconShow' }),
         callback = function(checked)
-            set({ 'IconShow' }, checked)
+            set({ 'IconShow' }, checked, Apply.Visibility)
             page:Refresh()
         end,
     })
@@ -302,7 +304,7 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         value = style.IconSource,
         mixed = mixed({ 'IconSource' }),
         callback = function(value)
-            set({ 'IconSource' }, value)
+            set({ 'IconSource' }, value, Apply.Look)
             refreshTree()
             page:Refresh()
         end,
@@ -314,13 +316,13 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         value = style.ManualIcon and tostring(style.ManualIcon) or '',
         mixed = mixed({ 'ManualIcon' }),
         callback = function(text)
-            set({ 'ManualIcon' }, tonumber(text))
+            set({ 'ManualIcon' }, tonumber(text), Apply.Look)
             refreshTree()
         end,
     })
     IconPicker:BrowseButton(sourceRow, style.ManualIcon, function()
         IconPicker:Open(style.ManualIcon, function(texture)
-            set({ 'ManualIcon' }, texture)
+            set({ 'ManualIcon' }, texture, Apply.Look)
             refreshTree()
         end)
     end, { 'cdm:barIcon' })
@@ -331,14 +333,14 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         options = ICON_SIDES[vertical and 'VERTICAL' or 'HORIZONTAL'],
         value = side,
         mixed = mixed({ 'IconSide' }),
-        callback = function(value) set({ 'IconSide' }, value) end,
+        callback = function(value) set({ 'IconSide' }, value, Apply.Layout) end,
     })
     sideRow:ColorPicker(L['Icon Color'], {
         width = 0.5,
         conditions = { 'cdm:barIcon' },
         value = style.Color,
         mixed = mixed({ 'Color' }),
-        callback = function(r, g, b, a) set({ 'Color' }, { r, g, b, a }) end,
+        callback = function(r, g, b, a) set({ 'Color' }, { r, g, b, a }, Apply.Color) end,
     })
 
     local lookRow = card:Row(rowH)
@@ -347,7 +349,7 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         conditions = { 'cdm:barIcon' },
         value = style.Desaturate,
         mixed = mixed({ 'Desaturate' }),
-        callback = function(checked) set({ 'Desaturate' }, checked) end,
+        callback = function(checked) set({ 'Desaturate' }, checked, Apply.Color) end,
     })
     lookRow:Slider(L['Zoom'], {
         width = 0.5,
@@ -357,7 +359,7 @@ local function BarIconSettings(card, page, style, set, mixed, refreshTree)
         step = 0.01,
         value = style.Zoom or NRSKNUI.GlobalZoom,
         mixed = mixed({ 'Zoom' }, NRSKNUI.GlobalZoom),
-        callback = function(value) set({ 'Zoom' }, value) end,
+        callback = function(value) set({ 'Zoom' }, value, Apply.Look) end,
     })
 end
 

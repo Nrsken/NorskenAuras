@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -39,7 +39,7 @@ local expandedGroups = Shared.expandedGroups
 local function DisplayIcon(id)
     local display = CDM:Get(id)
     if CDM.LAYERED_TYPES[display.type] then
-        local style = CDM:GetStyle(display)
+        local style = display.Style
         if style.IconSource == 'manual' and style.ManualIcon then return style.ManualIcon end -- as CDM:SetIconTexture draws it
         for _, trigger in ipairs(display.Triggers) do
             if trigger.Type ~= 'auraoverlay' then                                             -- an overlay sits on the icon below it

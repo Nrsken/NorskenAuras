@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
@@ -12,7 +12,6 @@ local Reopen = Shared.Reopen
 local ShowGlobalSettings = Shared.ShowGlobalSettings
 local UpdateBox = Shared.UpdateBox
 
-local LOGO = 'Interface\\AddOns\\NorskenCore\\Media\\Logo\\'
 local AURAS_MEDIA = 'Interface\\AddOns\\NorskenAuras\\Media\\Logo\\'
 
 -- a slider on a position card moves the overlay it belongs to
@@ -24,7 +23,9 @@ GUI.services.positionSync = {
     end,
 }
 
-local window ---@type GUIFrame declared first, onShow below refers to it
+-- Declared first, onShow below refers to it
+---@type KajiGUIWindow
+local window
 window = GUI:CreateGUIWindow({
     name = 'NorskenAurasFrame',
     size = { 950, 700 },
@@ -33,8 +34,8 @@ window = GUI:CreateGUIWindow({
     logo = {
         layers = {
             {
-                texture = LOGO .. 'logocookingsPT1128x128OT.png',
-                glow = LOGO .. 'logocookingsPT1128x128OT_glow.png',
+                texture = NRSKNUI.Media.Logo,
+                glow = NRSKNUI.Media.LogoGlow,
                 size = 64,
                 anchor = { 'LEFT', 'LEFT', -10, 1 },
                 color = 'accent',
@@ -100,4 +101,4 @@ window.frame:HookScript('OnHide', UpdateBox)
 
 SharedPages:AddSupportFooter(window, NRSKNUI)
 
-NRSKNUI.GUIFrame = window --[[@as GUIFrame]]
+NRSKNUI.GUIFrame = window

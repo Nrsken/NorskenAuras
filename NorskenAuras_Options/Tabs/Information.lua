@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -65,8 +65,8 @@ local function BuildInformationTab(page, id)
         lines[#lines + 1] = format('%s: %d', L['Displays Inside'], #CDM:GetLeaves(id))
     elseif display.Triggers then
         lines[#lines + 1] = format('%s: %d', L['Triggers'], #display.Triggers)
-        lines[#lines + 1] = format('%s: %d', L['Conditions'], #(display.Conditions or {}))
-        lines[#lines + 1] = format('%s: %d', L['Sub Elements'], #(display.SubRegions or {}))
+        lines[#lines + 1] = format('%s: %d', L['Conditions'], #display.Conditions)
+        lines[#lines + 1] = format('%s: %d', L['Sub Elements'], #display.SubRegions)
     end
     local metaHeight = #lines * 16
     page:Card(L['Metadata'], 'all'):Row(metaHeight, 0):Text(nil, { width = 1, height = metaHeight, autoHeight = true, bgMode = 'hide', text = lines })

@@ -7,7 +7,6 @@
     <Script file="Tabs\DisplaySettings\Icon.lua" />
     <Script file="Tabs\DisplaySettings\Bar.lua" />
     <Script file="Tabs\DisplaySettings\Layout.lua" />
-    <Script file="Tabs\DisplaySettings\Text.lua" />
     <Script file="Tabs\DisplaySettings\Elements.lua" />
     <Script file="Tabs\DisplaySettings\Build.lua" />
     <Script file="Tabs\Conditions.lua" />

@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -10,7 +10,7 @@ local CreateFrame = CreateFrame
 local UnitPowerType = UnitPowerType
 
 local WHITE = NRSKNUI.WhiteTexture
-local QUESTION_MARK = 134400
+local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
 local FILL = 0.7 -- how full the mini bar is drawn
 
 -- The WA-style group pictures, at 32px: width, height, colour, and the offset below the piece above.
@@ -77,14 +77,14 @@ local function BarColor(style)
 end
 
 ---@param host Frame
----@param display table a bar display, or a stand-in with type and Style
+---@param display CDMDisplay a bar
 ---@param size number
 ---@param texture string|number? the bar's icon
 local function DrawBar(host, display, size, texture)
     local parts = Parts(host)
-    local style = CDM:GetStyle(display)
+    local style = display.Style
     local vertical = style.Orientation == 'VERTICAL'
-    local reverse = style.ReverseFill == true
+    local reverse = style.ReverseFill
     local length, thickness = size - 4, floor(size * 0.5)
 
     local bar, icon, fill = parts.bar, parts.icon, parts.fill
@@ -191,7 +191,7 @@ function Thumbnail:Draw(host, display, size, texture)
         return true
     end
     if display.type == 'text' then
-        local element = display.SubRegions and display.SubRegions[1]
+        local element = display.SubRegions[1]
         if not element then return false end
         parts.text:SetFontStyle(element, floor(size * 0.45), nil, nil, true)
         parts.text:SetTextColor(unpack(element.Color))
@@ -199,7 +199,7 @@ function Thumbnail:Draw(host, display, size, texture)
         parts.text:Show()
         return true
     end
-    if display.Icon or (display.type ~= 'group' and display.type ~= 'dynamicgroup') then return false end
+    if display.Icon or not CDM.GROUP_TYPES[display.type] then return false end
 
     local scale = size / 32
     if display.type == 'group' then

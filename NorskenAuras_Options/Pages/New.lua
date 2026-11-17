@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
 local Theme = NRSKNUI.Theme
@@ -35,7 +36,6 @@ local SAMPLE_ICONS = { -- when the Cooldown Manager has fewer spells than a pict
     'Interface\\Icons\\Ability_Rogue_Sprint',
     'Interface\\Icons\\Spell_Fire_Fireball02',
 }
-local SAMPLE_BAR = { type = 'bar', Style = {} } -- the default bar style, for its texture and background
 local SAMPLE_STACKS = { 3, nil, 2 }
 local SAMPLE_COOLDOWN = 10
 local SAMPLE_SLOTS = 6
@@ -169,7 +169,7 @@ end
 ---@return boolean
 local function DrawProgressSample(canvas, height, width)
     local parts = SampleParts(canvas)
-    local style = CDM:GetStyle(SAMPLE_BAR)
+    local style = CDM.BAR_STYLE_TEMPLATE
     local barHeight = floor(height * 0.45)
     local y = floor((height - barHeight) / 2)
     Place(parts.frame, 0, y, width, barHeight)
@@ -411,7 +411,7 @@ for i, builtin in ipairs(CDM.BUILTIN_AURA_GROUPS) do
         icon = builtin.display.Icon,
         create = function()
             local id = CDM:AddBuiltinAuraGroup(builtin.key)
-            CDM:ApplySettings(id)
+            CDM:ApplySettings(Apply.All, id)
             Reopen(id)
         end,
     }
@@ -424,7 +424,7 @@ local function BuildNewPage(page)
     local gap, edge = Theme.paddingMedium, Theme.paddingMedium - Theme.paddingSmall
     local card = page:Card(L['New Display'], 'all')
     for s, section in ipairs(NEW_SECTIONS) do
-        NRSKNUI.CDMDisplayTab.Heading(card, section.title)
+        NRSKNUI.GUIAuraLook.Heading(card, section.title)
         local row = card:Row(NEW_TILE_HEIGHT, s == #NEW_SECTIONS and edge or gap):Even()
         for _, entry in ipairs(section.types) do
             row:Icon({

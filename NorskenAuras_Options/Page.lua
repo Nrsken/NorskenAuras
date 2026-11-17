@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local GUI = NRSKNUI.GUI
 local IconPicker = NRSKNUI.CDMIconPicker
@@ -117,12 +118,12 @@ GUI:RegisterPage(PAGE, {
             for _, key in ipairs(top) do
                 touched[#touched + 1] = Holder(CDM:Get(key).parent, key)
             end
-            CDM:ApplySubtrees(touched)
+            CDM:ApplySettings(Apply.All, touched)
             RedrawTree()
         end,
         onMoveInGroup = function(key, delta)
             CDM:MoveInGroup(key, delta)
-            CDM:ApplySettings(CDM:Get(key).parent)
+            CDM:ApplySettings(Apply.All, CDM:Get(key).parent)
             RedrawTree()
         end,
         onUngroup = function(key)

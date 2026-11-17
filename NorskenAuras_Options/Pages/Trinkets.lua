@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -42,7 +43,7 @@ local function BuildTrinketPage(page)
                 local itemID = tonumber(text)
                 if not itemID then return end
                 CDM.db.TrinketBlacklist[itemID] = true
-                CDM:ApplySettings()
+                CDM:ApplySettings(Apply.All)
                 card:Rebuild()
             end,
         })
@@ -65,7 +66,7 @@ local function BuildTrinketPage(page)
                 onClick = function(button)
                     if button ~= 'LeftButton' then return end
                     CDM.db.TrinketBlacklist[itemID] = nil
-                    CDM:ApplySettings()
+                    CDM:ApplySettings(Apply.All)
                     card:Rebuild()
                 end,
             })

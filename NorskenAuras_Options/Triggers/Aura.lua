@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
 local rowH = Theme.rowHeight
@@ -25,7 +26,7 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
     local Category = Enum.CooldownViewerCategory
     local function set(key, value)
         trigger[key] = value
-        apply()
+        apply(Apply.All)
     end
 
     typeRow:Dropdown(L['Source'], {
@@ -38,14 +39,14 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
         end,
     })
 
-    -- custom: the spell list, then Unit and Cast by Me side by side; the catalogue keeps Aura beside Unit
+    -- custom: the spell list, then Unit beside Aura Type; the catalogue keeps Aura beside Unit
     local custom = trigger.Source == 'custom'
     local auraRow, mineRow
     if custom then
         local source = SpellList:ArraySource(trigger, function() return trigger.SpellIDs or {} end, function(ids)
             trigger.SpellIDs = ids[1] and ids or nil
         end, function()
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end)
         SpellList:BuildAdd(card, source)
@@ -53,7 +54,6 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
         -- the list ends flush, so the rule brings its own gap; inSection keeps it in the trigger's section
         card:Separator(nil, { inSection = true, height = 16 })
         auraRow = card:Row(rowH)
-        mineRow = auraRow
     else
         auraRow = card:Row(rowH)
         auraRow:Dropdown(L['Aura'], {
@@ -68,18 +68,30 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
         width = 0.5,
         options = AURA_UNITS,
         value = trigger.Unit,
-        callback = function(value) set('Unit', value) end,
+        callback = function(value)
+            set('Unit', value)
+            card:Rebuild() -- an unset Aura Type follows the unit
+        end,
     })
 
-    mineRow = mineRow or card:Row(rowH)
+    local typeRow = custom and auraRow or card:Row(rowH)
+    typeRow:Dropdown(L['Aura Type'], {
+        width = 0.5,
+        options = NRSKNUI.GUITriggerEditor.AuraTypes,
+        value = CDM:GetAuraBase(trigger),
+        tooltip = L['Spell lists match buffs on friendly units and debuffs on enemies only.'],
+        callback = function(value) set('Base', value) end,
+    })
+
+    mineRow = custom and card:Row(rowH) or typeRow
     mineRow:Checkbox(L['Cast by Me'], {
         width = 0.5,
         value = trigger.OwnOnly,
         callback = function(checked) set('OwnOnly', checked) end,
     })
     if trigger.Type ~= 'aura' then return end
-    if custom then
-        mineRow = card:Row(rowH) -- Cast by Me already shares its row with Unit
+    if not custom then
+        mineRow = card:Row(rowH) -- Cast by Me already shares its row with Aura Type
     end
     local placeholder = {
         width = 0.5,
@@ -91,17 +103,18 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
             -- Its look is a While Missing condition, so it stays editable; a new one starts dimmed and grey.
             local index = tIndexOf(display.Triggers, trigger)
             local seeded = false
-            for _, condition in ipairs(display.Conditions or {}) do
-                if condition.check and condition.check.trigger == index and condition.check.variable == 'missing' then seeded = true end
+            for _, condition in ipairs(display.Conditions) do
+                if condition.check.trigger == index and condition.check.variable == 'missing' then
+                    seeded = true
+                end
             end
             if checked and index and not seeded then
-                display.Conditions = display.Conditions or {}
                 tinsert(display.Conditions, {
                     check = { trigger = index, variable = 'missing', value = true },
                     changes = { { property = 'desaturate', value = true }, { property = 'alpha', value = 0.5 } },
                 })
             end
-            apply()
+            apply(Apply.All)
         end,
     }
     if display.type ~= 'bar' then
@@ -123,7 +136,7 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
                 local cap = spellID and GetMaxStacks(spellID)
                 trigger.MaxStacks = cap and not issecretvalue(cap) and cap > 0 and cap or 10
             end
-            apply()
+            apply(Apply.All)
             card:Rebuild()
         end,
     })

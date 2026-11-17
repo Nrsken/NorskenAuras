@@ -1,7 +1,8 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 
 local ipairs = ipairs
@@ -19,7 +20,7 @@ function TriggerRows.stat(card, typeRow, display, trigger, id, apply)
         value = trigger.Stat or 'haste',
         callback = function(value)
             trigger.Stat = value
-            apply()
+            apply(Apply.All)
         end,
     })
 end
