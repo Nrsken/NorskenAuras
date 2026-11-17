@@ -1,53 +1,33 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
---[[
-What new displays start from:
-Each type's style, the sub elements a new icon or bar gets, the built-in aura groups and the resource each class counts in points.
-]]
-
-local pairs, ipairs = pairs, ipairs
-local setmetatable = setmetatable
 local CopyTable = CopyTable
+local ipairs = ipairs
+local pairs = pairs
 local type = type
+
+---@param into table
+---@param from table
+---@return table into
+local function Merge(into, from)
+    for key, value in pairs(from) do
+        if type(value) == 'table' and type(into[key]) == 'table' then
+            Merge(into[key], value)
+        else
+            into[key] = value
+        end
+    end
+
+    return into
+end
 
 -- Styles --
 
--- Every new icon starts from this; an icon owns its full style from then on.
-CDM.STYLE_TEMPLATE = {
-    Width = 40,
-    Height = 40,
-    KeepAspectRatio = false,
-    Color = { 1, 1, 1, 1 },
-    Desaturate = false,
-    IconSource = 'auto',
-    Tooltip = false,
-    Alpha = 1,
-    DrawSwipe = true,
-    Reverse = false,
-    DrawEdge = false,
-    SwipeColor = { 0, 0, 0, 0.7 },
-    ShowGCD = false,
-    HideCountdown = true,
-    -- The cooldown frame's own number: unlike a %p text it follows recovery-rate buffs the way the action bar does.
-    TimerText = {
-        UseGlobalFont = true,
-        FontFace = 'Expressway',
-        FontSize = 15,
-        FontOutline = 'OUTLINE',
-        Color = { 1, 1, 1, 1 },
-        AnchorTo = 'CENTER',
-        XOffset = 0,
-        YOffset = 0,
-    },
-}
-
--- Every new bar starts from this; the icon keys stay so a bar's icon reads the same as an icon's.
----@type table
-CDM.BAR_STYLE_TEMPLATE = CopyTable(CDM.STYLE_TEMPLATE)
-for key, value in pairs({
+-- Every new bar starts from this, the icon keys stay so a bar's icon reads as an icon's does
+---@type CDMBarStyle
+CDM.BAR_STYLE_TEMPLATE = Merge(CopyTable(NRSKNUI.ICON_STYLE_TEMPLATE), {
     Width = 200,
     Height = 20,
     DrawSwipe = false,
@@ -70,167 +50,71 @@ for key, value in pairs({
     IconSide = 'LEFT',
     LatencyColor = { 1, 0.2, 0.2, 0.5 },
     PipSpacing = 1,
-}) do
-    CDM.BAR_STYLE_TEMPLATE[key] = value
-end
+})
 
--- A text has no icon; Width/Height are only its cell in a Grid dynamic group, everywhere else it fits its text.
----@type table
-CDM.TEXT_STYLE_TEMPLATE = CopyTable(CDM.STYLE_TEMPLATE)
-CDM.TEXT_STYLE_TEMPLATE.Width = 100
-CDM.TEXT_STYLE_TEMPLATE.Height = 20
-CDM.TEXT_STYLE_TEMPLATE.DrawSwipe = false
+-- A text fits its text, its size is only its cell in a Grid dynamic group
+---@type NorskenCore.IconStyle
+CDM.TEXT_STYLE_TEMPLATE = Merge(CopyTable(NRSKNUI.ICON_STYLE_TEMPLATE), {
+    Width = 100,
+    Height = 20,
+    DrawSwipe = false,
+})
 
-local STYLE_TEMPLATES = {
+-- An aura group's buttons start with no swipe, a reversed one when turned on
+---@type NorskenCore.IconStyle
+CDM.AURA_GROUP_STYLE_TEMPLATE = Merge(CopyTable(NRSKNUI.ICON_STYLE_TEMPLATE), {
+    Width = 50,
+    Height = 50,
+    DrawSwipe = false,
+    Reverse = true,
+    Tooltip = true,
+    TooltipHideInCombat = false,
+    DispelIcon = false,
+    DispelIconSize = 12,
+})
+
+---@type table<string, NorskenCore.IconStyle>
+CDM.STYLE_TEMPLATES = {
+    icon = NRSKNUI.ICON_STYLE_TEMPLATE,
     bar = CDM.BAR_STYLE_TEMPLATE,
-    text = CDM.TEXT_STYLE_TEMPLATE
+    text = CDM.TEXT_STYLE_TEMPLATE,
+    auragroup = CDM.AURA_GROUP_STYLE_TEMPLATE,
 }
-CDM.STYLE_TEMPLATES = STYLE_TEMPLATES
 
--- Where every new display starts: the middle of the screen.
+-- The middle of the screen
 CDM.POSITION_TEMPLATE = { AnchorFrom = 'CENTER', AnchorTo = 'CENTER', XOffset = 0, YOffset = 0 }
 
--- A new dynamic group's layout.
+-- A new dynamic group's layout
 CDM.LAYOUT_TEMPLATE = { Grow = 'HORIZONTAL', Spacing = 2, UseLimit = false, Limit = 10 }
-
----An icon's, bar's or text's style; keys added after it was saved read from its type's template.
----@param display table
----@return table
-function CDM:GetStyle(display)
-    local template = STYLE_TEMPLATES[display.type] or CDM.STYLE_TEMPLATE
-    return setmetatable({}, {
-        __index = function(_, key)
-            local value = display.Style[key]
-            if value == nil then
-                return template[key]
-            end
-            return value
-        end,
-    })
-end
 
 -- Sub elements --
 
-CDM.SUBREGION_TEMPLATES = {
-    text = {
-        type = 'text',
-        Enabled = true,
-        Text = '%p',
-        UseGlobalFont = true,
-        FontFace = 'Expressway',
-        FontOutline = 'OUTLINE',
-        FontShadow = { Enabled = false, Color = { 0, 0, 0, 1 }, OffsetX = 1, OffsetY = -1 },
-        FontSize = 15,
-        Color = { 1, 1, 1, 1 },
-        TimeFormat = 'global',
-        PrecisionBelow = 3,
-        Precision = 1,
-        NumberFormat = 'auto', -- values (power, stats): auto, decimals, abbreviate, large, breakup, percent (power only)
-        Decimals = 1,
-        HideZero = true,       -- %s
-        NameFormat = 'full',   -- %n: full, initial, upper
-        NameColor = 'custom',  -- %n: custom (the text's Color), class, theme
-        Rotation = 'NONE',
-        Justify = 'AUTO',
-        WidthMode = 'auto',
-        FixedWidth = 64,
-        WordWrap = true,
-        Position = { AnchorFrom = 'AUTO', AnchorTo = 'CENTER', XOffset = 0, YOffset = 0 },
-    },
-    border = {
-        type = 'border',
-        Enabled = true,
-        Color = { 0, 0, 0, 1 },
-        Size = 1,
-        Offset = 0,
-    },
-    tick = {
-        type = 'tick',
-        Enabled = true,
-        Color = { 0, 0, 0, 1 },
-        Placement = 'auto',
-        Placements = '50',
-        Thickness = 1,
-        AutoLength = true,
-        Length = 10,
-    },
-    glow = {
-        type = 'glow',
-        Enabled = false,
-        Type = 'modern',
-        ColorMode = 'default',
-        Color = { 0.95, 0.95, 0.32, 1 },
-        Lines = 8,
-        Frequency = 0.25,
-        Length = 10,
-        Thickness = 2,
-        Border = true,
-        StartAnim = true,
-    },
-}
-
----A new sub element of a type, optionally changed by overrides.
----@param kind string
----@param overrides table?
----@return table
-function CDM:NewSubRegion(kind, overrides)
-    local element = CopyTable(CDM.SUBREGION_TEMPLATES[kind])
-    for key, value in pairs(overrides or {}) do
-        element[key] = type(value) == 'table' and CopyTable(value) or value
-    end
-
-    return element
-end
-
----A new icon's elements: a 1px black border, time left in the middle, charges in the corner.
----@return table[]
+---A new icon's elements, a 1px border with the time in the middle and charges in the corner
+---@return NorskenCore.SubElement[]
 function CDM:DefaultIconSubRegions()
     return {
-        CDM:NewSubRegion('border'),
-        CDM:NewSubRegion('text'),
-        CDM:NewSubRegion('text', { Text = '%s', FontSize = 13, Position = { AnchorFrom = 'AUTO', AnchorTo = 'BOTTOMRIGHT', XOffset = -1, YOffset = 2 } }),
+        NRSKNUI:NewSubRegion('border'),
+        NRSKNUI:NewSubRegion('text'),
+        NRSKNUI:NewSubRegion('text', { Text = '%s', FontSize = 13, Position = { AnchorFrom = 'AUTO', AnchorTo = 'BOTTOMRIGHT', XOffset = -1, YOffset = 2 } }),
     }
 end
 
----A new bar's elements: a 1px border, the name on the left and the time or value on the right.
----@return table[]
+---A new bar's elements, a 1px border with the name left and the time or value right
+---@return NorskenCore.SubElement[]
 function CDM:DefaultBarSubRegions()
     return {
-        CDM:NewSubRegion('border'),
-        CDM:NewSubRegion('text', { Text = '%n', FontSize = 12, Position = { AnchorFrom = 'AUTO', AnchorTo = 'LEFT', XOffset = 4, YOffset = 0 } }),
-        CDM:NewSubRegion('text', { Text = '%p', FontSize = 12, Position = { AnchorFrom = 'AUTO', AnchorTo = 'RIGHT', XOffset = -4, YOffset = 0 } }),
-    }
-end
-
----A new aura group's elements: a 1px border, the time in the middle and the stacks in the corner.
----@param look table? a built-in's own `{ timer, stacks, dispel, caster }`: text sizes, whether the border takes the dispel
----colour and the trigger whose auras name their caster
----@return table[]
-function CDM:DefaultAuraGroupSubRegions(look)
-    look = look or {}
-    return {
-        CDM:NewSubRegion('border', { DispelColor = look.dispel, DispelUntyped = look.dispel }),
-        CDM:NewSubRegion('text', { FontSize = look.timer or 18 }),
-        CDM:NewSubRegion('text', { Text = '%s', FontSize = look.stacks or 14, Position = { AnchorFrom = 'AUTO', AnchorTo = 'BOTTOMRIGHT', XOffset = 0, YOffset = 2 } }),
-        look.caster and CDM:NewSubRegion('text', {
-            Text = '%' .. look.caster .. '.casterName',
-            FontSize = 10,
-            CasterClassColor = true,
-            WidthMode = 'fixed', -- a long name is cut at the icon's edge
-            FixedWidth = 48,
-            WordWrap = false,
-            Position = { AnchorFrom = 'AUTO', AnchorTo = 'TOP', XOffset = 0, YOffset = -2 },
-        }) or nil,
+        NRSKNUI:NewSubRegion('border'),
+        NRSKNUI:NewSubRegion('text', { Text = '%n', FontSize = 12, Position = { AnchorFrom = 'AUTO', AnchorTo = 'LEFT', XOffset = 4, YOffset = 0 } }),
+        NRSKNUI:NewSubRegion('text', { Text = '%p', FontSize = 12, Position = { AnchorFrom = 'AUTO', AnchorTo = 'RIGHT', XOffset = -4, YOffset = 0 } }),
     }
 end
 
 -- Built-in aura groups --
 
--- What the built-in aura groups share; each one below changes only what sets it apart.
+-- What the built-in aura groups share, each one below changes only what sets it apart
 local BUILTIN_BASE = {
     Enabled = true,
-    -- an aura group's buttons start as its old ones looked: no swipe, a reversed one when turned on, tooltips
-    Style = { Width = 50, Height = 50, DrawSwipe = false, Reverse = true, Tooltip = true, TooltipHideInCombat = false, DispelIcon = false, DispelIconSize = 12 },
+    Style = CDM.AURA_GROUP_STYLE_TEMPLATE,
     Layout = { Grow = 'GRID', Align = 'CENTER', Spacing = 1, RowSpacing = 1, GridType = 'LU', GridWidth = 6 },
     maxFrameCount = 6,
     previewLimit = 6,
@@ -239,22 +123,8 @@ local BUILTIN_BASE = {
     anchorFrameType = 'UIPARENT',
     ParentFrame = 'UIParent',
 }
-CDM.AURA_GROUP_TEMPLATE = BUILTIN_BASE -- what any aura group's own fields look like, which an import is checked against
-
----@param into table
----@param from table
----@return table into
-local function Merge(into, from)
-    for key, value in pairs(from) do
-        if type(value) == 'table' and type(into[key]) == 'table' then
-            Merge(into[key], value)
-        else
-            into[key] = value
-        end
-    end
-
-    return into
-end
+-- Any aura group's own fields, which the conform fills in
+CDM.AURA_GROUP_TEMPLATE = BUILTIN_BASE
 
 ---@param overrides table
 ---@return table
@@ -262,12 +132,12 @@ local function Builtin(overrides)
     return Merge(CopyTable(BUILTIN_BASE), overrides)
 end
 
--- The aura groups a new profile starts with, inside the General Trackers group; each trigger starts from its preset.
+-- What a new profile starts with in General Trackers, each trigger from its preset
 CDM.BUILTIN_AURA_GROUPS = {
     {
         key = 'builtin:advancedDebuffs',
         presets = { 'preset:advancedDebuffs' },
-        look = { dispel = true },
+        look = { auraType = { DispelUntyped = true } },
         display = Builtin({
             name = 'Advanced Debuffs',
             Icon = 1396978,
@@ -277,7 +147,7 @@ CDM.BUILTIN_AURA_GROUPS = {
     },
     {
         key = 'builtin:defensives',
-        -- the externals are their own trigger, so only they say who cast them
+        -- The externals are their own trigger, so only they say who cast them
         presets = { 'preset:personalDefensives', 'preset:externals' },
         look = { caster = 2 },
         display = Builtin({
@@ -289,7 +159,7 @@ CDM.BUILTIN_AURA_GROUPS = {
     {
         key = 'builtin:generalBuffs',
         presets = { 'preset:generalBuffs' },
-        look = { timer = 14, stacks = 12 },
+        look = { timer = { FontSize = 14 }, stacks = { FontSize = 12 } },
         display = Builtin({
             name = 'General Buffs',
             Icon = 4374707,
@@ -312,16 +182,17 @@ CDM.BUILTIN_AURA_GROUPS = {
         }),
     },
 }
+-- Also by key, which saved displays look them up by
 for _, builtin in ipairs(CDM.BUILTIN_AURA_GROUPS) do
-    CDM.BUILTIN_AURA_GROUPS[builtin.key] = builtin -- also by key, which saved displays and migrations look them up by
+    CDM.BUILTIN_AURA_GROUPS[builtin.key] = builtin
 end
 
--- The group a new profile's built-ins live in.
+-- The group a new profile's built-ins live in
 CDM.BUILTIN_FOLDER = { name = 'General Trackers', Icon = 464820, Strata = 'HIGH' }
 
----A built-in aura group as it shipped, its trigger fresh from its preset.
+---A built-in aura group as it shipped, its trigger fresh from its preset
 ---@param key string
----@return table? display
+---@return CDMDisplay?
 function CDM:NewBuiltinAuraGroup(key)
     local builtin = CDM.BUILTIN_AURA_GROUPS[key]
     if not builtin then return nil end
@@ -329,8 +200,8 @@ function CDM:NewBuiltinAuraGroup(key)
     local display = CopyTable(builtin.display)
     display.type = 'auragroup'
     display.builtin = key
-    display.SubRegions = self:DefaultAuraGroupSubRegions(builtin.look)
-    -- a trigger per preset, each its own aura group with texts of its own
+    display.SubRegions = NRSKNUI:DefaultAuraGroupSubRegions(builtin.look)
+    -- A trigger per preset, each its own aura group with texts of its own
     local AuraTriggers = NRSKNUI.AuraTriggers
     local trigger
     for _, presetKey in ipairs(builtin.presets) do
@@ -347,5 +218,7 @@ function CDM:NewBuiltinAuraGroup(key)
     end
     display.Trigger = trigger
     display.Load = NRSKNUI.LoadConditions:GetDefaults()
+    -- Reset builds it here without StartDisplay, keeping the old uid
+    display.Conditions = {}
     return display
 end

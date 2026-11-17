@@ -1,30 +1,25 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
---[[
-Import and export strings: a display and everything inside it, packed into one string.
-An import either lands as a copy or updates the displays it matches by uid, one picked category at a time.
-]]
-
-local pairs, ipairs, next = pairs, ipairs, next
-local type = type
-local abs = math.abs
-local tsort = table.sort
+local format = string.format
 local CopyTable = CopyTable
+local tostring = tostring
+local sort = table.sort
+local ipairs = ipairs
+local abs = math.abs
+local pairs = pairs
+local next = next
 local time = time
+local type = type
 
 local PREFIX = '!NAURAS1!'
 local FORMAT_VERSION = 1
 local MAX_DEPTH = 32
 
--- What an import may contain.
-local TYPES = { icon = true, bar = true, text = true, group = true, dynamicgroup = true, auragroup = true }
-local GROUP_TYPES = { group = true, dynamicgroup = true }
-
--- The parts an update can take from an import, as the import page lists them.
+-- The parts an update can take from an import, as the import page lists them
 CDM.IMPORT_CATEGORIES = {
     { key = 'name',        label = L['Names'],                    fields = { 'name' },                                                                                        default = true },
     { key = 'position',    label = L['Size & Position'],          fields = { 'Position', 'anchorFrameType', 'ParentFrame', 'Strata', 'MatchWidth', 'MatchSide', 'MatchGap' }, default = false },
@@ -45,13 +40,13 @@ for _, category in ipairs(CDM.IMPORT_CATEGORIES) do
     end
 end
 
--- Tree bookkeeping, never compared or copied between a match.
+-- Tree bookkeeping, never compared or copied between a match
 local INTERNAL = { uid = true, parent = true, order = true, builtin = true, preferToUpdate = true }
 local SIZE_KEYS = { Width = true, Height = true }
 
 -- Shared --
 
----Size and position are the root's own; inside a group they are part of how the group is arranged.
+-- Size and position are the root's own, inside a group they're how the group is arranged
 ---@param key string
 ---@param isRoot boolean
 ---@return string
@@ -100,8 +95,8 @@ local function CollectSubtree(id, into)
     return into
 end
 
----Children of `parentKey` inside a payload, in their saved order.
----@param d table<string, table>
+-- A payload display's children in their saved order
+---@param d table<string, CDMDisplay>
 ---@param parentKey string
 ---@return string[]
 local function PayloadChildren(d, parentKey)
@@ -112,7 +107,7 @@ local function PayloadChildren(d, parentKey)
         end
     end
 
-    tsort(keys, function(a, b)
+    sort(keys, function(a, b)
         local oa, ob = d[a].order or 0, d[b].order or 0
         if oa ~= ob then
             return oa < ob
@@ -124,18 +119,17 @@ end
 
 -- Export --
 
----A display and everything inside it as an import string.
+---A display and everything inside it as an import string
 ---@param id string
 ---@return string? text
 function CDM:Export(id)
     if not self:Get(id) then return nil end
 
-    self:EnsureUids()
-
     local d = {}
     for _, key in ipairs(CollectSubtree(id, {})) do
         local copy = CopyTable(self:Get(key))
-        copy.builtin, copy.preferToUpdate = nil, nil -- a shared built-in is the importer's own
+        -- A shared built-in is the importer's own
+        copy.builtin, copy.preferToUpdate = nil, nil
         d[key] = copy
     end
     d[id].parent = nil
@@ -146,7 +140,7 @@ function CDM:Export(id)
         end
     end
 
-    local payload = { _v = FORMAT_VERSION, _s = self:GetSchemaVersion(), _a = NRSKNUI.Version, _t = time(), root = id, d = d }
+    local payload = { _v = FORMAT_VERSION, _s = self.SCHEMA_VERSION, _a = NRSKNUI.Version, _t = time(), root = id, d = d }
     local encoded = NRSKNUI:EncodeTable(payload)
     if not encoded then return nil end
 
@@ -155,8 +149,8 @@ end
 
 -- Decode --
 
----As WA's validate: a missing or wrongly typed field takes the default, nested tables included; a field the
----default doesn't have is left alone.
+-- A missing or wrongly typed field takes the default, nested tables too, in the WA style
+-- A field the default doesn't have is left alone
 ---@param input table
 ---@param default table
 local function Conform(input, default)
@@ -174,73 +168,159 @@ local function Conform(input, default)
     end
 end
 
----An icon's look, which an aura group's buttons share: every sub element of a known type, the style filled in.
----@param display table
----@return boolean ok
+-- A grow no group knows takes the template's
+---@param layout CDMLayout
+---@param default string
+local function ConformGrow(layout, default)
+    if not NRSKNUI:HasDynamicGroupGrower(layout.Grow) then
+        layout.Grow = default
+    end
+end
+
+-- An icon's look, which an aura group's buttons share
+---@param display CDMDisplay
 local function ConformLook(display)
-    local elements = display.SubRegions
-    if elements ~= nil and type(elements) ~= 'table' then return false end
-    for _, element in ipairs(elements or {}) do
-        local template = type(element) == 'table' and CDM.SUBREGION_TEMPLATES[element.type]
-        if not template then return false end
-        Conform(element, template)
+    if type(display.SubRegions) ~= 'table' then
+        display.SubRegions = display.type == 'auragroup' and NRSKNUI:DefaultAuraGroupSubRegions() or {}
+    end
+    Conform(display, { Style = CDM.STYLE_TEMPLATES[display.type] })
+    for _, element in ipairs(display.SubRegions) do
+        Conform(element, NRSKNUI.SUBREGION_TEMPLATES[element.type])
+    end
+end
+
+-- All of and Any of need their list, a plain check its trigger
+-- Talent checks get their entry list only with fill, so a refused display stays as saved
+---@param display CDMDisplay
+---@param check any
+---@param fill boolean
+---@return boolean ok
+local function ConformCheck(display, check, fill)
+    if type(check) ~= 'table' then return false end
+
+    if CDM.COMBINATIONS[check.variable] then
+        if type(check.checks) ~= 'table' then return false end
+        for _, sub in ipairs(check.checks) do
+            if not ConformCheck(display, sub, fill) then return false end
+        end
+        return true
     end
 
-    Conform(display.Style, CDM.STYLE_TEMPLATES[display.type] or CDM.STYLE_TEMPLATE)
+    if type(check.trigger) ~= 'number' then return false end
+    if check.entries ~= nil then
+        return type(check.entries) == 'table'
+    end
+    local trigger = CDM:GetCheckTrigger(display, check.trigger)
+    local checks = trigger and CDM.ConditionChecks[trigger.Type]
+    local def = checks and checks[check.variable]
+    if fill and def and def.talents then
+        check.entries = {}
+    end
     return true
 end
 
----Puts an imported display's fields in shape, so nothing reads a wrong type later. Its lists can't be patched
----without changing what a trigger or condition number points at, so a broken one fails the whole string.
+-- What no default fills, as dropping a trigger, element or condition moves numbers after it
 ---@param display table
+---@return boolean
+local function Repairable(display)
+    if not CDM.DISPLAY_TYPES[display.type] then return false end
+
+    if CDM.LAYERED_TYPES[display.type] then
+        if type(display.Triggers) ~= 'table' then return false end
+        for _, trigger in ipairs(display.Triggers) do
+            if type(trigger) ~= 'table' or type(trigger.Type) ~= 'string' then return false end
+        end
+    end
+    if type(display.SubRegions) == 'table' then
+        for _, element in ipairs(display.SubRegions) do
+            if type(element) ~= 'table' or not NRSKNUI.SUBREGION_TEMPLATES[element.type] then return false end
+        end
+    end
+    if type(display.Conditions) == 'table' then
+        for _, condition in ipairs(display.Conditions) do
+            if type(condition) ~= 'table' or not ConformCheck(display, condition.check, false) then return false end
+        end
+    end
+    return true
+end
+
+---Fill in an imported or saved display so nothing reads a missing field, in the WA style
+---False only for what can't be filled, as a trigger or condition number would move
+---@param display table
+---@param id string its key, the name when it has none
 ---@return boolean ok
-local function ConformDisplay(display)
-    local conditions = display.Conditions
-    if conditions ~= nil and type(conditions) ~= 'table' then return false end
-    for _, condition in ipairs(conditions or {}) do
-        if type(condition) ~= 'table' then return false end
-        if condition.check ~= nil and type(condition.check) ~= 'table' then return false end
-        if condition.changes ~= nil and type(condition.changes) ~= 'table' then return false end
+function CDM:ConformDisplay(display, id)
+    if not Repairable(display) then return false end
+
+    if type(display.name) ~= 'string' then
+        display.name = id
+    end
+    if type(display.uid) ~= 'string' then
+        display.uid = self:NewUid()
+    end
+    if type(display.Enabled) ~= 'boolean' then
+        display.Enabled = false
+    end
+    if type(display.anchorFrameType) ~= 'string' then
+        display.anchorFrameType = 'UIPARENT'
+    end
+    if type(display.ParentFrame) ~= 'string' then
+        display.ParentFrame = 'UIParent'
+    end
+    if type(display.Conditions) ~= 'table' then
+        display.Conditions = {}
+    end
+    for _, condition in ipairs(display.Conditions) do
+        ConformCheck(display, condition.check, true)
+        if type(condition.changes) ~= 'table' then
+            condition.changes = {}
+        end
     end
     Conform(display, { Position = CDM.POSITION_TEMPLATE })
 
     if CDM.LAYERED_TYPES[display.type] then
-        for _, trigger in ipairs(display.Triggers) do
-            if type(trigger) ~= 'table' or type(trigger.Type) ~= 'string' then return false end
-        end
-
-        if not ConformLook(display) then return false end
+        ConformLook(display)
         Conform(display, { Load = NRSKNUI.LoadConditions:GetDefaults() })
     elseif display.type == 'auragroup' then
-        if type(display.Trigger) ~= 'table' then return false end
+        if type(display.Trigger) ~= 'table' then
+            display.Trigger = NRSKNUI.AuraTriggers:New()
+        end
+        local unit = display.Trigger.Unit
+        if not NRSKNUI:IsValidUnitToken(unit) then
+            NRSKNUI:Print(format(L['Aura group "%s" had an unusable unit (%s), so it now watches the player.'], display.name, tostring(unit)))
+            display.Trigger.Unit = 'player'
+        end
         Conform(display, CDM.AURA_GROUP_TEMPLATE)
-        if not ConformLook(display) then return false end
+        ConformGrow(display.Layout, CDM.AURA_GROUP_TEMPLATE.Layout.Grow)
+        ConformLook(display)
         Conform(display, { Load = NRSKNUI.LoadConditions:GetDefaults() })
-    elseif display.type == 'dynamicgroup' then
-        Conform(display, { Layout = CDM.LAYOUT_TEMPLATE })
+    else
+        -- A group draws nothing of its own, so a look it carries is dropped
+        display.Style = nil
+        display.SubRegions = nil
+        if display.type == 'dynamicgroup' then
+            Conform(display, { Layout = CDM.LAYOUT_TEMPLATE })
+            ConformGrow(display.Layout, CDM.LAYOUT_TEMPLATE.Grow)
+        end
     end
-
     return true
 end
 
----Every display in a payload is reachable from the root and the tree follows the group rules.
----@param d table<string, table>
+-- Every display in a payload is reachable from the root and the tree follows the group rules
+---@param d table<string, CDMDisplay>
 ---@param root string
 ---@return string? error
 local function ValidateTree(d, root)
+    local uids = {}
     for key, display in pairs(d) do
-        if type(key) ~= 'string' or type(display) ~= 'table' then
+        if type(key) ~= 'string' or type(display) ~= 'table' or not CDM:ConformDisplay(display, key) then
             return L['The string is damaged.']
         end
-        if type(display.name) ~= 'string' or not TYPES[display.type] or type(display.uid) ~= 'string' then
-            return L['The string is damaged.']
+        -- A uid twice would match two displays to one, so the second gets its own
+        if uids[display.uid] then
+            display.uid = CDM:NewUid()
         end
-        if CDM.LAYERED_TYPES[display.type] and (type(display.Triggers) ~= 'table' or type(display.Style) ~= 'table') then
-            return L['The string is damaged.']
-        end
-        if not ConformDisplay(display) then
-            return L['The string is damaged.']
-        end
+        uids[display.uid] = true
 
         if key == root then
             if display.parent ~= nil then
@@ -248,10 +328,7 @@ local function ValidateTree(d, root)
             end
         else
             local parent = d[display.parent]
-            if not parent or not GROUP_TYPES[parent.type] then
-                return L['The string is damaged.']
-            end
-            if parent.type == 'dynamicgroup' and not CDM.LAYERED_TYPES[display.type] then
+            if not parent or not CDM:HoldsType(parent.type, display.type) then
                 return L['The string is damaged.']
             end
 
@@ -268,19 +345,20 @@ local function ValidateTree(d, root)
             end
         end
 
-        -- A Match Width group that didn't come along is dropped.
+        -- A Match Width group that didn't come along is dropped
         if display.MatchWidth ~= nil and (type(display.MatchWidth) ~= 'string' or not d[display.MatchWidth]) then
             display.MatchWidth = nil
         end
     end
 end
 
----Read an import string; nil and an error the page can show when it isn't one.
+---Read an import string, nil with an error the page can show when it isn't one
 ---@param text string
----@return table? payload
+---@return CDMImportPayload?
 ---@return string? error
 function CDM:DecodeImport(text)
-    text = (text or ''):gsub('%s+', '') -- Base64 has no whitespace; a string copied in wrapped lines still reads
+    -- Base64 has no whitespace, so a string copied in wrapped lines still reads
+    text = text:gsub('%s+', '')
     if text == '' then return nil end
     if text:sub(1, #PREFIX) ~= PREFIX then
         return nil, L['This is not a NorskenAuras string.']
@@ -291,10 +369,10 @@ function CDM:DecodeImport(text)
         or type(payload.d[payload.root]) ~= 'table' or type(payload._s) ~= 'number' then
         return nil, L['The string is damaged.']
     end
-    if payload._s > self:GetSchemaVersion() then
+    if payload._s > self.SCHEMA_VERSION then
         return nil, L['This string was made with a newer NorskenAuras; update to import it.']
     end
-    if payload._s < self:GetSchemaVersion() then
+    if payload._s < self.SCHEMA_VERSION then
         return nil, L['The string is damaged.']
     end
 
@@ -308,16 +386,16 @@ end
 
 -- Match --
 
----Which categories differ between a local display and its import.
----@param old table
----@param new table
+-- Which categories differ between a local display and its import
+---@param old CDMDisplay
+---@param new CDMDisplay
 ---@param isRoot boolean
 ---@param into table<string, true>
 local function Differences(old, new, isRoot, into)
     local sizeCategory = isRoot and 'position' or 'arrangement'
     local function Compare(key)
         if INTERNAL[key] then return end
-        if key == 'Style' and type(old.Style) == 'table' and type(new.Style) == 'table' then
+        if key == 'Style' then
             for styleKey in pairs(SIZE_KEYS) do
                 if not Equal(old.Style[styleKey], new.Style[styleKey]) then
                     into[sizeCategory] = true
@@ -347,12 +425,10 @@ local function Differences(old, new, isRoot, into)
     end
 end
 
----What importing a payload would do: a match to update or a plain copy.
----@param payload table
----@return table plan
+---What importing a payload would do, a match to update or a plain copy
+---@param payload CDMImportPayload
+---@return CDMImportPlan
 function CDM:PlanImport(payload)
-    self:EnsureUids()
-
     local d, root = payload.d, payload.root
     local count = 0
     for _ in pairs(d) do
@@ -362,7 +438,8 @@ function CDM:PlanImport(payload)
 
     local target = self:GetByUid(d[root].uid)
     if not target or self:Get(target).type ~= d[root].type then
-        plan.blocked = target ~= nil -- same uid, other kind of display: only a copy makes sense
+        -- The same uid on another kind of display, so only a copy makes sense
+        plan.blocked = target ~= nil
         return plan
     end
 
@@ -394,7 +471,7 @@ function CDM:PlanImport(payload)
                 plan.categories[category] = true
             end
         end
-        -- A matched display moved to another group.
+        -- A matched display moved to another group
         if key ~= root and plan.matches[d[key].parent] ~= self:Get(id).parent then
             plan.categories.arrangement = true
         end
@@ -416,9 +493,9 @@ function CDM:PlanImport(payload)
         plan.categories.oldchildren = true
     end
 
-    -- Sibling order changed among displays both sides have.
+    -- Sibling order changed among displays both sides have
     for key, id in pairs(plan.matches) do
-        if GROUP_TYPES[d[key].type] then
+        if CDM.GROUP_TYPES[d[key].type] then
             local newOrder, oldOrder = {}, {}
             for _, childKey in ipairs(PayloadChildren(d, key)) do
                 if plan.matches[childKey] then
@@ -448,8 +525,8 @@ local function Renumber(parentId)
     end
 end
 
----Write an import as new displays at the top level; uids already in use get fresh ones.
----@param payload table
+-- An import as new displays at the top level, uids already in use get fresh ones
+---@param payload CDMImportPayload
 ---@return string rootId
 local function ImportAsCopy(payload)
     local d, root = payload.d, payload.root
@@ -461,7 +538,7 @@ local function ImportAsCopy(payload)
 
     local ids = {}
     for key, display in pairs(d) do
-        local id = CDM:NextId()
+        local id = CDM.NextId()
         local copy = CopyTable(display)
         if used[copy.uid] then
             copy.uid = CDM:NewUid()
@@ -480,16 +557,15 @@ local function ImportAsCopy(payload)
     return ids[root]
 end
 
----Update the matched displays in place with the picked categories.
----@param plan table
+-- The matched displays updated in place with the picked categories
+---@param plan CDMImportPlan
 ---@param picked table<string, boolean>
----@return string rootId
 local function ImportAsUpdate(plan, picked)
     local d, root = plan.payload.d, plan.payload.root
     local store = CDM.db.Displays
     local sizeCategory = function(key) return key == root and 'position' or 'arrangement' end
 
-    -- Final id of every import key that ends up in the store.
+    -- Final id of every import key that ends up in the store
     local ids = {}
     for key, id in pairs(plan.matches) do
         ids[key] = id
@@ -500,10 +576,11 @@ local function ImportAsUpdate(plan, picked)
             used[display.uid] = true
         end
         for _, key in ipairs(plan.added) do
-            local id = CDM:NextId()
+            local id = CDM.NextId()
             local copy = CopyTable(d[key])
+            -- Moved out of the group locally, so it stays a separate display
             if used[copy.uid] then
-                copy.uid = CDM:NewUid() -- moved out of the group locally, so it stays a separate display
+                copy.uid = CDM:NewUid()
             end
             used[copy.uid] = true
             store[id] = copy
@@ -526,29 +603,28 @@ local function ImportAsUpdate(plan, picked)
         end
         for field in pairs(keys) do
             if not INTERNAL[field] and field ~= 'Style' and picked[FieldCategory(field, key == root)] then
+                -- MatchWidth holds an import key, so it needs the id that key got here
                 if field == 'MatchWidth' then
-                    old.MatchWidth = new.MatchWidth and ids[new.MatchWidth] -- an import key, so it needs the id it got here
+                    old.MatchWidth = new.MatchWidth and ids[new.MatchWidth]
                 else
                     old[field] = Copy(new[field])
                 end
             end
         end
-        if type(new.Style) == 'table' then
+        if new.Style then
             local style = picked.display and CopyTable(new.Style) or old.Style
-            if type(style) == 'table' and type(old.Style) == 'table' then
-                for sizeKey in pairs(SIZE_KEYS) do
-                    style[sizeKey] = picked[sizeCategory(key)] and new.Style[sizeKey] or old.Style[sizeKey]
-                end
+            for sizeKey in pairs(SIZE_KEYS) do
+                style[sizeKey] = picked[sizeCategory(key)] and new.Style[sizeKey] or old.Style[sizeKey]
             end
             old.Style = style
         end
     end
 
-    -- Tree: the import's when Group Arrangement is picked, the local one otherwise; the root keeps its own place.
+    -- The import's tree when Group Arrangement is picked, else the local one
     local touched = {}
     for key, id in pairs(ids) do
         if key ~= root and (picked.arrangement or not plan.matches[key]) then
-            -- A new display's parent is always here: missing ones are added together or not at all.
+            -- A new display's parent is always here, as missing ones come together or not at all
             local parentId = ids[d[key].parent]
             if parentId then
                 store[id].parent = parentId
@@ -558,7 +634,7 @@ local function ImportAsUpdate(plan, picked)
         end
     end
 
-    -- A new display goes right after the one before it in the import, when that one is here too.
+    -- A new display goes after the one before it in the import, when that one is here too
     if not picked.arrangement then
         for _, key in ipairs(plan.added) do
             local id = ids[key]
@@ -571,8 +647,9 @@ local function ImportAsUpdate(plan, picked)
                     end
                 end
                 local parentId = store[id].parent
+                -- Between it and the next, Renumber evens it out
                 if previous and store[previous].parent == parentId then
-                    store[id].order = (store[previous].order or 0) + 0.5 -- between it and the next; Renumber evens it out
+                    store[id].order = (store[previous].order or 0) + 0.5
                 else
                     store[id].order = math.huge
                 end
@@ -582,7 +659,7 @@ local function ImportAsUpdate(plan, picked)
 
     if picked.oldchildren then
         local removed = CopyTable(plan.removed)
-        tsort(removed, function(a, b) return CDM:GetDepth(a) > CDM:GetDepth(b) end)
+        sort(removed, function(a, b) return CDM:GetDepth(a) > CDM:GetDepth(b) end)
         for _, id in ipairs(removed) do
             if CDM:Get(id) and not (CDM:IsGroup(id) and CDM:GetChildren(id)[1]) then
                 touched[store[id].parent or ''] = true
@@ -596,28 +673,20 @@ local function ImportAsUpdate(plan, picked)
             Renumber(parentId)
         end
     end
-
-    return plan.target
 end
 
----Add or update displays from a planned import; the caller refreshes the runtime and the page.
----@param plan table from CDM:PlanImport
+---Add or update displays from a planned import, the caller refreshes what shows
+---@param plan CDMImportPlan
 ---@param mode 'copy'|'update'
----@param picked table<string, boolean>? update categories that were ticked
+---@param picked table<string, boolean> the update categories that were ticked
 ---@return string rootId
 function CDM:ApplyImport(plan, mode, picked)
-    local rootId
-    if mode == 'update' and plan.target and not plan.blocked then
-        rootId = ImportAsUpdate(plan, picked or {})
-        self:Get(rootId).preferToUpdate = true -- next time this string's newer version comes in, Update is the default
-    else
-        rootId = ImportAsCopy(plan.payload)
+    local target = plan.target
+    if mode == 'update' and target and not plan.blocked then
+        ImportAsUpdate(plan, picked)
+        -- A newer version of this string defaults to Update next time
+        self:Get(target).preferToUpdate = true
+        return target
     end
-    self:EnsureUids()
-    return rootId
-end
-
----@return string
-function CDM:GetImportPrefix()
-    return PREFIX
+    return ImportAsCopy(plan.payload)
 end

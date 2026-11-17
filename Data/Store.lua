@@ -1,37 +1,51 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
---[[
-The saved displays.
-Creating, finding, moving, copying and deleting them, the tree they form and the templates new ones start from.
-]]
-
-local tsort, tconcat = table.sort, table.concat
-local ipairs, pairs = ipairs, pairs
 local format = string.format
+local tconcat = table.concat
 local CopyTable = CopyTable
 local random = math.random
+local sort = table.sort
+local wipe = table.wipe
+local ipairs = ipairs
+local pairs = pairs
 local type = type
-local wipe = wipe
 
 local PowerType = Enum.PowerType
 
-local UID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()'
-local ID_PREFIX = 'cdm:'
-local SCHEMA_VERSION = 1
-local RESOURCE_WIDTH, RESOURCE_HEIGHT = 240, 12
+-- Bumped when saved displays change shape, so an older string knows it needs converting
+CDM.SCHEMA_VERSION = 1
 
--- Displays built from per-trigger layers: they have triggers, conditions and a style.
+-- Displays built from per-trigger layers, with triggers, conditions and a style
 CDM.LAYERED_TYPES = {
     icon = true,
     bar = true,
     text = true,
 }
 
--- What a Display paste leaves alone: identity, tree placement and the other parts.
+CDM.GROUP_TYPES = {
+    group = true,
+    dynamicgroup = true,
+}
+
+CDM.DISPLAY_TYPES = {
+    icon = true,
+    bar = true,
+    text = true,
+    group = true,
+    dynamicgroup = true,
+    auragroup = true,
+}
+
+local UID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()'
+local ID_PREFIX = 'cdm:'
+local RESOURCE_WIDTH = 240
+local RESOURCE_HEIGHT = 12
+
+-- What a Display paste leaves alone, its identity, tree place and the other parts
 local NOT_DISPLAY = {
     type = true,
     name = true,
@@ -47,10 +61,10 @@ local NOT_DISPLAY = {
     DynamicTrigger = true,
     Conditions = true,
     Load = true,
-    Trigger = true, -- an aura group's one trigger
+    Trigger = true, -- An aura group's one trigger
 }
 
--- The keys each part of a Paste Settings copies.
+-- The keys each part of a Paste Settings copies
 local PART_KEYS = {
     trigger = { 'Triggers', 'Activation', 'DynamicTrigger', 'Trigger' },
     conditions = { 'Conditions' },
@@ -74,17 +88,7 @@ local function NextId()
     return ID_PREFIX .. index
 end
 
----@return string id
-function CDM:NextId()
-    return NextId()
-end
-
----@return number
-function CDM:GetSchemaVersion()
-    return SCHEMA_VERSION
-end
-
----11 random characters that follow a display through exports, so a re-import can find it.
+---11 random characters that follow a display through exports, so a re-import can find it
 ---@return string
 function CDM:NewUid()
     local chars = {}
@@ -96,11 +100,11 @@ function CDM:NewUid()
     return tconcat(chars)
 end
 
----Every display gets a uid and a uid two displays share is replaced on one of them.
+---A uid two displays share is replaced on one of them
 function CDM:EnsureUids()
     local seen = {}
     for _, display in pairs(Store()) do
-        if type(display.uid) ~= 'string' or seen[display.uid] then
+        if seen[display.uid] then
             display.uid = self:NewUid()
         end
         seen[display.uid] = true
@@ -120,20 +124,31 @@ end
 -- Lookups --
 
 ---@param id string?
----@return table? display
+---@return CDMDisplay?
 function CDM:Get(id)
     return id and Store()[id] or nil
 end
 
----Any container, static or dynamic.
+---Any container, static or dynamic
 ---@param id string?
 ---@return boolean
 function CDM:IsGroup(id)
     local display = self:Get(id)
-    return display ~= nil and (display.type == 'group' or display.type == 'dynamicgroup')
+    return display ~= nil and CDM.GROUP_TYPES[display.type] == true
 end
 
----A tracker of many auras at once, drawn by one native aura group: a leaf like an icon.
+---A dynamic group holds icons, bars and texts only, a static group any type
+---@param parentType string
+---@param childType string
+---@return boolean
+function CDM:HoldsType(parentType, childType)
+    if parentType == 'dynamicgroup' then
+        return CDM.LAYERED_TYPES[childType] == true
+    end
+    return parentType == 'group'
+end
+
+---A tracker of many auras at once in one native aura group, a leaf like an icon
 ---@param id string?
 ---@return boolean
 function CDM:IsAuraGroup(id)
@@ -157,8 +172,8 @@ end
 
 -- Tree --
 
----@param a table
----@param b table
+---@param a CDMTreeEntry
+---@param b CDMTreeEntry
 local function ByOrderThenName(a, b)
     if a.order and b.order and a.order ~= b.order then
         return a.order < b.order
@@ -169,23 +184,23 @@ local function ByOrderThenName(a, b)
     return a.text < b.text
 end
 
----A group's direct children in display order.
+---A group's direct children in display order
 ---@param groupId string
----@return table[] children { key, text, order? }
+---@return CDMTreeEntry[]
 function CDM:GetChildren(groupId)
     local children = {}
     for id, display in pairs(Store()) do
         if display.parent == groupId then
-            children[#children + 1] = { key = id, text = display.name or id, order = display.order }
+            children[#children + 1] = { key = id, text = display.name, order = display.order }
         end
     end
 
-    tsort(children, ByOrderThenName)
+    sort(children, ByOrderThenName)
     return children
 end
 
----Every group's direct children in display order, from one pass over the store.
----@return table<string, table[]> children { key, text, order? } by group id
+---Every group's direct children in display order, from one pass over the store
+---@return table<string, CDMTreeEntry[]> children by group id
 function CDM:GetChildrenIndex()
     local index = {}
     for id, display in pairs(Store()) do
@@ -196,18 +211,18 @@ function CDM:GetChildrenIndex()
                 list = {}
                 index[parent] = list
             end
-            list[#list + 1] = { key = id, text = display.name or id, order = display.order }
+            list[#list + 1] = { key = id, text = display.name, order = display.order }
         end
     end
 
     for _, list in pairs(index) do
-        tsort(list, ByOrderThenName)
+        sort(list, ByOrderThenName)
     end
 
     return index
 end
 
----Every icon under a group at any depth, in display order.
+---Every icon under a group at any depth, in display order
 ---@param groupId string
 ---@param into string[]?
 ---@return string[]
@@ -224,7 +239,7 @@ function CDM:GetIcons(groupId, into)
     return into
 end
 
----Every display under a group that draws something, icons and aura groups, in display order.
+---Every display under a group that draws something, icons and aura groups, in display order
 ---@param groupId string
 ---@param into string[]?
 ---@return string[]
@@ -241,7 +256,7 @@ function CDM:GetLeaves(groupId, into)
     return into
 end
 
----Parent first, up to the top level.
+---Parent first, up to the top level
 ---@param id string
 ---@return string[]
 function CDM:GetAncestors(id)
@@ -261,34 +276,30 @@ function CDM:GetDepth(id)
     return #self:GetAncestors(id)
 end
 
----Top-level displays, by name.
----@return table[] roots { key, text }
+---Top-level displays, by name
+---@return CDMTreeEntry[]
 function CDM:GetRoots()
     local roots = {}
     for id, display in pairs(Store()) do
         if not display.parent then
-            roots[#roots + 1] = { key = id, text = display.name or id }
+            roots[#roots + 1] = { key = id, text = display.name }
         end
     end
 
-    tsort(roots, function(a, b)
+    sort(roots, function(a, b)
         return a.text < b.text
     end)
     return roots
 end
 
----A dynamic group holds icons, bars and texts only; a static group holds anything but itself or a group above it.
+---What HoldsType allows, never into itself or a group inside it
 ---@param parentId string
 ---@param childId string
 ---@return boolean
 function CDM:CanContain(parentId, childId)
     local parent, child = self:Get(parentId), self:Get(childId)
-    if not (parent and child) or parentId == childId or not self:IsGroup(parentId) then
+    if not (parent and child) or parentId == childId or not self:HoldsType(parent.type, child.type) then
         return false
-    end
-
-    if parent.type == 'dynamicgroup' then
-        return CDM.LAYERED_TYPES[child.type] == true
     end
 
     for _, ancestor in ipairs(self:GetAncestors(parentId)) do
@@ -309,7 +320,7 @@ local function Renumber(ordered)
     end
 end
 
----Move a display into a group or to the top level.
+---Move a display into a group or to the top level
 ---@param id string
 ---@param parentId string?
 ---@param first boolean? lead the group instead of trailing it
@@ -336,7 +347,7 @@ function CDM:SetParent(id, parentId, first)
     Renumber(ordered)
 end
 
----Place a display before or after one inside a group, joining that group.
+---Place a display before or after one inside a group, joining that group
 ---@param id string
 ---@param targetId string
 ---@param position 'before'|'after'
@@ -368,7 +379,7 @@ function CDM:MoveNextTo(id, targetId, position)
     Renumber(ordered)
 end
 
----Swap a display with its neighbour in its group.
+---Swap a display with its neighbour in its group
 ---@param id string
 ---@param delta number -1 up, 1 down
 function CDM:MoveInGroup(id, delta)
@@ -392,7 +403,7 @@ function CDM:MoveInGroup(id, delta)
     end
 end
 
----Take a display out of its group, into the group that holds that one.
+---Take a display out of its group, into the group that holds that one
 ---@param id string
 function CDM:Ungroup(id)
     local display = self:Get(id)
@@ -410,14 +421,15 @@ end
 
 -- Creating --
 
----A new display's identity and starting spot, the middle of the screen. The uid comes now rather than at the next
----login's EnsureUids, as the options key session state by it.
----@param display table
+-- What every new display starts with, so nothing reading it needs a fallback
+-- The uid comes now, as the options key session state by it
+---@param display table a display being made, which this completes
 local function StartDisplay(display)
     display.uid = CDM:NewUid()
     display.anchorFrameType = 'UIPARENT'
     display.ParentFrame = 'UIParent'
     display.Position = CopyTable(CDM.POSITION_TEMPLATE)
+    display.Conditions = {}
 end
 
 ---@param name string
@@ -442,7 +454,7 @@ function CDM:CreateGroup(name, dynamic, parentId)
 end
 
 ---@param name string
----@param trigger table
+---@param trigger CDMTrigger
 ---@param parentId string?
 ---@return string? id
 function CDM:CreateIcon(name, trigger, parentId)
@@ -454,8 +466,7 @@ function CDM:CreateIcon(name, trigger, parentId)
         name = name,
         Enabled = true,
         Triggers = { trigger },
-        Conditions = {},
-        Style = CopyTable(CDM.STYLE_TEMPLATE),
+        Style = CopyTable(NRSKNUI.ICON_STYLE_TEMPLATE),
         SubRegions = CDM:DefaultIconSubRegions(),
         Load = NRSKNUI.LoadConditions:GetDefaults(),
     }
@@ -469,7 +480,7 @@ function CDM:CreateIcon(name, trigger, parentId)
 end
 
 ---@param name string
----@param trigger table
+---@param trigger CDMTrigger
 ---@param parentId string?
 ---@return string? id
 function CDM:CreateBar(name, trigger, parentId)
@@ -481,7 +492,6 @@ function CDM:CreateBar(name, trigger, parentId)
         name = name,
         Enabled = true,
         Triggers = { trigger },
-        Conditions = {},
         Style = CopyTable(CDM.BAR_STYLE_TEMPLATE),
         SubRegions = CDM:DefaultBarSubRegions(),
         Load = NRSKNUI.LoadConditions:GetDefaults(),
@@ -495,9 +505,9 @@ function CDM:CreateBar(name, trigger, parentId)
     return id
 end
 
----One text, its frame sized to it; the text is the display's only sub element.
+---One text as its only sub element, its frame sized to it
 ---@param name string
----@param trigger table
+---@param trigger CDMTrigger
 ---@param parentId string?
 ---@return string? id
 function CDM:CreateText(name, trigger, parentId)
@@ -509,9 +519,8 @@ function CDM:CreateText(name, trigger, parentId)
         name = name,
         Enabled = true,
         Triggers = { trigger },
-        Conditions = {},
         Style = CopyTable(CDM.TEXT_STYLE_TEMPLATE),
-        SubRegions = { CDM:NewSubRegion('text', { FontSize = 20, Justify = 'LEFT' }) },
+        SubRegions = { NRSKNUI:NewSubRegion('text', { FontSize = 20, Justify = 'LEFT' }) },
         Load = NRSKNUI.LoadConditions:GetDefaults(),
     }
     StartDisplay(display)
@@ -523,7 +532,7 @@ function CDM:CreateText(name, trigger, parentId)
     return id
 end
 
----The spec's resource: points as one split bar, runes and Essence Recharging Segments and the rest Static; anything else a plain bar.
+---The spec's resource, points as one split bar and anything else a plain bar
 ---@param parentId string?
 ---@return string? id
 function CDM:CreateResourceBar(parentId)
@@ -544,13 +553,13 @@ function CDM:CreateResourceBar(parentId)
     bar.Style.BarColorMode = 'power'
     bar.Style.IconShow = false
     bar.SubRegions = {
-        self:NewSubRegion('border', { EachPip = split }),
-        self:NewSubRegion('text', { Text = '%p', FontSize = 10, EachPip = split, Enabled = recharges or not split }),
+        NRSKNUI:NewSubRegion('border', { EachPip = split }),
+        NRSKNUI:NewSubRegion('text', { Text = '%p', FontSize = 10, EachPip = split, Enabled = recharges or not split }),
     }
     return id
 end
 
----A tracker of many auras, starting from the shipped Defensives tracker's look.
+---A tracker of many auras, starting from the shipped Defensives tracker's look
 ---@param name string
 ---@param presetKey string? start from this aura preset instead of an empty trigger
 ---@param parentId string?
@@ -558,9 +567,10 @@ end
 function CDM:CreateAuraGroup(name, presetKey, parentId)
     if not name or name == '' then return nil end
 
-    local display = self:NewBuiltinAuraGroup('builtin:defensives') --[[@as table]]
+    local display = self:NewBuiltinAuraGroup('builtin:defensives') --[[@as CDMDisplay]]
     display.name, display.builtin = name, nil
-    display.SubRegions = self:DefaultAuraGroupSubRegions() -- not Defensives' caster text, which reads its second trigger
+    -- Not Defensives' caster text, which reads its second trigger
+    display.SubRegions = NRSKNUI:DefaultAuraGroupSubRegions()
     display.Trigger = presetKey
         and NRSKNUI.AuraTriggers:ToAuraFilter({ Type = NRSKNUI.AuraTriggers.Types.Preset, Preset = presetKey, Unit = 'player' })
         or NRSKNUI.AuraTriggers:New()
@@ -575,7 +585,7 @@ function CDM:CreateAuraGroup(name, presetKey, parentId)
     return id
 end
 
----A built-in aura group as it shipped, added again: its Reset entries work as on the one a new profile gets.
+---A built-in aura group added again as it shipped, so its Reset works as on a new profile's
 ---@param key string
 ---@return string? id
 function CDM:AddBuiltinAuraGroup(key)
@@ -584,13 +594,14 @@ function CDM:AddBuiltinAuraGroup(key)
 
     local position = display.Position
     StartDisplay(display)
-    display.Position = position -- where it ships, as Reset puts it
+    -- Where it ships, as Reset puts it
+    display.Position = position
     local id = NextId()
     Store()[id] = display
     return id
 end
 
----Put a built-in aura group back to how it shipped, spells, layout and position included; it keeps its place in the tree.
+---Put a built-in aura group back as it shipped, keeping its place in the tree
 ---@param id string
 function CDM:ResetBuiltin(id)
     local display = self:Get(id)
@@ -604,16 +615,16 @@ function CDM:ResetBuiltin(id)
     end
 end
 
----A new profile's General Trackers group with the built-in aura groups inside.
+---A new profile's General Trackers group with the built-in aura groups inside
 function CDM:SeedBuiltins()
     local folderId = self:CreateGroup(CDM.BUILTIN_FOLDER.name, false) --[[@as string]]
-    local folder = self:Get(folderId) --[[@as table]]
+    local folder = self:Get(folderId) --[[@as CDMDisplay]]
     folder.Icon, folder.Strata = CDM.BUILTIN_FOLDER.Icon, CDM.BUILTIN_FOLDER.Strata
 
     for order, builtin in ipairs(CDM.BUILTIN_AURA_GROUPS) do
-        local display = self:NewBuiltinAuraGroup(builtin.key) --[[@as table]]
-        display.parent, display.order = folderId, order -- SetParent would place it by a frame, which doesn't exist yet
-        Store()[NextId()] = display
+        local display = self:Get(self:AddBuiltinAuraGroup(builtin.key)) --[[@as CDMDisplay]]
+        -- SetParent would place it by a frame, which doesn't exist yet
+        display.parent, display.order = folderId, order
     end
 end
 
@@ -628,7 +639,8 @@ local function CopySubtree(id, parentId)
     copy.parent = parentId or copy.parent
     copy.uid = CDM:NewUid()
     copy.preferToUpdate = nil
-    copy.builtin = nil -- a copy of a built-in is the user's own, at any depth
+    -- A copy of a built-in is the user's own, at any depth
+    copy.builtin = nil
     Store()[newId] = copy
 
     for _, child in ipairs(CDM:GetChildren(id)) do
@@ -638,16 +650,14 @@ local function CopySubtree(id, parentId)
     return newId
 end
 
----The first free "<name> N", the name taken without a number it already ends in.
+-- The first free name with a number, leaving off one it already ends in
 ---@param name string
 ---@return string
 local function CopyName(name)
     local base = name:match('^(.-) %d+$') or name
     local taken = {}
     for _, display in pairs(Store()) do
-        if display.name then
-            taken[display.name] = true
-        end
+        taken[display.name] = true
     end
 
     local number = 1
@@ -657,7 +667,7 @@ local function CopyName(name)
     return format('%s %d', base, number)
 end
 
----A copy beside the original; a group copies everything inside it.
+---A copy beside the original, a group copies everything inside it
 ---@param id string
 ---@return string? newId
 function CDM:Duplicate(id)
@@ -684,7 +694,7 @@ function CDM:Rename(id, name)
     display.name = name
 end
 
----Remove a display; a group takes everything inside it unless keepChildren hands them to its parent.
+---Remove a display, a group takes what it holds unless keepChildren hands it on
 ---@param id string
 ---@param keepChildren boolean?
 function CDM:Delete(id, keepChildren)
@@ -701,7 +711,8 @@ function CDM:Delete(id, keepChildren)
 
     self:Release(id)
     Store()[id] = nil
-    self.preview[id] = nil -- ids are reused, so a new display would start pinned
+    -- Ids are reused, so a new display would start pinned
+    self.preview[id] = nil
     for _, other in pairs(Store()) do
         if other.MatchWidth == id then
             other.MatchWidth = nil
@@ -711,8 +722,8 @@ end
 
 -- Pasting --
 
----@param source table
----@param target table
+---@param source CDMDisplay
+---@param target CDMDisplay
 ---@param part string
 local function CopyPart(source, target, part)
     local all = part == 'all'
@@ -739,8 +750,8 @@ local function CopyPart(source, target, part)
     end
 end
 
----Icon settings go onto an icon or every icon in a group, bar and text settings onto their own type; group settings only onto the same kind of group.
----@param source table
+---Icon, bar and text settings go on their type or a group, group settings on the same kind
+---@param source CDMDisplay
 ---@param id string
 ---@return boolean
 function CDM:CanPasteSettings(source, id)
@@ -753,10 +764,10 @@ function CDM:CanPasteSettings(source, id)
     return source.type == target.type
 end
 
----Paste a part of a copied display (`all`, `display`, `group`, `trigger`, `conditions`, `load`) onto another.
----@param source table a snapshot from the time it was copied
+---Paste one part of a copied display onto another
+---@param source CDMDisplay a snapshot from the time it was copied
 ---@param id string
----@param part string
+---@param part 'all'|'display'|'group'|'trigger'|'conditions'|'load'
 function CDM:PasteSettings(source, id, part)
     if not self:CanPasteSettings(source, id) then return end
 
@@ -771,3 +782,7 @@ function CDM:PasteSettings(source, id, part)
         CopyPart(source, self:Get(id), part)
     end
 end
+
+-- Exports --
+
+CDM.NextId = NextId

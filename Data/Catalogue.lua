@@ -1,22 +1,18 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 
---[[
-A read-only view of Blizzard's Cooldown Manager catalogue for the current spec; nothing here writes back to it.
-Rebuilt when the spellbook, talents or gear change, so displays can pick a cooldown or aura by its entry.
-]]
-
 local CreateFrame = CreateFrame
+local wipe = table.wipe
 local ipairs = ipairs
-local wipe = wipe
 
-local GetCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
 local GetCooldownInfo = C_CooldownViewer.GetCooldownViewerCooldownInfo
+local GetCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
 
 local Category = Enum.CooldownViewerCategory
 
+-- Blizzard's Cooldown Manager catalogue for the current spec, read only
 ---@class CDMCatalogue
 local Catalogue = {
     entries = {}, ---@type table<number, CooldownViewerCooldown>
@@ -26,8 +22,6 @@ local Catalogue = {
 }
 CDM.Catalogue = Catalogue
 
--- Building --
-
 Catalogue.CATEGORIES = {
     Category.Essential,
     Category.Utility,
@@ -35,7 +29,9 @@ Catalogue.CATEGORIES = {
     Category.TrackedBar,
 }
 
--- One spell can sit in a cooldown category and an aura category at once.
+-- Building --
+
+-- One spell can sit in a cooldown category and an aura category at once
 local KIND = {
     [Category.Essential] = 'cooldown',
     [Category.Utility] = 'cooldown',
@@ -70,7 +66,7 @@ function Catalogue:Rebuild()
     self.dirty = false
 end
 
----Rebuilt on the first lookup after a change, since one spell change fires several of the rebuild events in the same frame.
+---Rebuilt on the first lookup, as one change fires several rebuild events at once
 function Catalogue:EnsureBuilt()
     if self.dirty then
         self:Rebuild()
@@ -90,7 +86,7 @@ end
 ---@return number[] cooldownIDs
 function Catalogue:GetList(category)
     self:EnsureBuilt()
-    return self.lists[category] or {}
+    return self.lists[category]
 end
 
 ---@param spellID number
@@ -101,15 +97,15 @@ function Catalogue:FindBySpell(spellID, kind)
     return self.bySpell[kind][spellID]
 end
 
----The spell a cooldown entry currently casts as; overrideSpellID mirrors spellID when nothing overrides it.
+---The spell an entry casts as now, overrideSpellID is spellID when nothing overrides it
 ---@param info CooldownViewerCooldown
 ---@return number?
 function Catalogue:ResolveSpell(info)
     return info.overrideSpellID or info.spellID
 end
 
----The spell Blizzard names and pictures an entry by while none of its auras are up (CooldownViewerItemData.lua GetSpellID, live).
----An aura entry's base spell can be the passive that grants it, like the spec's own, so the tooltip spell goes first.
+---The spell Blizzard shows an entry as while its auras are down (CooldownViewerItemData.lua)
+---An aura's base spell can be the passive granting it, so the tooltip spell comes first
 ---@param info CooldownViewerCooldown
 ---@return number?
 function Catalogue:DisplaySpell(info)
@@ -118,7 +114,7 @@ end
 
 -- Events --
 
--- Same triggers Blizzard's own data provider rebuilds on (CooldownViewerSettingsDataProvider.lua, live).
+-- What Blizzard's own data provider rebuilds on (CooldownViewerSettingsDataProvider.lua)
 local REBUILD_EVENTS = {
     'COOLDOWN_VIEWER_DATA_LOADED',
     'COOLDOWN_VIEWER_TABLE_HOTFIXED',
@@ -139,7 +135,8 @@ local function OnRebuildEvent()
 end
 
 function Catalogue:RegisterEvents()
-    self.dirty = true -- nothing watched the spellbook while the CDM was off
+    -- Nothing watched the spellbook while the CDM was off
+    self.dirty = true
 
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
