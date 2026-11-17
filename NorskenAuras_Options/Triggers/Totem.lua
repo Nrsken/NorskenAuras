@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 local L = NRSKNUI.Libs.AL
 

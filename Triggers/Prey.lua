@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')

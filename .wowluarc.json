@@ -1,8 +1,7 @@
 {
     "ignore": [],
     "library": [
-        "../NorskenCore/",
-        "../NorskenUI/"
+        "../NorskenCore/"
     ],
     "flavors": [
         "retail"
