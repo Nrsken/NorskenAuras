@@ -1,0 +1,5 @@
+<Bindings>
+    <Binding name="NORSKENAURAS_TOGGLE" category="BINDING_HEADER_NORSKENAURAS">
+        NorskenAuras:ToggleOptions()
+    </Binding>
+</Bindings>
