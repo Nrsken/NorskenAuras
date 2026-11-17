@@ -2,6 +2,9 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
 
     <Script file="Core\CDM.lua" />
+    <Script file="Core\Build.lua" />
+    <Script file="Core\Visibility.lua" />
+    <Script file="Core\Blizzard.lua" />
     <Script file="Core\Placement.lua" />
     <Script file="Core\Debug.lua" />
     <Script file="Core\Commands.lua" />

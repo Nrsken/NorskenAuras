@@ -1,64 +1,141 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
-local Anchors = NRSKNUI.Anchors
 local LoadConditions = NRSKNUI.LoadConditions
+local Apply = NRSKNUI.Enum.Apply
+local L = NRSKNUI.Libs.AL
 
 --[[
-The CDM module itself.
-Builds and releases displays, decides what's loaded vs what is being previewed and hides Blizzard's own Cooldown Manager when asked.
+The CDM module starting and stopping
+Building is in Build.lua, what shows in Visibility.lua, Blizzard's frames in Blizzard.lua
 ]]
 
-local debugprofilestop = debugprofilestop
-local hooksecurefunc = hooksecurefunc
-local pairs, ipairs = pairs, ipairs
-local CreateFrame = CreateFrame
 local format = string.format
-local tostring = tostring
-local tsort = table.sort
-local wipe = wipe
+local ipairs = ipairs
+local pairs = pairs
+local next = next
+local type = type
 
-local SetCVar = C_CVar.SetCVar
+---@param display table
+---@param id string
+---@param message string
+local function MoveToTop(display, id, message)
+    display.parent = nil
+    local name = type(display.name) == 'string' and display.name or id
+    NRSKNUI:Print(format(message, name))
+end
 
-local STATE_RANK = {
-    loaded = 3,
-    standby = 2,
-    unloaded = 1
-}
-CDM.STATE_RANK = STATE_RANK
+-- Every group can hold what's in it and none sits inside itself, as on import
+-- After this every walk up the tree ends
+---@param displays table<string, CDMDisplay>
+local function RepairTree(displays)
+    for id, display in pairs(displays) do
+        if type(display) == 'table' and display.parent ~= nil then
+            -- A broken group is left to SetAsideBroken, which takes what it holds along
+            local parent = displays[display.parent]
+            if parent == nil then
+                MoveToTop(display, id, L["%s's group is gone, so it was moved to the top level."])
+            elseif type(parent) == 'table' and CDM.DISPLAY_TYPES[parent.type]
+                and not CDM:HoldsType(parent.type, display.type) then
+                MoveToTop(display, id, L["%s was in a group that can't hold it, so it was moved to the top level."])
+            end
+        end
+    end
 
-local BLIZZARD_VIEWERS = {
-    'EssentialCooldownViewer',
-    'UtilityCooldownViewer',
-    'BuffIconCooldownViewer',
-    'BuffBarCooldownViewer',
-}
+    -- 1 on the walk being followed, 2 known to reach the top
+    local state = {}
+    for id in pairs(displays) do
+        local path = {}
+        local walk = id
+        while walk and not state[walk] do
+            state[walk] = 1
+            path[#path + 1] = walk
+            local display = displays[walk]
+            local up = type(display) == 'table' and display.parent or nil
+            if up and state[up] == 1 then
+                MoveToTop(display, walk, L['%s was in a group inside itself, so it was moved to the top level.'])
+                up = nil
+            end
+            walk = up
+        end
+        for _, visited in ipairs(path) do
+            state[visited] = 2
+        end
+    end
+end
 
-local hideViewers = false -- faded out but kept running while the module is on
-local hookedViewers = {} ---@type table<table, true>
+-- The outermost broken display at or above this one, nil when it and its groups are sound
+---@param displays table<string, CDMDisplay>
+---@param broken table<string, true>
+---@param id string
+---@return string?
+local function BrokenRoot(displays, broken, id)
+    local root
+    while id do
+        if broken[id] then
+            root = id
+        end
+        local display = displays[id]
+        id = type(display) == 'table' and display.parent or nil
+    end
+    return root
+end
 
--- Lifecycle --
+-- Repaired as an import is, what can't be leaves the store with all it holds
+---@param displays table<string, CDMDisplay>
+---@param aside CDMSetAside[]
+local function SetAsideBroken(displays, aside)
+    local broken = {}
+    for id, display in pairs(displays) do
+        if type(display) ~= 'table' or not CDM:ConformDisplay(display, id) then
+            broken[id] = true
+        end
+    end
+    if not next(broken) then return end
+
+    local held, leaving = {}, {}
+    for id in pairs(displays) do
+        local root = BrokenRoot(displays, broken, id)
+        if root then
+            held[root] = (held[root] or 0) + (root == id and 0 or 1)
+            leaving[id] = displays[id]
+        end
+    end
+    -- Kept in a list, as a key here could be handed to a new display later
+    for id, display in pairs(leaving) do
+        aside[#aside + 1] = { key = id, display = display }
+        displays[id] = nil
+    end
+
+    for root, count in pairs(held) do
+        local display = leaving[root]
+        local name = type(display) == 'table' and type(display.name) == 'string' and display.name or root
+        if count > 0 then
+            NRSKNUI:Print(format(L["%s has broken settings that couldn't be repaired, so it and the %d displays in it were set aside. Please report it."], name, count))
+        else
+            NRSKNUI:Print(format(L["%s has broken settings that couldn't be repaired, so it was set aside. Please report it."], name))
+        end
+    end
+end
 
 function CDM:OnInitialize()
     self.db = NRSKNUI.db.global
     if self.db.Version == 0 then
         self:SeedBuiltins()
-        self.db.Version = self:GetSchemaVersion()
+        self.db.Version = self.SCHEMA_VERSION
     end
 
+    RepairTree(self.db.Displays)
+    SetAsideBroken(self.db.Displays, self.db.BrokenDisplays)
     self:EnsureUids()
     self.icons = {} ---@type table<string, CDMIcon>
-    self.containers = {} ---@type table<string, Frame|NRSKNUI.DynamicGroup>
+    self.containers = {} ---@type table<string, Frame|NorskenCore.DynamicGroup>
     self.spareStatic = {} ---@type Frame[]
-    self.spareDynamic = {} ---@type NRSKNUI.DynamicGroup[]
+    self.spareDynamic = {} ---@type NorskenCore.DynamicGroup[]
     self.spareChain = {} ---@type CDMChainGroup[]
     self.preview = {} ---@type table<string, number>
     self.selectionPreview = {} ---@type string[]
-end
-
-local function ApplyAll()
-    CDM:ApplySettings()
 end
 
 function CDM:OnEnable()
@@ -77,14 +154,18 @@ function CDM:OnEnable()
     end)
     NRSKNUI.AuraTriggers:RegisterCallback(self, function(aceModule) aceModule:ReapplyAuraTriggers() end)
 
-    self:ApplySettings()
+    self:ApplySettings(Apply.All)
 
-    self:RegisterMessage('NRSKNUI_SHARED_SETTINGS_CHANGED', function() NRSKNUI:RunWhenSafe(ApplyAll) end)
+    -- Windows close in combat, so shared changes never pile up in the queue
+    self:RegisterMessage('NRSKNUI_SHARED_SETTINGS_CHANGED', function(_, part)
+        NRSKNUI:RunWhenSafe(function() self:ApplySettings(part) end)
+    end)
 
-    -- on the addon: the triggers own this event on the module. Talents and spells settle by the first world entry.
+    -- On the addon, as the triggers own this event on the module
+    -- Talents and spells settle by the first world entry
     NRSKNUI:RegisterEvent('PLAYER_ENTERING_WORLD', function()
         NRSKNUI:UnregisterEvent('PLAYER_ENTERING_WORLD')
-        NRSKNUI:RunWhenSafe(ApplyAll)
+        NRSKNUI:RunWhenSafe(function() self:ApplySettings(Apply.All) end)
     end)
 end
 
@@ -96,10 +177,6 @@ function CDM:OnDisable()
     LoadConditions:UnregisterCallback(self)
     NRSKNUI.AuraTriggers:UnregisterCallback(self)
 
-    self:ReleaseAll()
-end
-
-function CDM:ReleaseAll()
     for id in pairs(self.icons) do
         self:Release(id)
     end
@@ -107,567 +184,4 @@ function CDM:ReleaseAll()
         self:Release(id)
     end
     self:ReleaseAuraGroups()
-end
-
--- Build --
-
----@param frame CDMIcon
-local function DetachFromGroup(frame)
-    local group = frame.groupId and CDM.containers[frame.groupId]
-    ---@cast group NRSKNUI.DynamicGroup?
-    if group then
-        group:DetachChild(frame)
-    end
-    frame.groupId = nil
-end
-
----@param id string
-function CDM:BuildIcon(id)
-    -- Disabled displays keep a frame too, hidden, but the options page can still preview them.
-    local display = self:Get(id)
-    if not display then
-        return self:Release(id)
-    end
-
-    -- Adding a group's first aura trigger or removing its last one swaps the group's layout.
-    local parentFrame = display.parent and self.containers[display.parent]
-    if display.parent and not parentFrame then
-        self:BuildContainer(display.parent)
-    elseif parentFrame and self:IsDynamic(display.parent) and (parentFrame.isChain == true) ~= self:WantsChain(display.parent) then
-        return self:ApplySettings(display.parent) -- the swap detaches every icon in the group, so all of them rebuild
-    end
-
-    local frame = self.icons[id]
-    if not frame then
-        frame = self:AcquireIcon(id)
-        self.icons[id] = frame
-    end
-
-    if frame.groupId ~= display.parent then
-        DetachFromGroup(frame)
-    end
-
-    frame.style = self:GetStyle(display)
-    frame.curveGates = self:CurveGates(display)
-    self:StyleIcon(frame, display, frame.style)
-
-    if self:IsDynamic(display.parent) then
-        local group = self.containers[display.parent]
-        ---@cast group NRSKNUI.DynamicGroup
-        if frame.groupId ~= display.parent then
-            group:AttachChild(frame, id, display.order)
-            frame.groupId = display.parent
-            frame:Show()
-        end
-        group:SetChildOrder(id, display.order or 0)
-        group:NotifyChildResized(id, frame.style.Width, frame.style.Height)
-        self:RegisterAnchor(frame, id, true)
-    else
-        self:Place(frame, id, display)
-    end
-
-    -- After joining its group: an aura button the client creates while resolving is only reachable then, before it locks.
-    self:ResolveTriggers(frame, display)
-end
-
-local RESOLVE_BUDGET = 1 -- ms per frame; every display at once was a ~25 ms freeze when combat ended
-local resolveQueue, resolveNext = {}, 1
-local resolveFrame ---@type Frame?
-
----@param self Frame
-local function ResolveStep(self)
-    if CDM.inCombat then return end -- an override swap in combat is already resolved per spell; the rest waits
-
-    local start = debugprofilestop()
-    while resolveNext <= #resolveQueue do
-        local id = resolveQueue[resolveNext]
-        resolveNext = resolveNext + 1
-        local frame, display = CDM.icons[id], CDM:Get(id)
-        if frame and display then
-            CDM:ResolveTriggers(frame, display)
-            CDM:UpdateIcon(id)
-        end
-        if debugprofilestop() - start >= RESOLVE_BUDGET then return end
-    end
-
-    self:Hide()
-    CDM:RefreshLoad(true)
-end
-
----Re-resolve every display's triggers, for spell changes (talents, overrides, icons), a few each frame.
-function CDM:ResolveAll()
-    wipe(resolveQueue)
-    for id in pairs(self.icons) do
-        resolveQueue[#resolveQueue + 1] = id
-    end
-    resolveNext = 1
-
-    if not resolveFrame then
-        resolveFrame = CreateFrame('Frame')
-        resolveFrame:SetScript('OnUpdate', ResolveStep)
-    end
-    resolveFrame:Show()
-end
-
----@param id string
-function CDM:Release(id)
-    local frame = self.icons[id]
-    if frame then
-        self:UnwatchIcon(id)
-        DetachFromGroup(frame)
-        self:ReleaseIcon(frame)
-        self.icons[id] = nil
-    end
-
-    local container = self.containers[id]
-    if container then
-        container:Hide()
-        container:ClearAllPoints()
-        container.onLayout = nil
-        self.containers[id] = nil
-
-        local spare = container.isChain and self.spareChain or container.SetConfig and self.spareDynamic or self.spareStatic
-        spare[#spare + 1] = container
-        self:PlaceMatchedBars(id)
-    end
-
-    self:ReleaseAuraGroup(id)
-    Anchors:Unregister(id)
-end
-
--- Load state --
-
----Whether any of a display's triggers is known: the one load input a spell learned or lost in combat changes.
----@param display table
----@return boolean
-function CDM:IsDisplayKnown(display)
-    for _, trigger in ipairs(display.Triggers) do
-        local triggerType = self.TriggerTypes[trigger.Type]
-        if triggerType and triggerType.IsKnown(trigger) then return true end
-    end
-    return false
-end
-
----Whether a known trigger appeared or went away since the last load refresh.
----@return boolean
-function CDM:KnownChanged()
-    for id, frame in pairs(self.icons) do
-        local display = self:Get(id)
-        if display and self:IsDisplayKnown(display) ~= frame.known then return true end
-    end
-    return false
-end
-
----Standby when only situational load conditions fail, unloaded when a hard one does; a group takes the best state inside it.
----@param id string
----@return 'loaded'|'standby'|'unloaded'
----@return string? reason why a single display is not loaded, for the debug report
-function CDM:GetLoadState(id)
-    local display = self:Get(id)
-    if not display then
-        return 'unloaded', 'missing'
-    end
-    if not display.Enabled then
-        return 'unloaded', 'disabled'
-    end
-
-    if self:IsGroup(id) then
-        local best
-        for _, leafId in ipairs(self:GetLeaves(id)) do
-            local state = self:GetLoadState(leafId)
-            if not best or STATE_RANK[state] > STATE_RANK[best] then
-                best = state
-            end
-        end
-        return best or 'loaded'
-    end
-
-    for _, ancestor in ipairs(self:GetAncestors(id)) do
-        if not self:Get(ancestor).Enabled then
-            return 'unloaded', format("group '%s' disabled", self:GetName(ancestor))
-        end
-    end
-
-    if self.LAYERED_TYPES[display.type] and not self:IsDisplayKnown(display) then
-        return 'unloaded', 'no trigger is known'
-    end
-
-    local hard, hardFailed = LoadConditions:Check(display.Load, true)
-    if not hard then
-        return 'unloaded', 'load condition ' .. tostring(hardFailed)
-    end
-
-    local situational, failed = LoadConditions:Check(display.Load)
-    if not situational then
-        return 'standby', 'load condition ' .. tostring(failed)
-    end
-
-    return 'loaded'
-end
-
--- Preview --
-
-CDM.previewPages = 'cooldownManager'
-
--- Opening the page previews every loaded display at level 1.
-function CDM:ShowPreview()
-    self.previewing = true
-    for id, display in pairs(self.db.Displays) do
-        if (self.icons[id] or display.type == 'auragroup') and (self.preview[id] or 0) == 0 and self:GetLoadState(id) == 'loaded' then
-            self.preview[id] = 1
-        end
-    end
-
-    self:RefreshLoad()
-end
-
-function CDM:HidePreview()
-    self.previewing = false
-    for id, level in pairs(self.preview) do
-        if level == 1 then
-            self.preview[id] = nil
-        end
-    end
-    wipe(self.selectionPreview)
-
-    self:RefreshLoad()
-end
-
----@param id string
----@return string[]
-function CDM:GetPreviewTargets(id)
-    if self:IsGroup(id) then
-        return self:GetLeaves(id)
-    end
-
-    return { id }
-end
-
----@param id string
----@return number level 0 hidden, 1 shown by selection or partly (a group), 2 pinned by the eye
-function CDM:GetPreview(id)
-    if not self:IsGroup(id) then
-        return self.preview[id] or 0
-    end
-
-    local pinned, hidden, total = 0, 0, 0
-    for _, iconId in ipairs(self:GetLeaves(id)) do
-        local level = self.preview[iconId] or 0
-        total = total + 1
-        if level == 2 then
-            pinned = pinned + 1
-        elseif level == 0 then
-            hidden = hidden + 1
-        end
-    end
-
-    if total == 0 or hidden == total then
-        return 0
-    end
-
-    return pinned == total and 2 or 1
-end
-
----Pin or clear the preview of a display or of every display in a group.
----@param id string
----@param level number
-function CDM:SetPreview(id, level)
-    for _, iconId in ipairs(self:GetPreviewTargets(id)) do
-        self.preview[iconId] = level
-    end
-
-    self:RefreshLoad(true) -- a display reads only whether it shows, never its level
-end
-
----The selected display previews at level 1; the last selection drops back unless pinned.
----@param id string?
-function CDM:SetSelectionPreview(id)
-    local previous = {}
-    for _, key in ipairs(self.selectionPreview) do
-        previous[key] = true
-    end
-
-    -- what it previews: shown by nothing else or still at the level the selection gave it
-    local wanted, same = {}, true
-    if id and self:Get(id) then
-        for _, iconId in ipairs(self:GetPreviewTargets(id)) do
-            local level = self.preview[iconId] or 0
-            if level == 0 or (level == 1 and previous[iconId]) then
-                wanted[#wanted + 1] = iconId
-                same = same and level == 1
-            end
-        end
-    end
-    if same and #wanted == #self.selectionPreview then return end
-
-    local keep = {}
-    for _, key in ipairs(wanted) do
-        keep[key] = true
-        if (self.preview[key] or 0) == 0 then
-            self.preview[key] = 1
-        end
-    end
-    for key in pairs(previous) do
-        if not keep[key] and self.preview[key] == 1 then
-            self.preview[key] = nil
-        end
-    end
-    wipe(self.selectionPreview)
-    for i, key in ipairs(wanted) do
-        self.selectionPreview[i] = key
-    end
-
-    self:RefreshLoad(true)
-end
-
----@param id string
----@return boolean
-function CDM:IsPreviewed(id)
-    return self.previewing == true and (self.preview[id] or 0) > 0
-end
-
--- Visibility --
-
----Show what's loaded or only what's previewed while the options are open; hidden displays stop updating.
----@param changedOnly boolean? rebuild only what just loaded: load and bag changes, where a display that stayed loaded is already current
-function CDM:RefreshLoad(changedOnly)
-    local previewing = self.previewing
-    local shown = {}
-    for id, display in pairs(self.db.Displays) do
-        if self.icons[id] or display.type == 'auragroup' then
-            if previewing then
-                shown[id] = self:IsPreviewed(id)
-            else
-                shown[id] = self:GetLoadState(id) == 'loaded'
-            end
-        end
-    end
-
-    -- A container shows while anything under it does.
-    local childIndex = self:GetChildrenIndex()
-    local function AnyShown(id)
-        local children = childIndex[id]
-        if not children then return false end
-
-        for _, child in ipairs(children) do
-            if shown[child.key] or AnyShown(child.key) then return true end
-        end
-        return false
-    end
-
-    for id, container in pairs(self.containers) do
-        container:SetShown(AnyShown(id))
-    end
-
-    for id, frame in pairs(self.icons) do
-        local display = self:Get(id)
-        frame.known = display ~= nil and self:IsDisplayKnown(display)
-        if not changedOnly or (frame.shown == true) ~= (shown[id] == true) then
-            frame.shown = shown[id]
-            if shown[id] then
-                self:UpdateIcon(id)
-            else
-                self:ApplyVisibility(id, frame)
-            end
-        end
-    end
-    self:RefreshAuraGroups()
-
-    -- Tell what follows the CDM: whoever anchors to it, the options page and Blizzard's viewers.
-    self:SendMessage('NRSKNUI_CDM_LAYOUT_CHANGED')
-    if self.onStateChanged then
-        self.onStateChanged()
-    end
-end
-
----The shown dynamic groups carrying the unit frame anchor roles; the first in tree order wins.
----@return Frame? primary, Frame? secondary
-function CDM:GetAnchorGroups()
-    local found = {}
-    local function Walk(entries)
-        for _, entry in ipairs(entries) do
-            local display = self:Get(entry.key)
-            local container = self.containers[entry.key]
-            if display.UFAnchor and not found[display.UFAnchor] and container and container:IsShown() then
-                found[display.UFAnchor] = container
-            end
-            if display.type == 'group' then
-                Walk(self:GetChildren(entry.key))
-            end
-        end
-    end
-
-    Walk(self:GetRoots())
-
-    if not found.primary then
-        return found.secondary -- a lone secondary takes the primary role
-    end
-
-    return found.primary, found.secondary
-end
-
--- Apply settings --
-
----@param id string
----@param built string[] gets every icon, bar and text built
-local function ApplySubtree(id, built)
-    if CDM:IsGroup(id) then
-        CDM:BuildContainer(id)
-        for _, child in ipairs(CDM:GetChildren(id)) do
-            ApplySubtree(child.key, built)
-        end
-    elseif CDM:IsAuraGroup(id) then
-        CDM:BuildAuraGroup(id)
-    else
-        CDM:BuildIcon(id)
-        built[#built + 1] = id
-    end
-end
-
----As RefreshLoad leaves them: a shown one re-reads its triggers, a hidden one stays so.
----@param ids string[]
-local function ShowBuilt(ids)
-    for _, id in ipairs(ids) do
-        local frame = CDM.icons[id]
-        if frame and frame.shown then
-            CDM:UpdateIcon(id)
-        elseif frame then
-            CDM:ApplyVisibility(id, frame)
-        end
-    end
-end
-
----@param id string? nil applies every display
-function CDM:ApplySettings(id)
-    if not self:IsEnabled() then return end
-
-    -- one display: it and what it holds are current, the rest only if they flip
-    if id then
-        local built = {}
-        ApplySubtree(id, built)
-        ShowBuilt(built)
-        self:RefreshLoad(true)
-    else
-        -- Parents before children, so every display finds the frame it hangs off.
-        local containers = {}
-        for key in pairs(self.db.Displays) do
-            if self:IsGroup(key) then
-                containers[#containers + 1] = key
-            end
-        end
-
-        tsort(containers, function(a, b)
-            return self:GetDepth(a) < self:GetDepth(b)
-        end)
-        for _, key in ipairs(containers) do
-            self:BuildContainer(key)
-        end
-
-        for key, display in pairs(self.db.Displays) do
-            if self.LAYERED_TYPES[display.type] then
-                self:BuildIcon(key)
-            elseif display.type == 'auragroup' then
-                self:BuildAuraGroup(key)
-            end
-        end
-        self:RefreshLoad()
-    end
-end
-
----Rebuild what a tree edit touched, each display with everything inside it.
----@param ids string[] gone ones and ones inside another listed group are skipped
-function CDM:ApplySubtrees(ids)
-    if not self:IsEnabled() then return end
-
-    local listed, done, built = {}, {}, {}
-    for _, id in ipairs(ids) do
-        listed[id] = true
-    end
-
-    for _, id in ipairs(ids) do
-        local skip = done[id] or not self:Get(id)
-        for _, ancestor in ipairs(self:GetAncestors(id)) do
-            if listed[ancestor] then
-                skip = true
-                break
-            end
-        end
-        if not skip then
-            done[id] = true
-            ApplySubtree(id, built)
-        end
-    end
-
-    ShowBuilt(built)
-    self:RefreshLoad(true)
-end
-
----Rebuild only these icons, bars and texts after a change to how they look: a style edit can't change what's loaded,
----so RefreshLoad's pass over every display and the list is skipped. A group or multi edit calls this on every change.
----@param ids string[]
-function CDM:ApplyDisplays(ids)
-    if not self:IsEnabled() then return end
-
-    for _, id in ipairs(ids) do
-        self:BuildIcon(id)
-    end
-    ShowBuilt(ids)
-
-    -- dynamic groups and the unit frame anchor follow a size change
-    self:SendMessage('NRSKNUI_CDM_LAYOUT_CHANGED')
-end
-
--- Blizzard frames --
-
--- each icon takes the mouse for its own tooltip
----@param viewer table
----@param item Frame
-local function ApplyItemMouse(viewer, item)
-    item:SetMouseMotionEnabled(viewer.tooltipsShown and not hideViewers)
-end
-
----@param viewer table
-local function ApplyViewerVisibility(viewer)
-    viewer:SetAlpha(hideViewers and 0 or 1)
-    viewer:EnableMouse(not hideViewers)
-    for item in viewer.itemFramePool:EnumerateActive() do
-        ApplyItemMouse(viewer, item)
-    end
-end
-
----Fade Blizzard's Cooldown Manager out while ours runs or show it again. It keeps running either way: the
----tracked bars and a charge spell's charge left or none are only readable off it (Triggers/ViewerBar.lua and
----Triggers/Spell.lua), where a turned-off viewer stops updating. Measured too cheap to show in a frame's time.
----@param hide boolean
-function CDM:SetBlizzardViewers(hide)
-    hideViewers = hide
-
-    NRSKNUI:RunWhenSafe(function()
-        SetCVar('cooldownViewerEnabled', '1')
-
-        for _, name in ipairs(BLIZZARD_VIEWERS) do
-            local viewer = _G[name]
-            if viewer then
-                if not hookedViewers[viewer] then
-                    hookedViewers[viewer] = true
-                    -- Blizzard fades the viewers itself from its visibility and combat settings
-                    hooksecurefunc(viewer, 'SetAlpha', function(bar, alpha)
-                        if hideViewers and alpha ~= 0 then
-                            bar:SetAlpha(0)
-                        end
-                    end)
-                    -- not Visibility Hidden: a hidden viewer drops the events our triggers read
-                    hooksecurefunc(viewer, 'OnAcquireItemFrame', ApplyItemMouse)
-                    hooksecurefunc(viewer, 'SetTooltipsShown', ApplyViewerVisibility)
-                end
-                ApplyViewerVisibility(viewer)
-            end
-        end
-    end)
-end
-
-function CDM:HidePlayerCastBar()
-    NRSKNUI:RunWhenSafe(function()
-        PlayerCastingBarFrame:NCBanish()
-    end)
 end

@@ -1,27 +1,27 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = select(2, ...)
 local addonName = ...
 
-local _G = _G
 local LibStub = LibStub
+local _G = _G
 
-local NorskenCore = _G.NorskenCore --[[@as NRSKNUI]]
+local NorskenCore = _G.NorskenCore --[[@as NorskenCore]]
 NorskenCore:NewAddon(NRSKNUI, addonName, function() return NRSKNUI.db and NRSKNUI.db.global.Theme end, 'AceEvent-3.0')
 _G.NorskenAuras = NRSKNUI
 NRSKNUI.Anchors.boxOnly = true
 
--- First thing, so these files load in it. Core is ready by now and when NorskenUI is here it loaded first
--- and already picked the same one, nothing else picks it without NorskenUI.
+-- First thing, so every file after this loads in it
+-- NorskenUI loads first and picks the same one when it's here, nothing else does without it
 NRSKNUI:SetLanguage(NRSKNUI:GetSharedSettings().Language)
 
 NRSKNUI.Libs = {
     AL = NRSKNUI.L,
-} --[[@as NRSKNUI.Libraries]]
+} --[[@as NorskenAuras.Libraries]]
 
 NRSKNUI.CDM = NRSKNUI:NewModule('CDM', 'AceEvent-3.0')
 
 function NRSKNUI:OnInitialize()
-    self.db = LibStub('AceDB-3.0'):New('NorskenAurasDB', self.Defaults, true) --[[@as NRSKNUI.DBObject]]
+    self.db = LibStub('AceDB-3.0'):New('NorskenAurasDB', self.Defaults, true) --[[@as NorskenAuras.DBObject]]
     self.GUI:ApplyTheme()
 end
 

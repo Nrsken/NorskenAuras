@@ -1,4 +1,4 @@
----@class NRSKNUI
+---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
@@ -10,18 +10,19 @@ The Information tab's debug report, sent to BugSack so a user can copy it and se
 
 local GetSpecializationInfo = GetSpecializationInfo
 local GetSpecialization = GetSpecialization
-local GetInstanceInfo = GetInstanceInfo
 local geterrorhandler = geterrorhandler
+local GetInstanceInfo = GetInstanceInfo
 local GetBuildInfo = GetBuildInfo
-local tconcat = table.concat
 local format = string.format
+local tconcat = table.concat
 local tostring = tostring
+local ipairs = ipairs
 local select = select
 local unpack = unpack
-local ipairs = ipairs
 local min = math.min
-local type = type
+local print = print
 local date = date
+local type = type
 
 local GetCVar = C_CVar.GetCVar
 
@@ -41,11 +42,11 @@ local function YesNo(value)
     return value and 'yes' or 'no'
 end
 
----Each sub element's level, in list order, to check the draw order (an overlay's elements inside its button).
----@param subRegions table[]
----@param borders table
----@param glows table
----@param texts table
+-- Each sub element's level in list order, to check what draws over what
+---@param subRegions NorskenCore.SubElement[]
+---@param borders Frame[]
+---@param glows CDMGlow[]
+---@param texts table[]
 ---@return string
 local function ElementLevels(subRegions, borders, glows, texts)
     local out, counts = {}, { border = 0, glow = 0, text = 0 }
@@ -70,10 +71,10 @@ local function ElementLevels(subRegions, borders, glows, texts)
     return out[1] and tconcat(out, ', ') or 'none'
 end
 
----An aura trigger's layer: what it was styled with and where its elements sit, to tell a missing pandemic border on our side from the game's.
+-- Where an aura layer's elements sit, to tell our missing pandemic border from the game's
 ---@param lines string[]
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 ---@param i number
 local function AuraLayerLines(lines, frame, display, i)
     local trigger = display.Triggers[i]
@@ -83,19 +84,19 @@ local function AuraLayerLines(lines, frame, display, i)
     local accessible = refs and refs.button and not NRSKNUI:AreAurasSecret()
 
     lines[#lines + 1] = format('  Aura: index %s, key %s, button %s', tostring(layer and layer.index), tostring(layer and layer.auraKey), YesNo(refs and refs.button))
-    lines[#lines + 1] = format('  Pandemic: colour %s, border alpha %s', YesNo(color), accessible and refs.pandemic and format('%.2f', refs.pandemic:GetAlpha()) or '-')
+    lines[#lines + 1] = format('  Pandemic: color %s, border alpha %s', YesNo(color), accessible and refs.pandemic and format('%.2f', refs.pandemic:GetAlpha()) or '-')
     lines[#lines + 1] = format('  Levels: layer %s, aura host %s, button %s, slot %s',
-        tostring(layer and layer:GetFrameLevel()), tostring(layer and layer.auraHost and layer.auraHost:GetFrameLevel()),
+        tostring(layer and layer:GetFrameLevel()), tostring(layer and layer.aura and layer.aura.host:GetFrameLevel()),
         accessible and tostring(refs.button:GetFrameLevel()) or '-', tostring(trigger.Slot))
 
     if accessible then
-        lines[#lines + 1] = '  Button elements: ' .. ElementLevels(display.SubRegions or {}, refs.borders, refs.glows or {}, refs.textHosts)
+        lines[#lines + 1] = '  Button elements: ' .. ElementLevels(display.SubRegions, refs.borders, refs.glows, refs.textHosts)
     end
 
     for j, other in ipairs(frame.layers) do
         if j ~= i and display.Triggers[j] and display.Triggers[j].Type ~= 'auraoverlay' then
             lines[#lines + 1] = format('  Under trigger %d (level %d): %s', j, other:GetFrameLevel(),
-                ElementLevels(display.SubRegions or {}, other.borders, other.glows, other.texts))
+                ElementLevels(display.SubRegions, other.borders, other.glows, other.texts))
         end
     end
 end
@@ -106,8 +107,8 @@ local function RuntimeFrame(id)
     return CDM.containers[id] or CDM.icons[id] or CDM:GetAuraHost(id)
 end
 
----What a trigger reads: its item, power type or spell.
----@param trigger table
+-- Its item, power type or spell
+---@param trigger CDMTrigger
 ---@return string
 local function TriggerSource(trigger)
     if trigger.Type == 'item' then
@@ -127,7 +128,7 @@ end
 
 -- Summary --
 
----Why a single display is or isn't on screen, from its load state and runtime frame.
+-- Why a display is or isn't on screen
 ---@param id string
 ---@return string
 local function Verdict(id)
@@ -161,7 +162,7 @@ local function ReportedDisplays(id)
     return { id }
 end
 
----This session's NorskenAuras errors from BugGrabber's list, newest first; our own reports left out.
+-- This session's NorskenAuras errors, newest first, our own reports left out
 ---@param lines string[]
 local function ErrorLines(lines)
     local db, session = BugGrabber:GetDB(), BugGrabber:GetSessionId()
@@ -189,7 +190,7 @@ end
 
 -- Report --
 
----One display's report as sections: a heading line, then its indented rows. Answers first, details after.
+-- Headings with indented rows, answers first and details after
 ---@param id string
 ---@return string[]
 local function DebugLines(id)
@@ -276,7 +277,7 @@ local function DebugLines(id)
         end
     elseif icon then
         lines[#lines + 1] = format('  State: loaded %s, has active %s, force hidden %s', YesNo(icon.shown), YesNo(icon.hasActive), YesNo(icon.forceHidden))
-        for i, trigger in ipairs(display.Triggers or {}) do
+        for i, trigger in ipairs(display.Triggers) do
             local layer = icon.layers[i]
             local triggerType = CDM.TriggerTypes[trigger.Type]
             local triggerState
@@ -321,7 +322,7 @@ local function PrintLines(lines)
     end
 end
 
----One display's live state for the Information tab: into BugSack when it's installed, so it can be copied and sent, otherwise to chat.
+---One display's live state, into BugSack when it's installed, otherwise to chat
 ---@param id string
 function CDM:PrintDebug(id)
     local lines = DebugLines(id)
@@ -334,16 +335,18 @@ function CDM:PrintDebug(id)
         if not exported then
             lines[#lines + 1] = '  export failed'
         end
-        for i = 1, exported and #exported or 0, 100 do -- BugSack's tooltip never wraps a line; import strips the breaks again
+        -- BugSack's tooltip never wraps a line and import strips the breaks again
+        for i = 1, exported and #exported or 0, 100 do
             lines[#lines + 1] = exported:sub(i, i + 99)
         end
 
-        geterrorhandler()(tconcat(lines, '\n'), true) -- BugGrabber's simple entry: the message alone, no stack or locals
+        -- BugGrabber's simple entry, the message alone with no stack or locals
+        geterrorhandler()(tconcat(lines, '\n'), true)
         NRSKNUI:Print(format(L['Debug report for %s saved to BugSack.'], self:GetName(id)))
     else
         lines[#lines + 1] = ''
         lines[#lines + 1] = 'Settings string'
-        lines[#lines + 1] = '  too long for chat; right-click the display and pick Export'
+        lines[#lines + 1] = '  too long for chat, right-click the display and pick Export'
         PrintLines(lines)
     end
 end
