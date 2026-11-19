@@ -9,7 +9,6 @@ local Theme = NRSKNUI.Theme
 local tinsert, tremove = table.insert, table.remove
 local ipairs = ipairs
 local format = string.format
-local CopyTable = CopyTable
 local floor = math.floor
 
 local GetSpellTexture = C_Spell.GetSpellTexture
@@ -46,7 +45,6 @@ local TRIGGER_TYPES = {
     { value = 'auraoverlay', text = L['Aura Overlay'] },
     { value = 'item',        text = L['Item'] },
     { value = 'timer',       text = L['Cast Timer'] },
-    { value = 'totem',       text = L['Totem'] },
     { value = 'stat',        text = L['Player Stat'],         group = 'unit' },
     { value = 'lootSpec',    text = L['Loot Specialization'], group = 'unit' },
     { value = 'prey',        text = L['Prey Hunt'],           group = 'unit' },
@@ -87,22 +85,6 @@ for _, entry in ipairs(TRIGGER_TYPES) do TRIGGER_NAMES[entry.value] = entry.text
 for _, entry in ipairs(BAR_TRIGGER_TYPES) do TRIGGER_NAMES[entry.value] = entry.text end
 local CAST_ICON = 'Interface\\Icons\\INV_Misc_PocketWatch_01'
 
--- What a trigger starts with when it's added or its type changes.
-local TRIGGER_DEFAULTS = {
-    spell       = {},
-    aura        = { Source = 'cdm', Unit = 'player', OwnOnly = true },
-    auraoverlay = { Source = 'cdm', Unit = 'player', OwnOnly = true },
-    item        = { Item = 'trinket1', HidePassive = true },
-    timer       = { Duration = 8 },
-    totem       = {},
-    power       = {},
-    viewerbar   = {},
-    cast        = { Casts = 'all', HoldTime = 0.5, ShowLatency = true },
-    stat        = { Stat = 'haste' },
-    lootSpec    = {},
-    prey        = {},
-    conditions  = { Conditions = { State = { Always = true } } },
-}
 local AURA_SOURCES = {
     { value = 'cdm',    text = L['Cooldown Manager'] },
     { value = 'custom', text = L['Custom'] },
@@ -122,11 +104,11 @@ local ITEMS = {
     { value = 'combatPotion', text = L['Combat Potion'] },
     { value = 'custom',       text = L['Custom Item'] },
 }
-local SHOW_ON = {
-    { value = 'always',   text = L['Always'] },
-    { value = 'cooldown', text = L['On Cooldown'] },
-    { value = 'ready',    text = L['When Ready'] },
-}
+local SHOW_ON = Shared.ChoiceOptions(CDM.SHOW_ON, {
+    always   = L['Always'],
+    cooldown = L['On Cooldown'],
+    ready    = L['When Ready'],
+})
 local triggerOpen = {} -- [index] = open, for the session; a lone trigger starts open
 
 ---'Trigger 2: Aura', the name the Conditions tab gives a trigger.
@@ -210,8 +192,8 @@ local function LinkedAuraTrigger(display)
         local cooldownID = trigger.Type == 'spell' and trigger.SpellID and CDM.Catalogue:FindBySpell(trigger.SpellID, 'aura')
         local info = cooldownID and CDM.Catalogue:GetEntry(cooldownID)
         if info then
-            local new = CopyTable(TRIGGER_DEFAULTS.aura)
-            new.Type, new.CooldownID, new.SpellID = 'aura', cooldownID, info.spellID
+            local new = CDM:NewTrigger('aura')
+            new.CooldownID, new.SpellID = cooldownID, info.spellID
             return new
         end
     end
@@ -282,7 +264,6 @@ Shared.LinkedAuraTrigger = LinkedAuraTrigger
 Shared.NormalizeAuraTypes = NormalizeAuraTypes
 Shared.PositionConfig = PositionConfig
 Shared.SHOW_ON = SHOW_ON
-Shared.TRIGGER_DEFAULTS = TRIGGER_DEFAULTS
 Shared.TRIGGER_GROUPS = TRIGGER_GROUPS
 Shared.TRIGGER_LISTS = TRIGGER_LISTS
 Shared.TRIGGER_TYPES = TRIGGER_TYPES

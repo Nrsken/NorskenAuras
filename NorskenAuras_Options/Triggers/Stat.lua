@@ -17,7 +17,7 @@ function TriggerRows.stat(card, typeRow, display, trigger, id, apply)
         width = 1,
         tooltip = L['%p is the percent, %t the rating, as the character sheet shows them. Versatility is its rating part.'],
         options = options,
-        value = trigger.Stat or 'haste',
+        value = trigger.Stat,
         callback = function(value)
             trigger.Stat = value
             apply(Apply.All)

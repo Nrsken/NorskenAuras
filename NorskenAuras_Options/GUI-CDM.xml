@@ -23,7 +23,6 @@
     <Script file="Triggers\Power.lua" />
     <Script file="Triggers\Cast.lua" />
     <Script file="Triggers\ViewerBar.lua" />
-    <Script file="Triggers\Totem.lua" />
     <Script file="Tabs\Trigger.lua" />
     <Script file="Tabs\Group.lua" />
     <Script file="Tabs\Display.lua" />

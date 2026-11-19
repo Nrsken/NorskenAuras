@@ -21,12 +21,11 @@ local DisplayTab = {}
 
 NRSKNUI.CDMDisplayTab = DisplayTab
 
----A trigger whose %p is a value (Power, Player Stat), not a time.
----@param trigger table
+---A trigger whose %p is a value (Power, Player Stat), not a time
+---@param trigger CDMTrigger
 ---@return boolean
 function DisplayTab.IsValueTrigger(trigger)
-    local triggerType = CDM.TriggerTypes[trigger.Type]
-    return triggerType ~= nil and triggerType.Value == true
+    return CDM.TriggerTypes[trigger.Type].Value == true
 end
 
 DisplayTab.ICON_SOURCES = ICON_SOURCES

@@ -1,16 +1,18 @@
 ---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+---@class CDMModule
+local CDM = NRSKNUI:GetModule('CDM')
 local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
 
-local CURRENT_SPEC = {
-    { value = 'any',     text = L['Any'] },
-    { value = 'current', text = L['Current Spec'] },
-    { value = 'other',   text = L['Not Current Spec'] },
-}
+local CURRENT_SPEC = Shared.ChoiceOptions(CDM.CURRENT_SPEC, {
+    any     = L['Any'],
+    current = L['Current Spec'],
+    other   = L['Not Current Spec'],
+})
 
 function TriggerRows.lootSpec(_, typeRow, _, trigger, _, apply)
     typeRow:Dropdown(L['Loot Specialization'], {
@@ -29,9 +31,9 @@ function TriggerRows.lootSpec(_, typeRow, _, trigger, _, apply)
         width = 0.5,
         tooltip = L['Whether loot goes to the spec you are playing. Loot set to Current Specialization always is.'],
         options = CURRENT_SPEC,
-        value = trigger.CurrentSpec or 'any',
+        value = trigger.CurrentSpec,
         callback = function(value)
-            trigger.CurrentSpec = value ~= 'any' and value or nil
+            trigger.CurrentSpec = value
             apply(Apply.All)
         end,
     })

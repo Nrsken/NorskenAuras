@@ -1,5 +1,7 @@
 ---@class NorskenAuras
 local NRSKNUI = _G.NorskenAuras
+---@class CDMModule
+local CDM = NRSKNUI:GetModule('CDM')
 local Apply = NRSKNUI.Enum.Apply
 local L = NRSKNUI.Libs.AL
 local Theme = NRSKNUI.Theme
@@ -9,18 +11,16 @@ local Shared = NRSKNUI.CDMOptions
 local SpellList = NRSKNUI.GUISpellList
 local TriggerRows = Shared.TriggerRows
 
-local CAST_MODES = {
-    { value = 'all',      text = L['All Casts'] },
-    { value = 'specific', text = L['Specific Casts'] },
-}
+local CAST_MODES = Shared.ChoiceOptions(CDM.CAST_MODES, {
+    all      = L['All Casts'],
+    specific = L['Specific Casts'],
+})
 
 function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
-    -- a save from before the mode is specific when it lists spells, as it matched
-    local mode = trigger.Casts or (trigger.SpellIDs and trigger.SpellIDs[1] and 'specific' or 'all')
     typeRow:Dropdown(L['Casts'], {
         width = 0.5,
         options = CAST_MODES,
-        value = mode,
+        value = trigger.Casts,
         callback = function(value)
             trigger.Casts = value
             apply(Apply.All)
@@ -28,8 +28,8 @@ function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
         end,
     })
 
-    -- the list is kept while on all casts, so switching back finds it again
-    if mode == 'specific' then
+    -- The list is kept while on all casts, so switching back finds it again
+    if trigger.Casts == 'specific' then
         local source = SpellList:ArraySource(trigger, function() return trigger.SpellIDs or {} end, function(ids)
             trigger.SpellIDs = ids[1] and ids or nil
         end, function()
@@ -49,7 +49,7 @@ function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
         min = 0,
         max = 3,
         step = 0.1,
-        value = trigger.HoldTime or 0,
+        value = trigger.HoldTime,
         callback = function(value)
             trigger.HoldTime = value
             apply(Apply.All)

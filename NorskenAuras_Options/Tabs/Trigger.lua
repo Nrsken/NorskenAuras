@@ -18,7 +18,6 @@ local Shared = NRSKNUI.CDMOptions
 local Applier = Shared.Applier
 local LinkedAuraTrigger = Shared.LinkedAuraTrigger
 local NormalizeAuraTypes = Shared.NormalizeAuraTypes
-local TRIGGER_DEFAULTS = Shared.TRIGGER_DEFAULTS
 local TRIGGER_GROUPS = Shared.TRIGGER_GROUPS
 local TRIGGER_LISTS = Shared.TRIGGER_LISTS
 local TRIGGER_TYPES = Shared.TRIGGER_TYPES
@@ -159,7 +158,7 @@ local function BuildTriggerTab(page, id)
                 local function SetType(value)
                     if value == trigger.Type then return end
                     Edit(function()
-                        local new = (value == 'aura' or value == 'auraoverlay') and LinkedAuraTrigger(display) or CopyTable(TRIGGER_DEFAULTS[value])
+                        local new = (value == 'aura' or value == 'auraoverlay') and LinkedAuraTrigger(display) or CDM:NewTrigger(value)
                         new.Type = value
                         triggers[index] = new
                     end)
@@ -206,9 +205,7 @@ local function BuildTriggerTab(page, id)
                         triggers[#triggers + 1] = aura
                     else
                         -- an empty one, as WA adds; copying trigger 1's spell left its Cooldown Manager pick blank
-                        local new = CopyTable(TRIGGER_DEFAULTS.spell)
-                        new.Type = 'spell'
-                        triggers[#triggers + 1] = new
+                        triggers[#triggers + 1] = CDM:NewTrigger('spell')
                     end
                 end)
             end,

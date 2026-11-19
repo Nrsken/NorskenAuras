@@ -14,7 +14,6 @@ local RunNextFrame = RunNextFrame
 local Shared = NRSKNUI.CDMOptions
 local Holder = Shared.Holder
 local Reopen = Shared.Reopen
-local TRIGGER_DEFAULTS = Shared.TRIGGER_DEFAULTS
 local Tree = Shared.Tree
 
 -- Actions --
@@ -31,18 +30,16 @@ local function SelectAndRename(id)
 end
 
 local function NewIcon()
-    SelectAndRename(CDM:CreateIcon(L['New Icon'], { Type = 'spell' }))
+    SelectAndRename(CDM:CreateIcon(L['New Icon'], CDM:NewTrigger('spell')))
 end
 
----A new progress bar starts as a cast bar, its trigger picks what it shows.
+-- A new progress bar starts as a cast bar, its trigger picks what it shows
 local function NewProgressBar()
-    local trigger = CopyTable(TRIGGER_DEFAULTS.cast)
-    trigger.Type = 'cast'
-    SelectAndRename(CDM:CreateBar(L['New Progress Bar'], trigger))
+    SelectAndRename(CDM:CreateBar(L['New Progress Bar'], CDM:NewTrigger('cast')))
 end
 
 local function NewText()
-    SelectAndRename(CDM:CreateText(L['New Text'], { Type = 'spell' }))
+    SelectAndRename(CDM:CreateText(L['New Text'], CDM:NewTrigger('spell')))
 end
 
 local function NewResourceBar()

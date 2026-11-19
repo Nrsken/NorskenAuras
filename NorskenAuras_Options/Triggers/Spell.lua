@@ -23,9 +23,9 @@ function TriggerRows.spell(card, typeRow, display, trigger, id, apply)
     row:Dropdown(L['Show'], {
         width = 0.5,
         options = Shared.SHOW_ON,
-        value = trigger.ShowOn or 'always',
+        value = trigger.ShowOn,
         callback = function(value)
-            trigger.ShowOn = value ~= 'always' and value or nil
+            trigger.ShowOn = value
             apply(Apply.Visibility)
         end,
     })

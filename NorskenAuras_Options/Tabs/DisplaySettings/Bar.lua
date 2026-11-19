@@ -53,7 +53,9 @@ end
 local function SplitPower(display)
     if display.type ~= 'bar' then return nil end
     for _, trigger in ipairs(display.Triggers or {}) do
-        if trigger.Type == 'power' and trigger.Mode and CDM.SEGMENTED_POWER[trigger.PowerType] then return trigger.PowerType end
+        if trigger.Type == 'power' and trigger.Mode ~= 'bar' and CDM.SEGMENTED_POWER[trigger.PowerType] then
+            return trigger.PowerType
+        end
     end
     return nil
 end

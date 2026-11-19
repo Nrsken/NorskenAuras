@@ -256,7 +256,7 @@ local function SubElements(card, page, icons, apply, triggerChip)
             end
         end
     end
-    local function SlotOf(i) return min(first.Triggers[i].Slot or 0, count) end
+    local function SlotOf(i) return min(first.Triggers[i].Slot, count) end
     tsort(overlays, function(a, b)
         if SlotOf(a) ~= SlotOf(b) then return SlotOf(a) < SlotOf(b) end
         return a > b -- an earlier trigger draws on top, so it lists after
@@ -290,7 +290,7 @@ local function SubElements(card, page, icons, apply, triggerChip)
             CDM:RemapConditionSubRegions(display, remap)
             -- a copied or removed element moves the overlays' slots along
             for _, trigger in ipairs(by and display.Triggers or {}) do
-                if trigger.Type == 'auraoverlay' and (trigger.Slot or 0) >= index then
+                if trigger.Type == 'auraoverlay' and trigger.Slot >= index then
                     trigger.Slot = trigger.Slot + by
                 end
             end

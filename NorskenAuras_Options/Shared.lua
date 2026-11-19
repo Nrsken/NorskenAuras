@@ -26,11 +26,6 @@ local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
 local NEW_TILE_HEIGHT = 104
 local NEW_TILE_ICON = 44
 local NEW_TILE_PREVIEW = 74 -- a picture's width: fills a tile at the narrowest window
-local POWER_MODES = {
-    { value = 'bar',      text = L['Static Single Bar'],   description = L['One bar for all your %s.'] },
-    { value = 'static',   text = L['Static Segments'],     description = L['One segment each, filled while it is ready, empty otherwise.'] },
-    { value = 'progress', text = L['Recharging Segments'], description = L['Like Static Segments but each one fills up as it recharges.'] },
-}
 
 local TABS = {
     { id = 'group',       text = L['Group'] },
@@ -216,10 +211,23 @@ local function IsCollapsed(key)
     return NRSKNUI.db.global.SidebarCollapsed[PAGE][key] == true
 end
 
+-- Dropdown options for a choice list the main addon owns, labelled here
+---@param choices string[]
+---@param labels table<string, string>
+---@return { value: string, text: string }[]
+local function ChoiceOptions(choices, labels)
+    local options = {}
+    for i, value in ipairs(choices) do
+        options[i] = { value = value, text = labels[value] }
+    end
+    return options
+end
+
 Shared.AURA_GROUP_TABS = AURA_GROUP_TABS
 Shared.MULTI_TABS = MULTI_TABS
 Shared.EditTargets = EditTargets
 Shared.Applier = Applier
+Shared.ChoiceOptions = ChoiceOptions
 Shared.GENERAL = GENERAL
 Shared.GLOBAL = GLOBAL
 Shared.Holder = Holder
@@ -230,7 +238,6 @@ Shared.NEW_TILE_HEIGHT = NEW_TILE_HEIGHT
 Shared.NEW_TILE_ICON = NEW_TILE_ICON
 Shared.NEW_TILE_PREVIEW = NEW_TILE_PREVIEW
 Shared.PAGE = PAGE
-Shared.POWER_MODES = POWER_MODES
 Shared.QUESTION_MARK = QUESTION_MARK
 Shared.RedrawTree = RedrawTree
 Shared.RefreshTree = RefreshTree

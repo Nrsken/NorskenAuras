@@ -149,7 +149,7 @@ function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
             min = 1,
             max = 100,
             step = 1,
-            value = trigger.MaxStacks or 10,
+            value = trigger.MaxStacks,
             callback = function(value) set('MaxStacks', value) end,
         })
     end

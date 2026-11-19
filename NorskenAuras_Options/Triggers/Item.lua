@@ -74,9 +74,9 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
     showRow:Dropdown(L['Show'], {
         width = 0.5,
         options = Shared.SHOW_ON,
-        value = trigger.ShowOn or 'always',
+        value = trigger.ShowOn,
         callback = function(value)
-            trigger.ShowOn = value ~= 'always' and value or nil
+            trigger.ShowOn = value
             apply(Apply.Visibility)
         end,
     })
@@ -86,7 +86,7 @@ function TriggerRows.item(card, typeRow, display, trigger, id, apply)
             tooltip = L["Keep showing the item even when not in bags."],
             value = trigger.ShowNotOwned,
             callback = function(checked)
-                trigger.ShowNotOwned = checked or nil
+                trigger.ShowNotOwned = checked
                 apply(Apply.All)
             end,
         })
