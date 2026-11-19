@@ -52,25 +52,36 @@ function CDM:SetBlizzardViewers(hide)
         SetCVar('cooldownViewerEnabled', '1')
 
         for _, name in ipairs(BLIZZARD_VIEWERS) do
-            -- Load on demand, so looked up when it runs
             local viewer = _G[name]
-            if viewer then
-                if not hookedViewers[viewer] then
-                    hookedViewers[viewer] = true
-                    -- Blizzard fades the viewers itself from its visibility and combat settings
-                    hooksecurefunc(viewer, 'SetAlpha', function(bar, alpha)
-                        if hideViewers and alpha ~= 0 then
-                            bar:SetAlpha(0)
-                        end
-                    end)
-                    -- Not Visibility Hidden, as a hidden viewer drops the events our triggers read
-                    hooksecurefunc(viewer, 'OnAcquireItemFrame', ApplyItemMouse)
-                    hooksecurefunc(viewer, 'SetTooltipsShown', ApplyViewerVisibility)
-                end
-                ApplyViewerVisibility(viewer)
+            if not hookedViewers[viewer] then
+                hookedViewers[viewer] = true
+                -- Blizzard fades the viewers itself from its visibility and combat settings
+                hooksecurefunc(viewer, 'SetAlpha', function(bar, alpha)
+                    if hideViewers and alpha ~= 0 then
+                        bar:SetAlpha(0)
+                    end
+                end)
+                -- Not Visibility Hidden, as a hidden viewer drops the events our triggers read
+                hooksecurefunc(viewer, 'OnAcquireItemFrame', ApplyItemMouse)
+                hooksecurefunc(viewer, 'SetTooltipsShown', ApplyViewerVisibility)
             end
+            ApplyViewerVisibility(viewer)
         end
     end)
+end
+
+---The frame a viewer draws for a Cooldown Manager entry, nil while none of them draws it
+---@param viewers string[]
+---@param cooldownID number
+---@return table? item
+function CDM:FindViewerItem(viewers, cooldownID)
+    for _, name in ipairs(viewers) do
+        for item in _G[name].itemFramePool:EnumerateActive() do
+            if item.cooldownID == cooldownID then
+                return item
+            end
+        end
+    end
 end
 
 -- Cast bar --

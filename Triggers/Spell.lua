@@ -2,58 +2,52 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local IsPreviewing = CDM.IsPreviewingLayer
+local PreviewDuration = CDM.PreviewDuration
+local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
+local GCD_SPELL = NRSKNUI.GCD_SPELL
 local L = NRSKNUI.Libs.AL
 
 local hooksecurefunc = hooksecurefunc
-local pairs, ipairs = pairs, ipairs
+local issecretvalue = issecretvalue
 local CreateFrame = CreateFrame
 local format = string.format
 local GetTime = GetTime
 local select = select
+local pairs = pairs
 local type = type
-local issecretvalue = issecretvalue
 
 local IsSpellOverlayed = C_SpellActivationOverlay.IsSpellOverlayed
 local GetSpellCooldownDuration = C_Spell.GetSpellCooldownDuration
 local GetSpellChargeDuration = C_Spell.GetSpellChargeDuration
 local EnableSpellRangeCheck = C_Spell.EnableSpellRangeCheck
 local CreateDuration = C_DurationUtil.CreateDuration
-local IsSpellKnown = C_SpellBook.IsSpellKnown
-local GetSpellCooldown = C_Spell.GetSpellCooldown
 local GetOverrideSpell = C_Spell.GetOverrideSpell
+local GetSpellCooldown = C_Spell.GetSpellCooldown
 local GetSpellCharges = C_Spell.GetSpellCharges
 local GetSpellTexture = C_Spell.GetSpellTexture
 local IsSpellInRange = C_Spell.IsSpellInRange
+local IsSpellKnown = C_SpellBook.IsSpellKnown
 local IsSpellUsable = C_Spell.IsSpellUsable
 
 local GLOBAL_RECOVERY_CATEGORY = Constants.SpellCooldownConsts.GLOBAL_RECOVERY_CATEGORY
-local GCD_SPELL = 61304
-
-local IsPreviewing = CDM.IsPreviewingLayer
-local PreviewDuration = CDM.PreviewDuration
-
-local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
+local RealTime = Enum.DurationTimeModifier.RealTime
 
 local inCooldownEvent = false
-local gcdEnds = 0               -- steps each time a GCD ends
+local gcdEnds = 0               -- Steps each time a GCD ends
 local gcdPassTime
-local gcdStart = 0              -- the running GCD's start, which a press's every event shares
-local gcdWaitEnd = 0            -- when the GCD the rechecked layers wait on ends
-local changedSpell, changedBase -- the spell the running SPELL_UPDATE_COOLDOWN names
+local gcdStart = 0              -- The running GCD's start, which a press's every event shares
+local gcdWaitEnd = 0            -- When the GCD the rechecked layers wait on ends
+local changedSpell, changedBase -- The spell the running SPELL_UPDATE_COOLDOWN names
 local gcdAtEvent = false
 local namedAt = {} ---@type table<number, number> spellID -> when a SPELL_UPDATE_COOLDOWN last named it
 local recheck = {} ---@type table<CDMLayer, true> layers read mid-GCD outside the cooldown event
 local rangeState = {} ---@type table<number, boolean> spellID -> in range, for spells a condition range-checks
 
---[[
-Spell triggers: cooldown, charges, usability, range and proc glow.
-The game only tells a GCD from a real cooldown inside SPELL_UPDATE_COOLDOWN, so much of this keeps that apart.
-]]
-
 -- GCD --
 
--- No event fires when the GCD ends, so the layers last read on a guess are re-read then;
--- 61304 is never secret (/gcdprobe), so its end is known even with the next GCD queued.
+-- No event fires when the GCD ends, so the layers last read on a guess are read again then
+-- Its end is known from the GCD spell's own numbers, even with the next GCD queued
 local gcdEndFrame ---@type Frame
 
 ---@param frame Frame
@@ -78,9 +72,8 @@ end
 
 -- Blizzard's charge verdict --
 
--- Blizzard's own viewer tells a charge left from none with currentCharges, secret to us in combat; it leaves the
--- answer on its icon as a plain wasSetFromCharges (CooldownViewer.lua CheckCacheCooldownValuesFromCharges, live).
--- Shadow Dance needs it: through the Dance buff a charge left and none read exactly alike to us.
+-- Blizzard's viewer reads the secret currentCharges and leaves a plain wasSetFromCharges
+-- Shadow Dance needs it, in its buff a charge left and none read alike (CooldownViewer.lua)
 local CHARGE_VIEWERS = { 'EssentialCooldownViewer', 'UtilityCooldownViewer' }
 local hookedItems = {} ---@type table<table, true>
 local chargeLayers = {} ---@type table<CDMLayer, true> layers reading a viewer item's verdict
@@ -94,40 +87,27 @@ local function OnItemCached(item)
     end
 end
 
----The viewer icon Blizzard draws for this layer's spell, nil when the spell isn't in its Cooldown Manager.
+-- Blizzard's viewer icon for this layer's spell, nil when its Cooldown Manager has none
 ---@param layer CDMLayer
 ---@return table? item
 local function ChargeItem(layer)
     local cooldownID = CDM.Catalogue:FindBySpell(layer.baseSpellID, 'cooldown') or CDM.Catalogue:FindBySpell(layer.spellID, 'cooldown')
     local item = layer.chargeItem
-    local id = item and item.cooldownID
-    -- a pooled frame can be handed to another entry, so the cached one is checked first
-    if item and id ~= nil and not issecretvalue(id) and id == cooldownID then
+    -- A pooled frame can be handed to another entry, so the cached one is checked first
+    if item and cooldownID and item.cooldownID == cooldownID then
         return item
     end
 
-    layer.chargeItem = nil
-    if not cooldownID then return nil end
-
-    for _, name in ipairs(CHARGE_VIEWERS) do
-        local pool = _G[name] and _G[name].itemFramePool
-        if pool and pool.EnumerateActive then
-            for child in pool:EnumerateActive() do
-                local childID = child.cooldownID
-                if childID ~= nil and not issecretvalue(childID) and childID == cooldownID then
-                    if not hookedItems[child] and child.CacheCooldownValues then
-                        hookedItems[child] = true
-                        hooksecurefunc(child, 'CacheCooldownValues', OnItemCached)
-                    end
-                    layer.chargeItem = child
-                    return child
-                end
-            end
-        end
+    item = cooldownID and CDM:FindViewerItem(CHARGE_VIEWERS, cooldownID)
+    if item and not hookedItems[item] then
+        hookedItems[item] = true
+        hooksecurefunc(item, 'CacheCooldownValues', OnItemCached)
     end
+    layer.chargeItem = item
+    return item
 end
 
----Blizzard's word on whether a charge is left: true while one is, false otherwise, nil when it has none to give.
+-- Blizzard's word on a charge being left, nil when it has none to give
 ---@param layer CDMLayer
 ---@return boolean?
 local function ChargesLeft(layer)
@@ -140,7 +120,7 @@ local function ChargesLeft(layer)
     return fromCharges
 end
 
----A zero duration: texts keep counting the last one they were given, so "ready" is handed one explicitly.
+-- A zero duration, as texts keep counting the last one they were given
 ---@param layer CDMLayer
 ---@return LuaDurationObject
 local function ReadyDuration(layer)
@@ -154,16 +134,17 @@ end
 ---@param layer CDMLayer
 local function WatchRange(layer)
     local spellID = layer.spellID
-    local display = layer.owner.id and CDM:Get(layer.owner.id)
-    if not spellID or not display or rangeState[spellID] ~= nil or not CDM:ConditionsUse(display, layer.index, 'inRange') then return end
+    if not spellID or rangeState[spellID] ~= nil or not CDM:ConditionsUse(layer.owner.display, layer.index, 'inRange') then return end
     EnableSpellRangeCheck(spellID, true)
     rangeState[spellID] = IsSpellInRange(spellID) ~= false
 end
 
 -- Trigger --
 
+-- Cooldown, charges, usability, range and proc glow
+-- Only SPELL_UPDATE_COOLDOWN tells a GCD from a real cooldown, much of this keeps them apart
 CDM.TriggerTypes.spell = {
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger)
         local base = trigger.SpellID
@@ -171,19 +152,21 @@ CDM.TriggerTypes.spell = {
         return IsSpellKnown(base) or IsSpellKnown(GetOverrideSpell(base) or base)
     end,
 
+    Conform = CDM.ConformShowOn,
+
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     Resolve = function(layer, trigger)
         local base = trigger.SpellID
         layer.baseSpellID = base
-        -- found again on the next update, for whichever spell the layer tracks now
+        -- Found again on the next update, for whichever spell the layer tracks now
         chargeLayers[layer], layer.chargeItem, layer.fromCharges = nil, nil, nil
-        local display = layer.owner.id and CDM:Get(layer.owner.id)
-        layer.watchUsable = display ~= nil and (CDM:ConditionsUse(display, layer.index, 'usable') or CDM:ConditionsUse(display, layer.index, 'noPower'))
+        local display = layer.owner.display
+        layer.watchUsable = CDM:ConditionsUse(display, layer.index, 'usable') or CDM:ConditionsUse(display, layer.index, 'noPower')
         CDM:WatchSpell(base, layer.owner.id)
 
-        -- A spell this character doesn't know never reads: the game reports a shared cooldown category on every
-        -- spell in it, known or not (probed: a Rogue's Sprint showed on Monk Roll, category 44).
+        -- A spell this character doesn't know never reads, the game reports a shared category's
+        -- cooldown on every spell in it (probed, a Rogue's Sprint showed on Monk Roll)
         if base and not CDM.TriggerTypes.spell.IsKnown(trigger) then
             layer.spellID, layer.realCooldown, layer.heldGCD = nil, nil, nil
             layer.state = {}
@@ -192,7 +175,7 @@ CDM.TriggerTypes.spell = {
             return
         end
 
-        -- read even when the icon ignores the override, so an Overridden condition can still follow it
+        -- Read even when the icon ignores the override, so an Overridden condition can follow it
         local override = base and GetOverrideSpell(base)
         layer.overridden = override ~= nil and override ~= base
 
@@ -206,11 +189,12 @@ CDM.TriggerTypes.spell = {
         local before = layer.spellID
         layer.spellID = base and (GetOverrideSpell(base) or base)
         if layer.spellID ~= before then
-            -- The copied cooldown, its GCD hold and the GCD flag were the old spell's, e.g. Rising Sun Kick's when it turns into Rushing Wind Kick.
+            -- The old spell's copy, GCD hold and flag (Rising Sun Kick into Rushing Wind Kick)
             layer.realCooldown, layer.heldGCD = nil, nil
             local named = namedAt[layer.spellID]
             local gcd = GetSpellCooldown(GCD_SPELL).isActive
-            layer.state.onGCD = gcd and not (named and gcdPassTime and named >= gcdPassTime) -- cast this GCD before the swap: Flying Serpent Kick cancelled mid-GCD
+            -- Cast this GCD before the swap, Flying Serpent Kick cancelled mid-GCD
+            layer.state.onGCD = gcd and not (named and gcdPassTime and named >= gcdPassTime)
             layer.readInGCD = gcd
         end
         CDM:WatchSpell(layer.spellID, layer.owner.id)
@@ -219,18 +203,19 @@ CDM.TriggerTypes.spell = {
     end,
 
     ---@param layer CDMLayer
-    ---@param style table
+    ---@param style NorskenCore.IconStyle|CDMBarStyle
     Update = function(layer, style)
         local spellID = layer.spellID
         if not spellID then
-            if IsPreviewing(layer) then -- an empty trigger still previews, so a new display shows while it's set up
+            -- An empty trigger still previews, so a new display shows while it's set up
+            if IsPreviewing(layer) then
                 layer.state.onCooldown = true
                 layer.count = 1
                 layer.duration = PreviewDuration(layer, PREVIEW_LENGTH)
                 CDM:SetLayerTimer(layer, layer.duration)
                 CDM:UpdateTexts(layer)
             elseif layer.previewEnd then
-                -- nothing reads a spell this layer doesn't have, so the preview's cooldown would outlive the options
+                -- Nothing reads a missing spell, so the preview's cooldown would outlive the options
                 layer.previewEnd = nil
                 layer.state = {}
                 layer.count, layer.duration = nil, nil
@@ -248,12 +233,14 @@ CDM.TriggerTypes.spell = {
         local gcdRunning = false
         if inCooldownEvent then
             local onGCD = active and cooldown.isOnGCD == true
-            -- A GCD outlasting a short cooldown (Berserk Thrash) reads "on GCD", so the real one is held; an event naming the spell (Sharp Reflexes) makes that copy stale.
+            -- A GCD outlasting a short cooldown (Berserk Thrash) reads on GCD, so the real one is held
+            -- An event naming the spell (Sharp Reflexes) makes that copy stale
             local changed = changedSpell ~= nil and (spellID == changedSpell or layer.baseSpellID == changedSpell or spellID == changedBase)
             if changed then
                 layer.realCooldown = nil
             end
-            -- Charge spells aren't held: a reset no event names reads exactly like this, so they count as ready once the GCD outlasts the recharge.
+            -- Charge spells aren't held, a reset no event names reads exactly like this
+            -- So they count as ready once the GCD outlasts the recharge
             if not onGCD or changed or state.hasCharges then
                 layer.heldGCD = nil
             elseif not layer.heldGCD and layer.realCooldown then
@@ -271,29 +258,32 @@ CDM.TriggerTypes.spell = {
             gcdRunning = GetSpellCooldown(GCD_SPELL).isActive
             if gcdRunning then
                 if active and not state.onCooldown and not layer.readInGCD then
-                    state.onGCD = true -- a GCD its cooldown event hasn't reached yet: SPELL_UPDATE_CHARGES fires before it
+                    -- A GCD its cooldown event hasn't reached yet, SPELL_UPDATE_CHARGES fires first
+                    state.onGCD = true
                 end
                 recheck[layer] = true
                 WaitForGCDEnd()
             else
-                -- the API can still read active the frame its swipe ends; Blizzard's viewer trusts its end time there (IsExpired)
+                -- The API can still read active the frame its swipe ends
+                -- Blizzard's viewer trusts its end time there (IsExpired)
                 if layer.timerDone then
                     active = false
                 end
                 state.onGCD, layer.readInGCD = false, false
             end
         end
-        if layer.heldGCD ~= gcdEnds then -- the real cooldown was shorter than that GCD, so it's over too
+        -- The real cooldown was shorter than that GCD, so it's over too
+        if layer.heldGCD ~= gcdEnds then
             layer.heldGCD = nil
         end
         local held = layer.heldGCD ~= nil
-        -- Without Blizzard's verdict (the spell isn't in its lists): Roll with charges left reads no category; when
-        -- the category is secret the lockout still shows as isOnGCD left nil, where a spell out of charges reads false
+        -- Without Blizzard's verdict Roll with charges left reads no category
+        -- With the category secret a lockout leaves isOnGCD nil, out of charges reads false
         local category = state.hasCharges and active and cooldown.activeCategory
         local chargesLeft = state.hasCharges and ChargesLeft(layer)
         local lockout
         if chargesLeft ~= nil then
-            -- Blizzard's verdict wins when it gives one: a charge left is never No Charges Left, none is the real cooldown
+            -- Blizzard's verdict wins, a charge left is never No Charges Left
             lockout = chargesLeft
         elseif issecretvalue(category) then
             lockout = cooldown.isOnGCD == nil
@@ -303,7 +293,7 @@ CDM.TriggerTypes.spell = {
         state.onCooldown = held or (active and not state.onGCD and not lockout)
         state.recharging = state.hasCharges and charges.isActive
 
-        -- Texts never count down the GCD, the swipe only shows it when the style asks for it.
+        -- Texts never count down the GCD, the swipe only shows it when the style asks
         local duration, swipe
         if held then
             duration, swipe = layer.realCooldown, layer.realCooldown
@@ -313,27 +303,29 @@ CDM.TriggerTypes.spell = {
         elseif lockout or not active then
             duration, swipe = ReadyDuration(layer), nil
         else
-            -- Mid-GCD this read can mistake the GCD for the cooldown outside the cooldown event, so reuse the copy from that event.
+            -- Mid-GCD this read can take the GCD for the cooldown, so the event's copy is reused
             local cached = gcdRunning and layer.realCooldown
             duration = cached or GetSpellCooldownDuration(spellID, true)
             swipe = style.ShowGCD and GetSpellCooldownDuration(spellID) or duration
         end
         if not state.onCooldown then
             layer.realCooldown = nil
-        elseif not held and duration and duration ~= layer.realCooldown then -- a fresh read keeps a moderated cooldown's rate current
+        elseif not held and duration and duration ~= layer.realCooldown then
+            -- A fresh read keeps a moderated cooldown's rate current
             layer.realCooldown = duration:Copy()
         end
         local preview = IsPreviewing(layer) and not state.onCooldown and not state.recharging
         if preview then
             duration = PreviewDuration(layer, PREVIEW_LENGTH)
             swipe = duration
-            state.onCooldown = true -- the preview's fake cooldown shows the on-cooldown conditions too
+            -- The preview's fake cooldown shows the on cooldown conditions too
+            state.onCooldown = true
         end
-        -- only for a condition that reads it, as RefreshUsable
+        -- Only for a condition that reads it, as RefreshUsable
         if layer.watchUsable then
             local usable, noPower = IsSpellUsable(spellID)
             state.usable = usable
-            -- unusable for another reason (Roll's lockout, a stun) says nothing about power
+            -- Unusable for another reason (Roll's lockout, a stun) says nothing about power
             if usable or noPower then
                 state.noPower = noPower
             end
@@ -341,16 +333,16 @@ CDM.TriggerTypes.spell = {
         state.proc = IsSpellOverlayed(spellID)
         state.inRange = rangeState[spellID]
         CDM:SetLayerTimer(layer, swipe)
-        if not layer.isBar then -- a GCD-only swipe would count the GCD
+        if not layer.isBar then -- A GCD-only swipe would count the GCD
             layer.Cooldown:SetHideCountdownNumbers(not CDM:ShowsTimerText(layer, style) or not (state.onCooldown or state.recharging))
         end
         layer.duration = duration
         CDM:UpdateTexts(layer)
-        -- Hide %p on very short cooldowns: lockouts like Felblade after Vengeful Retreat look exactly like a real one.
+        -- Hide %p on very short cooldowns, a lockout (Felblade after Retreat) looks like one
         if duration then
             local alpha = 1
             if state.onCooldown or state.recharging then
-                alpha = duration:EvaluateTotalDuration(NRSKNUI.curves.CountdownAlpha, Enum.DurationTimeModifier.RealTime) --[[@as number]]
+                alpha = duration:EvaluateTotalDuration(NRSKNUI.curves.CountdownAlpha, RealTime) --[[@as number]]
             end
             for i = 1, layer.textCount do
                 local text = layer.texts[i]
@@ -362,13 +354,13 @@ CDM.TriggerTypes.spell = {
     end,
 
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsActive = function(layer, trigger)
         if IsPreviewing(layer) then return true end
         if not layer.spellID then return false end
         local showOn = trigger.ShowOn
-        if not showOn then return true end
+        if showOn == 'always' then return true end
         local busy = layer.state.onCooldown == true or layer.state.recharging == true
         return busy == (showOn == 'cooldown')
     end,
@@ -380,7 +372,7 @@ CDM.TriggerTypes.spell = {
 }
 
 ---@param i number
----@param trigger table
+---@param trigger CDMTrigger
 ---@param warnings string[]
 CDM.TriggerTypes.spell.Warnings = function(i, trigger, warnings)
     if trigger.SpellID then
@@ -407,8 +399,8 @@ end
 
 -- Events --
 
--- isOnGCD is only trustworthy inside the SPELL_UPDATE_COOLDOWN handler (SpellSharedDocumentation.lua, live),
--- so cooldown updates run in the handler rather than being coalesced to the next frame.
+-- isOnGCD is only trusted inside SPELL_UPDATE_COOLDOWN (SpellSharedDocumentation.lua)
+-- So cooldown updates run in the handler, never a frame later
 local handlers = {
     SPELL_UPDATE_COOLDOWN = function(spellID, baseSpellID, _, startRecoveryCategory)
         inCooldownEvent = true
@@ -419,11 +411,11 @@ local handlers = {
         if spellID then
             namedAt[spellID] = now
         end
-        -- One press fires a burst of GCD events in the same frame; the first one's pass already read every spell.
+        -- One press fires a burst of GCD events in a frame, the first one's pass read every spell
         if not spellID or (gcd and now ~= gcdPassTime) then
             if gcd then
                 gcdPassTime = now
-                -- a new GCD ended the last one, maybe this frame before OnGCDEnd ran
+                -- A new GCD ended the last one, maybe this frame before OnGCDEnd ran
                 local start = GetSpellCooldown(GCD_SPELL).startTime
                 ---@diagnostic disable-next-line: secret-comparison
                 if start ~= gcdStart then
@@ -486,5 +478,5 @@ CDM.ConditionChecks.spell = {
     inRange    = { type = 'bool', get = function(layer) return layer.state.inRange ~= false end },
     proc       = { type = 'bool', get = function(layer) return layer.state.proc == true end },
     overridden = { type = 'bool', get = function(layer) return layer.overridden == true end },
-    remaining  = { type = 'number', curve = true }, -- secret in combat, so only a %p text's colour follows it
+    remaining  = { type = 'number', curve = true }, -- Secret in combat, only a %p text's color follows it
 }
