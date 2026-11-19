@@ -4,13 +4,8 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local LoadConditions = NRSKNUI.LoadConditions
 
---[[
-The Conditions trigger: active while the player's states match, as a load condition reads them.
-trigger.Conditions has a load table's shape ({ State, Group }), so LoadConditions:Check does the matching and starts
-each state's events; nothing set is always active.
-]]
-
-local next, pairs = next, pairs
+local pairs = pairs
+local next = next
 
 local CONDITIONS_ICON = 'Interface\\Icons\\INV_Misc_Gear_01'
 local CONDITIONS_TYPES = { conditions = true }
@@ -23,6 +18,7 @@ end
 
 -- Trigger --
 
+-- Active while the player's states match, its Conditions read as a load block
 CDM.TriggerTypes.conditions = {
     IsKnown = function() return true end,
 
@@ -44,7 +40,7 @@ CDM.TriggerTypes.conditions = {
     end,
 
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsActive = function(layer, trigger)
         if CDM.IsPreviewingLayer(layer) then return true end

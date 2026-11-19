@@ -119,7 +119,7 @@ local function TriggerSource(trigger)
     end
 
     if trigger.Type == 'power' then
-        return tostring(trigger.PowerType or 'primary')
+        return tostring(trigger.PowerType)
     end
 
     local spellID = CDM:GetTriggerSpell(trigger)
@@ -281,9 +281,7 @@ local function DebugLines(id)
             local layer = icon.layers[i]
             local triggerType = CDM.TriggerTypes[trigger.Type]
             local triggerState
-            if not triggerType then
-                triggerState = 'unknown type'
-            elseif triggerType.Secret then
+            if triggerType.Secret then
                 triggerState = 'secret'
             else
                 triggerState = (layer ~= nil and triggerType.IsActive(layer, trigger)) and 'active' or 'inactive'
@@ -292,14 +290,14 @@ local function DebugLines(id)
             lines[#lines + 1] = ''
             lines[#lines + 1] = format('Trigger %d: %s', i, CDM:GetTriggerName(trigger) or trigger.Type)
             lines[#lines + 1] = format('  Type: %s (%s)', trigger.Type, TriggerSource(trigger))
-            lines[#lines + 1] = '  Known: ' .. YesNo(triggerType and triggerType.IsKnown(trigger))
+            lines[#lines + 1] = '  Known: ' .. YesNo(triggerType.IsKnown(trigger))
             lines[#lines + 1] = '  State: ' .. triggerState
             lines[#lines + 1] = format('  Layer: %s%s', layer ~= nil and layer:IsShown() and 'shown' or 'hidden',
                 layer ~= nil and layer == icon.activeLayer and ', active layer' or '')
             if trigger.Type == 'aura' or trigger.Type == 'auraoverlay' then
                 AuraLayerLines(lines, icon, display, i)
             end
-            if layer and triggerType and triggerType.DebugLines then
+            if layer and triggerType.DebugLines then
                 triggerType.DebugLines(lines, layer)
             end
         end

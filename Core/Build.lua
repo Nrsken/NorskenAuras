@@ -66,7 +66,7 @@ function CDM:BuildIcon(id, part)
     local frame = self.icons[id]
     if frame and part ~= Apply.All then
         if part ~= Apply.Position then
-            frame.style = display.Style
+            frame.display, frame.style = display, display.Style
             frame.curveGates = self:CurveGates(display)
             self:StyleIcon(frame, display, frame.style)
         end
@@ -99,7 +99,7 @@ function CDM:BuildIcon(id, part)
         DetachFromGroup(frame)
     end
 
-    frame.style = display.Style
+    frame.display, frame.style = display, display.Style
     frame.curveGates = self:CurveGates(display)
     self:StyleIcon(frame, display, frame.style)
     PlaceIcon(frame, id, display)

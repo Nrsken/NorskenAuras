@@ -4,30 +4,29 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
---[[
-The Power trigger: the player's power, a class resource split into pips, or a resource that isn't
-a power type (Maelstrom Weapon, Stagger). Values only ever reach widgets, so a secret one still draws.
-]]
-
-local UnitPower, UnitPowerMax, UnitPowerMissing, UnitPowerType = UnitPower, UnitPowerMax, UnitPowerMissing, UnitPowerType
-local UnitPartialPower, UnitPowerDisplayMod = UnitPartialPower, UnitPowerDisplayMod
-local GetUnitChargedPowerPoints = GetUnitChargedPowerPoints
 local GetPowerRegenForPowerType = GetPowerRegenForPowerType
+local GetUnitChargedPowerPoints = GetUnitChargedPowerPoints
+local UnitPowerDisplayMod = UnitPowerDisplayMod
 local GetSpecialization = GetSpecialization
+local UnitPartialPower = UnitPartialPower
+local UnitPowerMissing = UnitPowerMissing
 local UnitPowerPercent = UnitPowerPercent
 local GetRuneCooldown = GetRuneCooldown
-local pairs, ipairs = pairs, ipairs
+local issecretvalue = issecretvalue
 local UnitHealthMax = UnitHealthMax
+local UnitPowerType = UnitPowerType
+local UnitPowerMax = UnitPowerMax
 local CreateFrame = CreateFrame
 local tContains = tContains
-local GetTime = GetTime
-local select = select
-local issecretvalue = issecretvalue
-
--- Plain for the player under every addon restriction (probed); the stub has no player exemption.
-local UnitStagger = UnitStagger --[[@as fun(unit: 'player'): number]]
-
+local UnitPower = UnitPower
 local huge = math.huge
+local GetTime = GetTime
+local ipairs = ipairs
+local select = select
+local pairs = pairs
+
+-- Plain for the player under every restriction (probed), the stub has no player exemption
+local UnitStagger = UnitStagger --[[@as fun(unit: 'player'): number]]
 
 local GetPlayerAuraBySpellID = C_UnitAuras.GetPlayerAuraBySpellID
 local IsSpellKnown = C_SpellBook.IsSpellKnown
@@ -35,28 +34,26 @@ local NewTimer = C_Timer.NewTimer
 
 local PowerType = Enum.PowerType
 
-local powerLayers = {} ---@type table<CDMLayer, table> power layers -> their trigger
+local powerLayers = {} ---@type table<CDMLayer, CDMTrigger>
 
 -- Power types --
 
--- Enhancement's Maelstrom Weapon is a buff's stacks, not a power type; it reads plain in combat.
+-- Enhancement's Maelstrom Weapon is a buff's stacks that reads plain in combat
 local MAELSTROM_WEAPON = 'maelstromWeapon'
 local MAELSTROM_WEAPON_AURA = 344179
 local RAGING_MAELSTROM = 384143
-CDM.MAELSTROM_WEAPON = MAELSTROM_WEAPON
 
--- Brewmaster Stagger against max health, as Blizzard's bar draws it.
+-- Brewmaster Stagger against max health, as Blizzard's bar draws it
 local STAGGER = 'stagger'
 local STAGGER_MODERATE, STAGGER_HEAVY = 0.3, 0.6 -- STAGGER_STATES in MonkStaggerBar.lua, live
-CDM.STAGGER = STAGGER
 
--- These change with UNIT_AURA, never UNIT_POWER_*.
+-- These change with UNIT_AURA, never UNIT_POWER_*
 local AURA_POWER = {
     [MAELSTROM_WEAPON] = true,
     [STAGGER] = true,
 }
 
--- What a power trigger can follow; 'primary' is whatever the current form or spec uses.
+-- What a power trigger can follow, 'primary' is whatever the current form or spec uses
 CDM.POWER_TYPES = {
     { value = 'primary',               text = L['Primary Power'] },
     { value = PowerType.Mana,          text = L['Mana'] },
@@ -79,7 +76,7 @@ CDM.POWER_TYPES = {
     { value = STAGGER,                 text = L['Stagger'] },
 }
 
--- Resources counted in whole points, which Automatic ticks split and a bar's Static or Progress mode draws one pip each.
+-- Counted in whole points, split by Automatic ticks, a pip each in Static or Progress
 CDM.SEGMENTED_POWER = {
     [PowerType.ComboPoints] = true,
     [PowerType.HolyPower] = true,
@@ -92,7 +89,7 @@ CDM.SEGMENTED_POWER = {
 }
 local SEGMENTED_POWER = CDM.SEGMENTED_POWER
 
--- What a Resource Bar follows: every spec of these classes shares a resource, the rest go by spec.
+-- What a Resource Bar follows, every spec of these classes shares one, the rest go by spec
 local CLASS_RESOURCES = {
     DEATHKNIGHT = PowerType.Runes,
     PALADIN = PowerType.HolyPower,
@@ -108,18 +105,18 @@ local SPEC_RESOURCES = {
     [269] = PowerType.Chi, -- Windwalker
 }
 
----@return number|string resource a power type, a named resource or 'primary' for a spec with nothing past its main bar
+---@return number|string resource a power type or a named one, 'primary' when there's nothing else
 function CDM:GetSpecResource()
     return SPEC_RESOURCES[NRSKNUI.MySpec.id] or CLASS_RESOURCES[NRSKNUI.MyClass] or 'primary'
 end
 
--- Resources whose points can be supercharged, as Blizzard's combo point and Essence bars draw them.
+-- Points that can be supercharged, as Blizzard's combo point and Essence bars draw them
 CDM.CHARGED_POWER = {
     [PowerType.ComboPoints] = true,
     [PowerType.Essence] = true,
 }
 
--- One of each, for "Each Rune" and the like.
+-- One of each, for Each Rune and the like
 CDM.PIP_NAMES = {
     [PowerType.ComboPoints] = L['Combo Point'],
     [PowerType.HolyPower] = L['Holy Power'],
@@ -135,7 +132,6 @@ local POWER_NAMES = {}
 for _, entry in ipairs(CDM.POWER_TYPES) do
     POWER_NAMES[entry.value] = entry.text
 end
-CDM.POWER_NAMES = POWER_NAMES
 
 ---@return number stacks, number max 10 with Raging Maelstrom, else 5
 local function MaelstromWeapon()
@@ -146,18 +142,18 @@ end
 -- Split bars --
 
 local runeOrder, runeRemaining = {}, {}
-local RUNE_START_SLACK = 0.1 -- so a rune spent this frame never reads as queued
+local RUNE_START_SLACK = 0.1 -- So a rune spent this frame never reads as queued
 
----Runes ready first, then by time left (RuneFrame.lua, live); rune timings are never secret.
+-- Runes ready first, then by time left (RuneFrame.lua), rune timings are never secret
 ---@return number[]
 local function SortedRunes()
     local now = GetTime()
     for i = 1, 6 do
         local start, duration, ready = GetRuneCooldown(i)
         runeOrder[i] = i
-        -- A rune waiting its turn has no start yet, so it sorts after every running one.
+        -- A rune waiting its turn has no start yet, so it sorts after every running one
         local remaining = start and duration and duration > 0 and start + duration - now or huge
-        -- One that ran out isn't ready until RUNE_POWER_UPDATE, so it must not sort ahead of the ready runes.
+        -- One that ran out isn't ready until RUNE_POWER_UPDATE, so it can't sort ahead of ready ones
         runeRemaining[i] = ready and -1 or remaining > 0 and remaining or 0
     end
 
@@ -172,11 +168,12 @@ local function SortedRunes()
     return runeOrder
 end
 
-local PROGRESS_HOLD = 0.3 -- longest a filled progress pip waits for the power its swing grants
-local SECRET_MAX_PIPS = 5 -- a split bar's pips while the resource's maximum reads secret
-local essenceRate = 0.2   -- points a second, Blizzard's fallback in EssenceFramePlayer.lua; regen reads secret while stats are restricted
+local PROGRESS_HOLD = 0.3 -- Longest a filled progress pip waits for the power its swing grants
+local SECRET_MAX_PIPS = 5 -- A split bar's pips while the resource's maximum reads secret
+-- Points a second, the last plain rate, first Blizzard's fallback (EssenceFramePlayer.lua)
+local essenceRate = 0.2
 
----The filling Essence's start and length, from its elapsed share in thousandths and the regen rate (EssenceFramePlayer.lua, live).
+-- The filling Essence's start and length (EssenceFramePlayer.lua)
 ---@return number? start, number? length
 local function EssenceFill()
     local partial = UnitPartialPower('player', PowerType.Essence)
@@ -190,9 +187,10 @@ local function EssenceFill()
     return GetTime() - partial / 1000 * length, length
 end
 
----Every pip of a split bar. A point pip gets an (N-1, N) range fed the whole value, so the widget does the compare and a secret count still draws.
+-- Every pip of a split bar, a point pip gets an N-1 to N range fed the whole value
+-- So the widget does the compare and a secret count still draws
 ---@param layer CDMLayer
----@param trigger table
+---@param trigger CDMTrigger
 local function UpdatePips(layer, trigger)
     local powerType, count, state = layer.powerType --[[@as Enum.PowerType]], layer.pipCount --[[@as number]], layer.state
     local progress = trigger.Mode == 'progress'
@@ -209,7 +207,7 @@ local function UpdatePips(layer, trigger)
             end
             CDM:SetLayerPipSlot(layer, rune, n)
             local running = not isReady and start and duration and duration > 0
-            -- Three runes regenerate at once; a queued one reports the start of its turn, still ahead.
+            -- Three runes regenerate at once, a queued one reports the start of its turn, still ahead
             local waiting = not isReady and not (running and start <= now + RUNE_START_SLACK)
             layer.pips[rune].waiting = waiting
             state.waiting = state.waiting or waiting
@@ -233,13 +231,13 @@ local function UpdatePips(layer, trigger)
         return
     end
 
-    -- Soul Shards move in tenths: Progress feeds the unmodified value against a scaled range, so a partial shard fills.
+    -- Soul Shards move in tenths, so Progress scales the range for a partial shard to fill
     local mod = progress and UnitPowerDisplayMod(powerType) or 1
     if mod <= 0 then
         mod = 1
     end
     local value = UnitPower('player', powerType, progress)
-    -- the player's charged points read plain in combat, same as UnitPower (probed)
+    -- The player's charged points read plain in combat, as UnitPower does (probed)
     local charged = layer.readsCharged and GetUnitChargedPowerPoints('player')
     for n = 1, count do
         CDM:SetLayerPipValue(layer, n, value, n * mod, (n - 1) * mod, false)
@@ -252,7 +250,7 @@ local function UpdatePips(layer, trigger)
     layer.value, layer.max = current, max
     if not progress then return end
 
-    -- the next point's pip, which Essence and a progress source fill
+    -- The next point's pip, which Essence and a progress source fill
     local filling = not issecretvalue(current) and not issecretvalue(max)
         and current < max and current < count and current + 1 or nil
     if filling and powerType == PowerType.Essence then
@@ -266,7 +264,7 @@ local function UpdatePips(layer, trigger)
     if trigger.ProgressCooldownID then
         layer.viewerHold = filling == nil
         local running = CDM:MirrorViewerBar(layer)
-        -- The tracked bar ends a frame or so before the power it grants arrives; hold the fill full until then.
+        -- The tracked bar ends a little before the power it grants, so the fill holds until then
         local held = false
         if running then
             layer.progressPip, layer.progressHoldEnd = filling, nil
@@ -307,31 +305,41 @@ CDM.TriggerTypes.power = {
     Value = true, -- %p is the value and %t the max, not a time
     IsKnown = function() return true end,
 
+    ---@param trigger CDMTrigger
+    Conform = function(trigger)
+        if not POWER_NAMES[trigger.PowerType] then
+            trigger.PowerType = 'primary'
+        end
+        if not CDM.IsChoice(CDM.POWER_MODES, trigger.Mode) then
+            trigger.Mode = nil
+        end
+    end,
+
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     Resolve = function(layer, trigger)
         local powerType = trigger.PowerType
-        if powerType == nil or powerType == 'primary' then
+        if powerType == 'primary' then
             powerType = UnitPowerType('player')
         end
         layer.powerType = powerType
         layer.spellID, layer.baseSpellID = nil, nil
         layer.staggerBand = nil
         powerLayers[layer] = trigger
-        -- only a Supercharged check reads the charged points, so nothing else pays for the table
-        local display = layer.owner.id and CDM:Get(layer.owner.id)
-        layer.readsCharged = CDM.CHARGED_POWER[powerType] and display and CDM:ConditionsUse(display, layer.index, 'charged') or nil
+        -- Only a Supercharged check reads the charged points, so nothing else pays for the table
+        layer.readsCharged = CDM.CHARGED_POWER[powerType] and CDM:ConditionsUse(layer.owner.display, layer.index, 'charged') or nil
         if powerType == MAELSTROM_WEAPON then
             layer.max = select(2, MaelstromWeapon())
         elseif powerType == STAGGER then
             layer.max = UnitHealthMax('player')
         else
+            ---@cast powerType Enum.PowerType
             layer.max = UnitPowerMax('player', powerType)
         end
 
-        -- a split bar's pips and its progress source
+        -- A split bar's pips and its progress source
         local plainMax = not issecretvalue(layer.max)
-        local split = layer.isBar and trigger.Mode ~= nil and SEGMENTED_POWER[powerType] == true
+        local split = layer.isBar and trigger.Mode ~= 'bar' and SEGMENTED_POWER[powerType] == true
         if split then
             CDM:SetLayerPips(layer, powerType == PowerType.Runes and 6 or plainMax and layer.max or SECRET_MAX_PIPS)
         end
@@ -341,7 +349,7 @@ CDM.TriggerTypes.power = {
             CDM:ShowLayerProgress(layer, false)
         end
 
-        -- automatic ticks between whole points
+        -- Automatic ticks between whole points
         local ticks
         local segments = split and layer.pipCount or SEGMENTED_POWER[powerType] and plainMax and layer.max or 0
         if segments > 1 then
@@ -353,7 +361,7 @@ CDM.TriggerTypes.power = {
         layer.autoTicks = ticks
         CDM:DrawTicks(layer)
 
-        -- Power Color from the unit frames' palette; runes take their spec's color and Stagger paints its band in Update.
+        -- Power Color from the unit frames' palette, runes by spec, Stagger by band in Update
         CDM:SetIconTexture(layer, nil)
         local specIndex = GetSpecialization()
         if layer.owner.style.BarColorMode == 'power' and powerType ~= STAGGER then
@@ -368,7 +376,8 @@ CDM.TriggerTypes.power = {
     end,
 
     ---@param layer CDMLayer
-    ---@param style table
+    ---@param style NorskenCore.IconStyle|CDMBarStyle
+    ---@param trigger CDMTrigger
     Update = function(layer, style, trigger)
         local powerType = layer.powerType
         if layer.pipCount > 0 then
@@ -378,7 +387,7 @@ CDM.TriggerTypes.power = {
         end
 
         if powerType == PowerType.Runes then
-            -- Runes never fire UNIT_POWER_*; each rune reports its own cooldown instead (RuneFrame.lua, live).
+            -- Runes never fire UNIT_POWER_*, each reports its own cooldown (RuneFrame.lua)
             local ready = 0
             for i = 1, layer.max do
                 if select(3, GetRuneCooldown(i)) then
@@ -409,7 +418,7 @@ CDM.TriggerTypes.power = {
         end
 
         if powerType == STAGGER then
-            local stagger = UnitStagger('player') or 0
+            local stagger = UnitStagger('player')
             local maxHealth = UnitHealthMax('player')
             layer.value = stagger
             layer.max = maxHealth
@@ -419,7 +428,7 @@ CDM.TriggerTypes.power = {
 
             CDM:SetLayerValue(layer, fill, maxHealth, sparkAlpha)
 
-            -- light, moderate or heavy, repainted only when the band changes
+            -- Light, moderate or heavy, painted again only when the band changes
             local share = maxHealth > 0 and stagger / maxHealth or 0
             local band = share >= STAGGER_HEAVY and 3 or share >= STAGGER_MODERATE and 2 or 1
             if style.BarColorMode == 'power' and band ~= layer.staggerBand then
@@ -445,10 +454,10 @@ CDM.TriggerTypes.power = {
     IsActive = function() return true end,
 }
 
----@param trigger table
+---@param trigger CDMTrigger
 ---@return string? name
 CDM.TriggerTypes.power.Name = function(trigger)
-    return POWER_NAMES[trigger.PowerType or 'primary']
+    return POWER_NAMES[trigger.PowerType]
 end
 
 ---@param id string
@@ -464,14 +473,15 @@ end
 
 local powerFrame ---@type Frame?
 
--- A plain tick only moves the bar and its texts; a split bar's Recharging and Maelstrom Weapon's Stacks feed conditions, so those re-run them.
+-- A plain tick only moves the bar and its texts
+-- Recharging and Maelstrom Weapon's Stacks feed conditions, so those run them too
 local function OnPowerEvent(_, event)
     local powerTrigger = CDM.TriggerTypes.power
     local aura = event == 'UNIT_AURA'
 
     for layer, trigger in pairs(powerLayers) do
         if layer.owner.shown and (AURA_POWER[layer.powerType] == true) == aura then
-            -- a new max or display power can change the pips, ticks and Power Color
+            -- A new max or display power can change the pips, ticks and Power Color
             if event ~= 'UNIT_POWER_FREQUENT' and event ~= 'RUNE_POWER_UPDATE' and event ~= 'UNIT_POWER_POINT_CHARGE' and not aura then
                 powerTrigger.Resolve(layer, trigger)
             end
@@ -510,13 +520,13 @@ end
 
 -- Conditions --
 
--- The value can be secret, so nothing compares it but the game's curve on a %p text; a split bar's Recharging and Supercharged are plain and per pip for Bar Color.
--- Maelstrom Weapon's stacks are the one plain value, so only its trigger offers Stacks.
+-- The value can be secret, so only a %p text's curve compares it
+-- Recharging and Supercharged are plain, Stacks only Maelstrom Weapon's
 CDM.ConditionChecks.power = {
     active     = { type = 'bool', get = function() return CDM.TriggerTypes.power.IsActive() end },
     stacks     = { type = 'number', get = function(layer) return layer.powerType == MAELSTROM_WEAPON and layer.value or 0 end },
     percent    = { type = 'number', curve = true },
-    value      = { type = 'number', curve = true }, -- turned into a percent of the max, so it waits for a max that reads plain
+    value      = { type = 'number', curve = true }, -- A percent of the max, so it waits for a plain max
     recharging = {
         type = 'bool',
         get = function(layer, _, pip)
@@ -545,3 +555,9 @@ CDM.ConditionChecks.power = {
         end,
     },
 }
+
+-- Exports --
+
+CDM.MAELSTROM_WEAPON = MAELSTROM_WEAPON
+CDM.STAGGER = STAGGER
+CDM.POWER_NAMES = POWER_NAMES

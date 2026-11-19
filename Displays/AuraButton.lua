@@ -91,10 +91,10 @@ end
 function CDM:StyleAuraButton(layer, trigger)
     local refs = layer.auraRefs
     local style = layer.owner.style
-    -- A pooled or deleted owner's button can still be handed over
-    local display = layer.owner.id and self:Get(layer.owner.id)
-    if not display then return end
+    -- A released owner's button can still be handed over
+    if not layer.owner.id then return end
     if not (refs and refs.button) then return end
+    local display = layer.owner.display
     local button = refs.button
 
     -- A lone aura is the icon itself, an overlay only what its While Up conditions put on it
@@ -223,8 +223,6 @@ function CDM:StyleAuraButton(layer, trigger)
 end
 
 -- Slots --
-
--- The client shows the slot while the aura is up, so nothing secret is touched here
 
 ---Buffs or debuffs, a trigger saved before it chose follows its unit
 ---@param trigger CDMTrigger

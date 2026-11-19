@@ -2,95 +2,87 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local IsPreviewing = CDM.IsPreviewingLayer
+local PreviewDuration = CDM.PreviewDuration
+local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
+local PREVIEW_PANDEMIC = CDM.PREVIEW_PANDEMIC
+local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
 local L = NRSKNUI.Libs.AL
 
-local tconcat, tsort = table.concat, table.sort
-local pairs, ipairs = pairs, ipairs
 local CreateFrame = CreateFrame
 local format = string.format
+local tconcat = table.concat
 local tostring = tostring
 local GetTime = GetTime
+local sort = table.sort
 local ceil = math.ceil
+local ipairs = ipairs
 local unpack = unpack
+local pairs = pairs
 local next = next
 
 local NewTimer = C_Timer.NewTimer
 
-local IsPreviewing = CDM.IsPreviewingLayer
-local PreviewDuration = CDM.PreviewDuration
-
-local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
-local PREVIEW_PANDEMIC = CDM.PREVIEW_PANDEMIC
-local QUESTION_MARK = NRSKNUI.QuestionMarkTexture
-
---[[
-Aura and Aura Overlay triggers. The game shows the aura through an aura button and never tells us it's up,
-so this file points the button at its spells and draws the options preview and placeholder with the layer's own parts.
-]]
-
 -- Stand-in --
 
----A lone aura layer's own parts, the preview stand-in or its placeholder: the style, with `changes` over it.
+-- A lone aura's own parts, as the preview stand-in or the placeholder
 ---@param layer CDMLayer
----@param display table
----@param style table
----@param changes table<string, any> a placeholder's While Missing changes, empty for the plain style
----@param textsShown boolean whether texts nothing changes show by their own Enabled (a placeholder's start hidden)
+---@param display CDMDisplay
+---@param style NorskenCore.IconStyle|CDMBarStyle
+---@param changes table<string, any> a placeholder's While Missing changes
+---@param textsShown boolean false hides texts no change shows
 local function PaintStandIn(layer, display, style, changes, textsShown)
     local alpha = changes.alpha or 1
+
     local desaturate = changes.desaturate
     if desaturate == nil then
         desaturate = style.Desaturate
     end
+
     layer.Icon:SetVertexColor(unpack(changes.color or style.Color))
-    layer.Icon:SetDesaturated(desaturate == true)
+    layer.Icon:SetDesaturated(desaturate)
     layer.Icon:SetAlpha(alpha)
     layer.borderHost:SetAlpha(alpha)
     layer.textHost:SetAlpha(alpha)
     if layer.isBar then
+        ---@cast style CDMBarStyle
         layer.Bar:SetAlpha(alpha)
         layer.Bar.bg:SetVertexColor(unpack(changes.backgroundColor or style.BackgroundColor))
     end
+
     local borders, texts = 0, 0
     for n, element in ipairs(display.SubRegions) do
         local visible = changes['sub.' .. n .. '.visible']
         local color = changes['sub.' .. n .. '.color'] or element.Color
+
         if element.type == 'border' then
             borders = borders + 1
+            if visible == nil then
+                visible = element.Enabled
+            end
             local border = layer.borders[borders]
-            if border then
-                if visible == nil then
-                    visible = element.Enabled
-                end
-                border:SetShown(visible == true)
-                for _, edge in ipairs(border.edges) do
-                    edge:SetColorTexture(unpack(color))
-                end
+            border:SetShown(visible)
+            for _, edge in ipairs(border.edges) do
+                edge:SetColorTexture(unpack(color))
             end
         elseif element.type == 'text' then
             texts = texts + 1
-            local text = layer.texts[texts]
-            if text then
-                if visible == nil then
-                    visible = textsShown and element.Enabled
-                end
-                text.fs:SetShown(visible == true)
-                text.fs:SetTextColor(unpack(color))
+            if visible == nil then
+                visible = textsShown and element.Enabled
             end
+            local text = layer.texts[texts]
+            text.fs:SetShown(visible)
+            text.fs:SetTextColor(unpack(color))
         end
     end
 end
 
----The aura spell IDs a trigger watches: a Cooldown Manager entry's spell and its linked spells, or a custom list.
----@param trigger table
+---The aura spells a trigger watches, from its Cooldown Manager entry or its own list
+---@param trigger CDMTrigger
 ---@return table<number, true>? spellIDs
 function CDM:GetAuraSpellIDs(trigger)
     local ids = {}
-    if trigger.Source == 'custom' then
-        for _, spellID in ipairs(trigger.SpellIDs or {}) do
-            ids[spellID] = true
-        end
-    else
+    if trigger.Source ~= 'custom' then
         local info = trigger.CooldownID and self.Catalogue:GetEntry(trigger.CooldownID)
         if info then
             if info.spellID then
@@ -99,19 +91,24 @@ function CDM:GetAuraSpellIDs(trigger)
             if info.overrideSpellID then
                 ids[info.overrideSpellID] = true
             end
-            for _, linked in ipairs(info.linkedSpellIDs or {}) do
+            for _, linked in ipairs(info.linkedSpellIDs) do
                 ids[linked] = true
             end
         elseif trigger.SpellID then
             ids[trigger.SpellID] = true
+        end
+        -- An empty list is saved as none
+    elseif trigger.SpellIDs then
+        for _, spellID in ipairs(trigger.SpellIDs) do
+            ids[spellID] = true
         end
     end
     if next(ids) == nil then return nil end
     return ids
 end
 
----What an aura slot is configured for, so an unchanged trigger skips the out-of-combat rebuild.
----@param trigger table
+-- What an aura slot is set up for, so an unchanged trigger skips the out of combat rebuild
+---@param trigger CDMTrigger
 ---@param spellIDs table<number, true>
 ---@return string
 local function AuraKey(trigger, spellIDs)
@@ -119,22 +116,30 @@ local function AuraKey(trigger, spellIDs)
     for spellID in pairs(spellIDs) do
         ids[#ids + 1] = spellID
     end
-    tsort(ids)
-    return tconcat(ids, ',') .. '|' .. tostring(trigger.Unit) .. '|' .. tostring(trigger.OwnOnly) .. '|' .. CDM:GetAuraBase(trigger)
+    sort(ids)
+    return tconcat(ids, ',') .. '|' .. trigger.Unit .. '|' .. tostring(trigger.OwnOnly) .. '|' .. CDM:GetAuraBase(trigger)
 end
 
 -- Trigger --
 
--- Secret: we never learn whether the aura is up; the layer's slot shows itself while it is.
+-- Secret, as we never learn the aura is up, its slot shows itself while it is
 CDM.TriggerTypes.aura = {
     Secret = true,
 
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger) return CDM:GetAuraSpellIDs(trigger) ~= nil end,
 
+    ---@param trigger CDMTrigger
+    Conform = function(trigger)
+        -- Switching a bar to stacks sets its cap, a save from before that read 10
+        if trigger.BarMode == 'stacks' and type(trigger.MaxStacks) ~= 'number' then
+            trigger.MaxStacks = 10
+        end
+    end,
+
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     Resolve = function(layer, trigger)
         local spellIDs = CDM:GetAuraSpellIDs(trigger)
         if not spellIDs then
@@ -145,16 +150,16 @@ CDM.TriggerTypes.aura = {
         local key = AuraKey(trigger, spellIDs)
         layer.auraKey = key
         local function Apply()
+            -- Read when it runs, as a later resolve in the same combat replaces this one
             if layer.auraKey ~= key then return end
-            -- read when it runs: a later resolve in the same combat replaces this one
             if layer.auraConfigured ~= key then
                 CDM:ConfigureAuraLayer(layer, trigger, spellIDs)
                 layer.auraConfigured = key
             end
-            layer.auraTrigger = trigger -- an edit can keep the key, with new settings
+            layer.auraTrigger = trigger -- An edit can keep the key with new settings
             layer.aura:Restyle()
         end
-        -- Re-resolved on every catalogue change: a fresh closure each time would pile up in the combat queue.
+        -- One function per layer, as a closure per catalogue change piles up in the combat queue
         layer.applyAura = Apply
         layer.runAura = layer.runAura or function()
             local apply = layer.applyAura
@@ -166,20 +171,18 @@ CDM.TriggerTypes.aura = {
         NRSKNUI:RunWhenSafe(layer.runAura)
     end,
 
-    -- The container only shows real auras; the options preview fakes one with the layer's own spare parts.
+    -- The container only shows real auras, the preview fakes one with the layer's own parts
     ---@param layer CDMLayer
-    ---@param style table
-    ---@param trigger table
+    ---@param style NorskenCore.IconStyle|CDMBarStyle
+    ---@param trigger CDMTrigger
     Update = function(layer, style, trigger)
         CDM:SetStackTicks(layer, trigger)
         local preview = IsPreviewing(layer)
-        local display = layer.owner.id and CDM:Get(layer.owner.id)
-        local active, pandemicColor, pandemic, missing = {}, nil, {}, {}
-        if display then
-            active, pandemicColor, pandemic, missing = CDM:GetAuraConditionChanges(display, layer.index)
-        end
+        local display = layer.owner.display
+        local active, pandemicColor, pandemic, missing = CDM:GetAuraConditionChanges(display, layer.index)
         local overlay = trigger.Type == 'auraoverlay'
         local showIcon = not overlay or active.auraIcon == true
+
         layer.Icon:SetShown(preview and showIcon and CDM:ShowsIcon(layer, style, display))
         layer.Cooldown:SetShown(preview and showIcon)
         layer.textHost:SetShown(preview)
@@ -190,7 +193,7 @@ CDM.TriggerTypes.aura = {
         if layer.aura then
             layer.aura.host:SetShown(not preview and layer.auraKey ~= nil)
         end
-        if overlay and display and display.type == 'bar' and (preview or layer.previewOverlayShown) then
+        if overlay and display.type == 'bar' and (preview or layer.previewOverlayShown) then
             layer.previewOverlay = layer.previewOverlay or {}
             CDM:PaintBarOverlay(layer, layer.previewOverlay, layer, preview and active or {})
             layer.previewOverlayShown = preview
@@ -206,8 +209,8 @@ CDM.TriggerTypes.aura = {
             for _, glow in ipairs(layer.glows) do
                 glow:Stop()
             end
-            if trigger.Placeholder and not overlay and display then
-                -- The layer's own parts under the aura button, which covers them while it's up; While Missing is read onto them once.
+            if trigger.Placeholder and not overlay then
+                -- Under the aura button, which covers them while it's up, painted with While Missing
                 CDM:SetIconTexture(layer, CDM:GetTriggerTexture(trigger))
                 layer.Icon:SetShown(CDM:ShowsIcon(layer, style, display))
                 PaintStandIn(layer, display, style, missing, false)
@@ -229,22 +232,21 @@ CDM.TriggerTypes.aura = {
             layer.Icon:SetTexture(active.auraTexture or CDM:GetTriggerTexture(trigger) or QUESTION_MARK)
         else
             CDM:SetIconTexture(layer, CDM:GetTriggerTexture(trigger))
-            if display then
-                PaintStandIn(layer, display, style, {}, true)
-            end
+            PaintStandIn(layer, display, style, {}, true)
         end
         layer.duration = PreviewDuration(layer, PREVIEW_LENGTH)
         CDM:SetLayerTimer(layer, layer.duration)
-        layer.Cooldown:SetShown(showIcon) -- setting a timer shows a Cooldown frame again
+        layer.Cooldown:SetShown(showIcon) -- Setting a timer shows a Cooldown frame again
         layer.count = 1
         if layer.isBar and trigger.BarMode == 'stacks' then
-            -- An explicit value takes the bar off the preview timer; the timer still loops the stand-in.
+            -- An explicit value takes the bar off the preview timer, the timer still loops the stand-in
             local maxStacks = CDM:GetMaxStacks(layer, trigger)
             layer.count = ceil(maxStacks * 0.6)
             layer.Bar:SetMinMaxValues(0, maxStacks)
             layer.Bar:SetValue(layer.count)
             layer.Bar.spark:SetAlpha(1)
         end
+
         if overlay and showIcon then
             local desaturate, swipe, reverse = active.auraDesaturate, active.auraSwipe, active.auraInverse
             if desaturate == nil then
@@ -257,20 +259,18 @@ CDM.TriggerTypes.aura = {
                 reverse = style.Reverse
             end
             layer.Icon:SetVertexColor(unpack(active.auraColor or style.Color))
-            layer.Icon:SetDesaturated(desaturate == true)
-            layer.Cooldown:SetDrawSwipe(swipe == true)
-            layer.Cooldown:SetReverse(reverse == true)
+            layer.Icon:SetDesaturated(desaturate)
+            layer.Cooldown:SetDrawSwipe(swipe)
+            layer.Cooldown:SetReverse(reverse)
         end
         CDM:UpdateTexts(layer)
-        if overlay and display then
+
+        if overlay then
             local ordinal = 0
             for index, element in ipairs(display.SubRegions) do
                 if element.type == 'text' then
                     ordinal = ordinal + 1
-                    local text = layer.texts[ordinal]
-                    if text then
-                        text.fs:SetShown(active['sub.' .. index .. '.visible'] == true)
-                    end
+                    layer.texts[ordinal].fs:SetShown(active['sub.' .. index .. '.visible'] == true)
                 end
             end
         end
@@ -279,7 +279,7 @@ CDM.TriggerTypes.aura = {
         local remaining = layer.previewEnd - GetTime()
         local inWindow = remaining <= window
 
-        -- The stand-in shows a glow element as the aura would: its own Enabled, while active, in the window.
+        -- A glow element shows as the aura would, by its own Enabled, while active or in the window
         local hasPandemicGlow = false
         for key in pairs(pandemic) do
             if key:find('%.visible$') then
@@ -287,23 +287,21 @@ CDM.TriggerTypes.aura = {
                 break
             end
         end
-        if display then
-            for index, element in ipairs(display.SubRegions) do
-                if element.type == 'glow' then
-                    local key = 'sub.' .. index .. '.visible'
-                    local shown = active[key]
-                    if shown == nil then
-                        shown = not overlay and element.Enabled
-                    end
-                    if inWindow and pandemic[key] then
-                        shown = true
-                    end
-                    local glow = layer.glows[CDM:GlowOrdinal(display, index)]
-                    if glow and shown then
-                        glow:Start(element, style.Width, style.Height)
-                    elseif glow then
-                        glow:Stop()
-                    end
+        for index, element in ipairs(display.SubRegions) do
+            if element.type == 'glow' then
+                local key = 'sub.' .. index .. '.visible'
+                local shown = active[key]
+                if shown == nil then
+                    shown = not overlay and element.Enabled
+                end
+                if inWindow and pandemic[key] then
+                    shown = true
+                end
+                local glow = layer.glows[CDM:GlowOrdinal(display, index)]
+                if shown then
+                    glow:Start(element, style.Width, style.Height)
+                else
+                    glow:Stop()
                 end
             end
         end
@@ -329,7 +327,7 @@ CDM.TriggerTypes.aura = {
             border:NCSetInside(layer)
             layer.previewPandemic = border
         end
-        border:GetParent():SetFrameLevel(layer:GetFrameLevel() + 2) -- over the swipe, under the sub elements
+        border:GetParent():SetFrameLevel(layer:GetFrameLevel() + 2) -- Over the swipe, under the sub elements
         border:SetVertexColor(unpack(pandemicColor))
         border:SetShown(inWindow)
     end,
@@ -339,24 +337,26 @@ CDM.TriggerTypes.aura = {
 CDM.TriggerTypes.auraoverlay = CDM.TriggerTypes.aura
 
 ---@param i number
----@param trigger table
+---@param trigger CDMTrigger
 ---@param warnings string[]
 CDM.TriggerTypes.aura.Warnings = function(i, trigger, warnings)
-    if trigger.Source == 'custom' then
-        if not (trigger.SpellIDs and trigger.SpellIDs[1]) then
-            warnings[#warnings + 1] = format(L['Trigger %d: no aura spell IDs.'], i)
+    if trigger.Source ~= 'custom' then
+        if not (trigger.CooldownID or trigger.SpellID) then
+            warnings[#warnings + 1] = format(L['Trigger %d: no aura chosen.'], i)
         end
-        for _, spellID in ipairs(trigger.SpellIDs or {}) do
+    elseif trigger.SpellIDs then
+        for _, spellID in ipairs(trigger.SpellIDs) do
             CDM:WarnUnknownSpell(warnings, i, spellID)
         end
-    elseif not (trigger.CooldownID or trigger.SpellID) then
-        warnings[#warnings + 1] = format(L['Trigger %d: no aura chosen.'], i)
+    else
+        warnings[#warnings + 1] = format(L['Trigger %d: no aura spell IDs.'], i)
     end
 end
 
 -- Conditions --
 
--- A lone aura is the icon, so only its pandemic window, its time's colour and its placeholder's look are left; an overlay draws nothing until While Up adds to it.
+-- A lone aura is the icon, so only its pandemic, time color and placeholder look are left
+-- An overlay draws nothing until While Up adds to it
 CDM.ConditionChecks.aura = {
     pandemic  = { type = 'bool', secret = true },
     missing   = { type = 'bool', secret = true },

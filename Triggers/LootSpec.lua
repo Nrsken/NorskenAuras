@@ -4,19 +4,15 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local LoadConditions = NRSKNUI.LoadConditions
 
---[[
-The Loot Specialization trigger: the spec's icon, its name as %n, active while it passes the spec and Current Specialization filters.
-Loot spec 0 is Current Specialization, which follows the active spec (EncounterJournalLinkButtonMixin:OnClick, GroupLootFrame.lua).
-]]
-
 local GetSpecializationInfoByID = GetSpecializationInfoByID
 local GetLootSpecialization = GetLootSpecialization
 local CreateFrame = CreateFrame
-local select = select
 local ipairs = ipairs
+local select = select
 
 -- Trigger --
 
+-- Loot spec 0 is Current Specialization, which follows the active spec (GroupLootFrame.lua)
 ---@return number? specID nil before the character has a specialization
 ---@return boolean isCurrentSpec
 local function GetLootSpec()
@@ -28,8 +24,16 @@ local function GetLootSpec()
     return specID, specID == currentID
 end
 
+-- The loot spec's icon, its name as %n, active while it passes the spec filters
 CDM.TriggerTypes.lootSpec = {
     IsKnown = function() return true end,
+
+    ---@param trigger CDMTrigger
+    Conform = function(trigger)
+        if not CDM.IsChoice(CDM.CURRENT_SPEC, trigger.CurrentSpec) then
+            trigger.CurrentSpec = nil
+        end
+    end,
 
     ---@param layer CDMLayer
     Resolve = function(layer)
@@ -50,15 +54,15 @@ CDM.TriggerTypes.lootSpec = {
     end,
 
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsActive = function(layer, trigger)
         if CDM.IsPreviewingLayer(layer) then return true end
-        if trigger.CurrentSpec and (trigger.CurrentSpec == 'current') ~= layer.state.isCurrentSpec then return false end
+        if trigger.CurrentSpec ~= 'any' and (trigger.CurrentSpec == 'current') ~= layer.state.isCurrentSpec then return false end
 
-        -- no spec picked is any spec
+        -- No spec picked is any spec
         local specIDs = trigger.SpecIDs
-        if not (specIDs and specIDs[1]) then return true end
+        if not specIDs[1] then return true end
         for _, specID in ipairs(specIDs) do
             if specID == layer.state.lootSpecID then return true end
         end
@@ -84,7 +88,7 @@ local eventFrame ---@type Frame?
 local LOOT_SPEC_TYPES = { lootSpec = true }
 
 local function OnLootSpecEvent()
-    CDM:UpdateAllTriggers(LOOT_SPEC_TYPES) -- through Settle, so the filters and conditions re-derive
+    CDM:UpdateAllTriggers(LOOT_SPEC_TYPES) -- Through Settle, so the filters and conditions derive again
 end
 
 CDM.TriggerTypes.lootSpec.RegisterEvents = function()

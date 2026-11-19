@@ -13,7 +13,7 @@ local next = next
 local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName
 
-local viewerLayers = {} ---@type table<CDMLayer, table|true> layers following a Cooldown Manager bar -> their trigger
+local viewerLayers = {} ---@type table<CDMLayer, CDMTrigger|true> layers following a Cooldown Manager bar -> their trigger
 local runningLayers = {} ---@type table<CDMLayer, true> those whose bar is running
 local changedLayers = {} ---@type table<CDMLayer, true> those Blizzard changed this frame
 
@@ -71,7 +71,7 @@ end
 
 local BAR_VIEWERS = { 'BuffBarCooldownViewer' }
 
-local hookedItems = {} ---@type table<table, true>
+local hookedItems = {} ---@type table<CooldownViewerBuffBarItemTemplate, true>
 local changeFrame ---@type Frame?
 
 -- A frame later, once Blizzard's relayout is done and the bar's state is final
@@ -84,7 +84,7 @@ local function ApplyChanges()
 end
 
 -- Blizzard started, stopped or handed one of its bars to another entry
----@param item table
+---@param item CooldownViewerBuffBarItemTemplate
 local function OnItemChanged(item)
     local id = item.cooldownID
     for layer in pairs(viewerLayers) do
@@ -98,7 +98,7 @@ local function OnItemChanged(item)
 end
 
 -- ResetCooldownData too, as a release clears isActive without OnActiveStateChanged
----@param item table
+---@param item CooldownViewerBuffBarItemTemplate
 local function HookItem(_, item)
     if hookedItems[item] then return end
 
@@ -111,7 +111,7 @@ end
 -- Picks up a bar already running, the hooks report every change after
 ---@param layer CDMLayer
 ---@param cooldownID number?
----@param owner table|true
+---@param owner CDMTrigger|true
 local function Follow(layer, cooldownID, owner)
     if not changeFrame then
         changeFrame = CreateFrame('Frame')
@@ -151,12 +151,12 @@ end
 
 -- For Cooldown Manager entries that aren't real auras
 CDM.TriggerTypes.viewerbar = {
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger) return trigger.CooldownID ~= nil end,
 
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     Resolve = function(layer, trigger)
         layer.spellID, layer.baseSpellID = nil, nil
         Follow(layer, trigger.CooldownID, trigger)
@@ -168,8 +168,7 @@ CDM.TriggerTypes.viewerbar = {
     end,
 
     ---@param layer CDMLayer
-    ---@param style table
-    Update = function(layer, style)
+    Update = function(layer)
         layer.duration = nil
         local spellID = layer.viewerSpellID
         local active = Mirror(layer)

@@ -5,26 +5,38 @@ local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
 --[[
-The pipeline every trigger type shares: Resolve what a trigger points at, Update its layer from the game, Derive which layer shows.
-Each Triggers/*.lua fills CDM.TriggerTypes[type] with IsKnown, Resolve, Update and IsActive, plus optional IsStandby, Warnings, Unwatch and RegisterEvents.
+The pipeline every trigger type shares, each type's file fills CDM.TriggerTypes
+Resolve what a trigger points at, Update its layer from the game, Derive which layer shows
 ]]
 
 local InCombatLockdown = InCombatLockdown
-local pairs, ipairs = pairs, ipairs
 local CreateFrame = CreateFrame
 local format = string.format
 local tonumber = tonumber
 local GetTime = GetTime
+local ipairs = ipairs
+local pairs = pairs
 local next = next
 
 local CreateDuration = C_DurationUtil.CreateDuration
-local NewTimer = C_Timer.NewTimer
 local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName
+local NewTimer = C_Timer.NewTimer
 
 CDM.TriggerTypes = {}
-CDM.PREVIEW_LENGTH = 7     -- options preview timer, in seconds
-CDM.PREVIEW_PANDEMIC = 0.3 -- previewed pandemic border at 30% left
+CDM.PREVIEW_LENGTH = 7
+CDM.PREVIEW_PANDEMIC = 0.3 -- The pandemic border shows at 30% left
+
+-- Items aren't in it as BAG_UPDATE_COOLDOWN covers bags and equipped slots
+local SPELL_TYPES = { spell = true }
+
+local spellIndex = {} ---@type table<number, table<string, true>> spellID -> icon ids watching it
+
+---@param id string
+---@return CDMDisplay
+local function BuiltDisplay(id)
+    return CDM.icons[id].display
+end
 
 -- Preview --
 
@@ -34,7 +46,7 @@ function CDM.IsPreviewingLayer(layer)
     return CDM.previewing == true and layer.owner.shown == true
 end
 
----A looping fake timer for the options preview.
+---A looping fake timer for the options preview
 ---@param layer CDMLayer
 ---@param length number
 ---@return LuaDurationObject
@@ -42,7 +54,7 @@ function CDM.PreviewDuration(layer, length)
     local now = GetTime()
     if not layer.previewEnd or now >= layer.previewEnd - 0.05 then
         layer.previewEnd = now + length
-        -- a hidden layer's Cooldown never fires OnCooldownDone, which is what starts it over
+        -- A hidden layer's Cooldown never fires OnCooldownDone, so a timer starts it over
         if layer.previewTimer then
             layer.previewTimer:Cancel()
         end
@@ -61,9 +73,7 @@ end
 
 -- Watchers --
 
-local spellIndex = {} ---@type table<number, table<string, true>> spellID -> icon ids watching it
-
----Update `id` whenever `spellID` changes.
+---Update an icon whenever a spell changes
 ---@param spellID number?
 ---@param id string
 function CDM:WatchSpell(spellID, id)
@@ -77,10 +87,7 @@ function CDM:WatchSpell(spellID, id)
     watchers[id] = true
 end
 
-local SPELL_TYPES = { spell = true }
-CDM.SPELL_TYPES = SPELL_TYPES -- items aren't in it: BAG_UPDATE_COOLDOWN covers bags and equipped slots
-
----Re-read only the spell triggers on `spellID`, in the icons watching it.
+---Re-read only the spell triggers on a spell, in the icons watching it
 ---@param spellID number?
 function CDM:UpdateWatchers(spellID)
     local watchers = spellID and spellIndex[spellID]
@@ -98,16 +105,16 @@ function CDM:UpdateAllTriggers(types)
     end
 end
 
----Whirling Dragon Punch's usability flips on other spells' cooldowns and no event names it.
+---Whirling Dragon Punch's usability flips on other spells' cooldowns and no event names it
 function CDM:RefreshUsable()
     for id, frame in pairs(self.icons) do
-        local display = frame.shown and self:Get(id)
-        if display then
+        if frame.shown then
+            local display = BuiltDisplay(id)
             local changed = false
             for i, trigger in ipairs(display.Triggers) do
                 local layer = frame.layers[i]
-                local triggerType = layer.watchUsable and self.TriggerTypes[trigger.Type]
-                if triggerType and triggerType.RefreshUsable and triggerType.RefreshUsable(layer) then
+                local refresh = layer.watchUsable and self.TriggerTypes[trigger.Type].RefreshUsable
+                if refresh and refresh(layer) then
                     changed = true
                 end
             end
@@ -119,20 +126,20 @@ function CDM:RefreshUsable()
     end
 end
 
----Re-derive only the icons whose conditions read a global (0) or player/unit (-1) check.
+---Re-derive only the icons whose conditions read a global (0) or player/unit (-1) check
 ---@param triggerIndex number
 ---@param variable string
 ---@param other string?
 function CDM:DeriveUsing(triggerIndex, variable, other)
     for id in pairs(self.icons) do
-        local display = self:Get(id)
-        if display and (self:ConditionsUse(display, triggerIndex, variable) or (other and self:ConditionsUse(display, triggerIndex, other))) then
+        local display = BuiltDisplay(id)
+        if self:ConditionsUse(display, triggerIndex, variable) or (other and self:ConditionsUse(display, triggerIndex, other)) then
             self:Derive(id)
         end
     end
 end
 
----Before a re-resolve or when the pooled frame moves to another display.
+---Before a re-resolve or when the pooled frame moves to another display
 ---@param id string
 function CDM:UnwatchIcon(id)
     for _, triggerType in pairs(self.TriggerTypes) do
@@ -151,8 +158,27 @@ end
 
 -- Trigger info --
 
----A custom aura goes by its own first ID, not one left from a Cooldown Manager pick.
----@param trigger table
+---Whether a saved value is one of a choice list's, such as CDM.SHOW_ON
+---@param choices string[]
+---@param value any
+---@return boolean
+function CDM.IsChoice(choices, value)
+    for _, choice in ipairs(choices) do
+        if choice == value then return true end
+    end
+    return false
+end
+
+---A spell or item trigger's Show this addon doesn't know, put back to the template's
+---@param trigger CDMTrigger
+function CDM.ConformShowOn(trigger)
+    if not CDM.IsChoice(CDM.SHOW_ON, trigger.ShowOn) then
+        trigger.ShowOn = nil
+    end
+end
+
+---A custom aura goes by its own first ID, not one left from a Cooldown Manager pick
+---@param trigger CDMTrigger
 ---@return number?
 function CDM:GetTriggerSpell(trigger)
     if trigger.Type == 'aura' or trigger.Type == 'auraoverlay' then
@@ -169,24 +195,24 @@ function CDM:GetTriggerSpell(trigger)
     return trigger.SpellID or (trigger.SpellIDs and trigger.SpellIDs[1])
 end
 
----@param trigger table
----@return number? texture
+---@param trigger CDMTrigger
+---@return (number|string)? texture
 function CDM:GetTriggerTexture(trigger)
-    local triggerType = self.TriggerTypes[trigger.Type]
-    if triggerType and triggerType.Texture then
-        return triggerType.Texture(trigger)
+    local texture = self.TriggerTypes[trigger.Type].Texture
+    if texture then
+        return texture(trigger)
     end
 
     local spellID = self:GetTriggerSpell(trigger)
     return spellID and GetSpellTexture(spellID)
 end
 
----@param trigger table
+---@param trigger CDMTrigger
 ---@return string? name
 function CDM:GetTriggerName(trigger)
-    local triggerType = self.TriggerTypes[trigger.Type]
-    if triggerType and triggerType.Name then
-        return triggerType.Name(trigger)
+    local name = self.TriggerTypes[trigger.Type].Name
+    if name then
+        return name(trigger)
     end
 
     local spellID = self:GetTriggerSpell(trigger)
@@ -202,17 +228,14 @@ function CDM:WarnUnknownSpell(warnings, i, spellID)
     end
 end
 
----Problems found from the settings alone, for the Information tab.
+---Problems found from the settings alone, for the Information tab
 ---@param id string
 ---@return string[]
 function CDM:GetWarnings(id)
     local display = self:Get(id)
     local warnings = {}
-    if not display then
-        return warnings
-    end
 
-    -- the first child will do: the tree asks this of every group on each draw
+    -- The first child will do, as the tree asks this of every group on each draw
     if self:IsGroup(id) then
         for _, other in pairs(self.db.Displays) do
             if other.parent == id then
@@ -223,25 +246,27 @@ function CDM:GetWarnings(id)
         return warnings
     end
 
-    local triggers = display.Triggers or {}
-    for i, trigger in ipairs(triggers) do
-        local triggerType = self.TriggerTypes[trigger.Type]
-        if triggerType and triggerType.Warnings then
-            triggerType.Warnings(i, trigger, warnings)
+    -- What a %N. token can read
+    local readable
+    if display.type == 'auragroup' then
+        -- An aura group's trigger branch N
+        readable = NRSKNUI:CountTriggerBranches(display.Trigger)
+    else
+        readable = #display.Triggers
+        for i, trigger in ipairs(display.Triggers) do
+            local warn = self.TriggerTypes[trigger.Type].Warnings
+            if warn then
+                warn(i, trigger, warnings)
+            end
         end
     end
 
     local dropped = self:DroppedAuraTexts(display)
-    -- an aura group's %N. reads its trigger's branch N
-    local readable = #triggers
-    if display.type == 'auragroup' then
-        readable = NRSKNUI:CountTriggerBranches(display.Trigger)
-    end
     local textIndex = 0
     for _, element in ipairs(display.SubRegions) do
         if element.type == 'text' then
             textIndex = textIndex + 1
-            for source in (element.Text or ''):gmatch('%%(%d+)%.[ptsn]') do
+            for source in element.Text:gmatch('%%(%d+)%.[ptsn]') do
                 local n = tonumber(source)
                 if n < 1 or n > readable then
                     warnings[#warnings + 1] = format(L['Text %d reads trigger %d, which does not exist.'], textIndex, n)
@@ -259,16 +284,16 @@ end
 -- Resolve --
 
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 function CDM:ResolveTriggers(frame, display)
     self:UnwatchIcon(frame.id)
 
     for i, trigger in ipairs(display.Triggers) do
         local layer = frame.layers[i]
         local triggerType = self.TriggerTypes[trigger.Type]
-        local secret = triggerType ~= nil and triggerType.Secret == true
+        local secret = triggerType.Secret == true
 
-        -- An aura layer is drawn by its aura button, so its own parts hide.
+        -- An aura layer is drawn by its aura button, so its own parts hide
         layer.Icon:SetShown(not secret and self:ShowsIcon(layer, frame.style, display))
         if layer.isBar then
             layer.Bar:SetShown(not secret)
@@ -280,47 +305,48 @@ function CDM:ResolveTriggers(frame, display)
             self:ReleaseAuraLayer(layer)
         end
 
-        layer.count = nil -- one left by another trigger type would stand in for this one's %s
-        if triggerType then
-            triggerType.Resolve(layer, trigger)
-        end
+        -- One left by another trigger type would stand in for this one's %s
+        layer.count = nil
+        triggerType.Resolve(layer, trigger)
     end
 end
 
----Spell and timer triggers on `baseSpellID`, all when nil; an override never changes what loads.
+---Spell and timer triggers on a base spell or all, an override never changes what loads
 ---@param baseSpellID number?
 function CDM:ResolveOverrides(baseSpellID)
-    local ids = baseSpellID and spellIndex[baseSpellID] or self.icons
+    local ids = self.icons
+    if baseSpellID then
+        -- Spell and timer triggers watch their own spell, so a spell no one watches is on no trigger
+        ids = spellIndex[baseSpellID]
+        if not ids then return end
+    end
     for id in pairs(ids) do
-        local frame, display = self.icons[id], self:Get(id)
-        if frame and display then
-            local changed = false
-            for i, trigger in ipairs(display.Triggers) do
-                if (trigger.Type == 'spell' or trigger.Type == 'timer') and (not baseSpellID or trigger.SpellID == baseSpellID) then
-                    local layer = frame.layers[i]
-                    local before, wasOverridden = layer.spellID, layer.overridden
-                    self.TriggerTypes[trigger.Type].Resolve(layer, trigger)
-                    -- an Ignore Override icon keeps its spell, but its Overridden condition still flips
-                    changed = changed or layer.spellID ~= before or layer.overridden ~= wasOverridden
-                end
+        local frame, display = self.icons[id], BuiltDisplay(id)
+        local changed = false
+        for i, trigger in ipairs(display.Triggers) do
+            if (trigger.Type == 'spell' or trigger.Type == 'timer') and (not baseSpellID or trigger.SpellID == baseSpellID) then
+                local layer = frame.layers[i]
+                local before, wasOverridden = layer.spellID, layer.overridden
+                self.TriggerTypes[trigger.Type].Resolve(layer, trigger)
+                -- An Ignore Override icon keeps its spell, but its Overridden condition still flips
+                changed = changed or layer.spellID ~= before or layer.overridden ~= wasOverridden
             end
+        end
 
-            if changed then
-                self:UpdateIcon(id)
-            end
+        if changed then
+            self:UpdateIcon(id)
         end
     end
 end
 
----Re-read every spell and timer icon: a talent can swap one without an override (Empty Barrel on Keg Smash); only SPELLS_CHANGED says so.
+---Re-read every spell and timer icon, a talent can swap one with no override event
 function CDM:RefreshSpellTextures()
     for id, frame in pairs(self.icons) do
-        local display = self:Get(id)
-        for i, trigger in ipairs(display and display.Triggers or {}) do
+        for i, trigger in ipairs(BuiltDisplay(id).Triggers) do
             local layer = frame.layers[i]
-            if layer and layer.spellID and (trigger.Type == 'spell' or trigger.Type == 'timer') then
+            if layer.spellID and (trigger.Type == 'spell' or trigger.Type == 'timer') then
                 local icon, original = GetSpellTexture(layer.spellID)
-                -- an Ignore Override spell trigger keeps the base spell's own icon, as its Resolve does
+                -- An Ignore Override spell trigger keeps the base spell's own icon, as its Resolve does
                 self:SetIconTexture(layer, trigger.Type == 'spell' and trigger.IgnoreOverride and original or icon)
             end
         end
@@ -329,25 +355,26 @@ end
 
 -- Visibility --
 
----Any/All activation in the WA style: the first active trigger's layer shows, unless Dynamic Information pins one.
+---Any or All in the WA style, the first active trigger shows unless one is pinned
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 function CDM:SelectLayer(frame, display)
     local triggers = display.Triggers
-    local requireAll = display.Activation == 'all' and not self.previewing -- ignored while editing since one inactive trigger would blank the preview
+    -- Not while editing, one inactive trigger would blank the preview
+    local requireAll = display.Activation == 'all' and not self.previewing
     local first, blocked, standby = nil, false, nil
 
-    -- First active trigger; with All, any inactive one blocks.
+    -- The first active trigger, with All any inactive one blocks
     for i, trigger in ipairs(triggers) do
         local triggerType = self.TriggerTypes[trigger.Type]
-        if not (triggerType and triggerType.Secret) then
-            if triggerType and triggerType.IsActive(frame.layers[i], trigger) then
+        if not triggerType.Secret then
+            if triggerType.IsActive(frame.layers[i], trigger) then
                 first = first or i
             else
                 if requireAll then
                     blocked = true
                 end
-                if not standby and triggerType and triggerType.IsStandby and triggerType.IsStandby(frame.layers[i], trigger) then
+                if not standby and triggerType.IsStandby and triggerType.IsStandby(frame.layers[i], trigger) then
                     standby = i
                 end
             end
@@ -358,22 +385,22 @@ function CDM:SelectLayer(frame, display)
         first = nil
     end
 
-    -- Hidden but ready: a condition's Show Display can bring it up.
+    -- Hidden but ready, a condition's Show Display can bring it up
     frame.standbyLayer = not blocked and standby and frame.layers[standby] or nil
 
     local pin = display.DynamicTrigger
-    local pinType = pin and triggers[pin] and self.TriggerTypes[triggers[pin].Type]
-    if not pinType then
+    local pinTrigger = pin and triggers[pin]
+    if not pinTrigger then
         pin = nil
     end
-    local pinSecret = pinType and pinType.Secret == true
-    local pinned = pin ~= nil and (first ~= nil or pinSecret) -- a pin needs something active and an aura might be
+    local pinSecret = pinTrigger and self.TriggerTypes[pinTrigger.Type].Secret == true
+    -- A pin needs something active and an aura might be
+    local pinned = pin ~= nil and (first ~= nil or pinSecret)
 
-    -- Show the chosen layer.
+    -- Show the chosen layer
     local maybeAura, placeholder = false, false
     for i, trigger in ipairs(triggers) do
-        local triggerType = self.TriggerTypes[trigger.Type]
-        local secret = triggerType ~= nil and triggerType.Secret == true
+        local secret = self.TriggerTypes[trigger.Type].Secret == true
         local show
         if blocked then
             show = false
@@ -382,13 +409,15 @@ function CDM:SelectLayer(frame, display)
         elseif pinned then
             show = i == pin
         elseif secret then
-            show = first == nil or i < first -- unreadable, so it covers the active layer while up
+            -- Unreadable, so it covers the active layer while up
+            show = first == nil or i < first
         else
             show = i == first
         end
 
+        -- Its aura may be up, so keep the icon visible
         if secret and show then
-            maybeAura = true -- its aura may be up, so keep the icon visible
+            maybeAura = true
         end
         if secret and show and trigger.Placeholder and trigger.Type == 'aura' then
             placeholder = true
@@ -405,7 +434,7 @@ function CDM:SelectLayer(frame, display)
     frame.hasActive = frame.activeLayer ~= nil or maybeAura
 end
 
----Shown while loaded and active or always while previewed; in a dynamic group a hidden icon frees its slot.
+---Shown while loaded and active or while previewed, a hidden icon frees its group slot
 ---@param id string
 ---@param frame CDMIcon
 function CDM:ApplyVisibility(id, frame)
@@ -414,8 +443,10 @@ function CDM:ApplyVisibility(id, frame)
 
     if group and group.isChain then
         ---@cast group CDMChainGroup
-        local loaded = frame.shown == true and (self.previewing or not frame.forceHidden) -- Show Display off must hide the aura too, not only free the slot
-        local logic = frame.activeLayer ~= nil or frame.placeholder                       -- a placeholder keeps its slot open while the aura is missing
+        -- Show Display off hides the aura too, not only the slot
+        local loaded = frame.shown == true and (self.previewing or not frame.forceHidden)
+        -- A placeholder keeps its slot open while the aura is missing
+        local logic = frame.activeLayer ~= nil or frame.placeholder
         group:SetChildVisible(id, loaded, self.previewing or logic)
         return
     end
@@ -435,25 +466,23 @@ end
 -- Update --
 
 ---@param frame CDMIcon
----@param trigger table
+---@param trigger CDMTrigger
 ---@param i number
 local function RunTrigger(frame, trigger, i)
     local triggerType = CDM.TriggerTypes[trigger.Type]
-    if triggerType then
-        triggerType.Update(frame.layers[i], frame.style, trigger)
-    end
+    triggerType.Update(frame.layers[i], frame.style, trigger)
 
-    -- Conditions override this after; an aura layer's icon is set by its Update.
-    if not (triggerType and triggerType.Secret) then
-        frame.layers[i].Icon:SetDesaturated(frame.style.Desaturate == true)
+    -- Conditions override this after, an aura layer's icon is set by its Update
+    if not triggerType.Secret then
+        frame.layers[i].Icon:SetDesaturated(frame.style.Desaturate)
     end
 end
 
 ---@param id string
 ---@param frame CDMIcon
----@param display table
+---@param display CDMDisplay
 local function Settle(id, frame, display)
-    -- A %N.p text reads a trigger that may have updated after its own.
+    -- A %N.p text reads a trigger that may have updated after its own
     for i = 1, #display.Triggers do
         local layer = frame.layers[i]
         if layer.sourced or layer.auraSourced then
@@ -464,23 +493,24 @@ local function Settle(id, frame, display)
     CDM:Derive(id, frame, display)
 end
 
----Only shown icons update; a hidden one catches up when RefreshLoad shows it again.
+-- Only shown icons update, a hidden one catches up when RefreshLoad shows it again
 ---@param id string
----@return CDMIcon? frame, table? display
+---@return CDMIcon? frame
+---@return CDMDisplay? display
 local function Live(id)
-    local frame, display = CDM.icons[id], CDM:Get(id)
-    if frame and display and frame.shown then
-        return frame, display
+    local frame = CDM.icons[id]
+    if frame and frame.shown then
+        return frame, BuiltDisplay(id)
     end
 end
 
----Every trigger re-read, for builds and settings; combat events use the narrower ones below.
+---Every trigger re-read, for builds and settings, combat events use the narrower ones below
 ---@param id string
 function CDM:UpdateIcon(id)
     local frame, display = Live(id)
     if not frame then return end
 
-    ---@cast display table
+    ---@cast display -nil
     for i, trigger in ipairs(display.Triggers) do
         RunTrigger(frame, trigger, i)
     end
@@ -488,7 +518,7 @@ function CDM:UpdateIcon(id)
     Settle(id, frame, display)
 end
 
----Re-read the triggers of these types, only those on `spellID` when given.
+---Re-read the triggers of these types, only those on a spell when given
 ---@param id string
 ---@param types table<string, true>
 ---@param spellID number?
@@ -496,7 +526,7 @@ function CDM:UpdateTriggers(id, types, spellID)
     local frame, display = Live(id)
     if not frame then return end
 
-    ---@cast display table
+    ---@cast display -nil
     local ran = false
     for i, trigger in ipairs(display.Triggers) do
         local layer = frame.layers[i]
@@ -511,14 +541,16 @@ function CDM:UpdateTriggers(id, types, spellID)
     end
 end
 
----Re-read the one trigger behind `layer`, for its own timers and events.
+---Re-read the one trigger behind a layer, for its own timers and events
 ---@param layer CDMLayer
 function CDM:UpdateLayer(layer)
+    -- A released frame's timers can still fire
     local id = layer.owner.id
     if not id then return end
     local frame, display = Live(id)
     if not frame then return end
-    ---@cast display table
+    ---@cast display -nil
+    -- A layer past the last trigger, left over from a removed one
     local trigger = display.Triggers[layer.index]
     if not trigger then return end
 
@@ -526,17 +558,17 @@ function CDM:UpdateLayer(layer)
     Settle(id, frame, display)
 end
 
----Pick the shown layer and re-run conditions and visibility, reading no trigger.
+---Pick the shown layer and re-run conditions and visibility, reading no trigger
 ---@param id string
 ---@param frame CDMIcon?
----@param display table?
+---@param display CDMDisplay?
 function CDM:Derive(id, frame, display)
     if not frame then
         frame, display = Live(id)
     end
     if not frame then return end
 
-    ---@cast display table
+    ---@cast display -nil
     self:SelectLayer(frame, display)
     self:EvaluateConditions(id, frame, display)
     self:ApplyVisibility(id, frame)
@@ -557,10 +589,11 @@ local function CheckLoadScheduled()
     end
 end
 
--- What every trigger reacts to; each trigger type registers its own events besides.
+-- What every trigger reacts to, each trigger type registers its own events besides
 local handlers = {
     SPELL_UPDATE_CHARGES = function()
-        CDM:UpdateAllTriggers(SPELL_TYPES) -- no payload, so every spell trigger re-reads
+        -- No payload, so every spell trigger re-reads
+        CDM:UpdateAllTriggers(SPELL_TYPES)
     end,
     SPELL_UPDATE_USES = function(spellID, baseSpellID)
         CDM:UpdateWatchers(spellID)
@@ -585,7 +618,8 @@ local handlers = {
     end,
     PLAYER_TARGET_CHANGED = function()
         CDM:DeriveUsing(0, 'hasTarget', 'attackable')
-        CDM:RefreshUsable() -- usability can change with the target
+        -- Usability can change with the target
+        CDM:RefreshUsable()
     end,
     GROUP_ROSTER_UPDATE = function()
         CDM:DeriveUsing(-1, 'classInGroup')
@@ -598,11 +632,9 @@ local handlers = {
     end,
 }
 
----The catalogue rebuilt (SPELLS_CHANGED and others), so every display re-resolves once.
+---The catalogue rebuilt (SPELLS_CHANGED and others), so every display re-resolves once
 function CDM:OnCatalogueChanged()
     if self.inCombat then
-        -- In combat this fires on every override swap, which ResolveOverrides already handled; only a learned or lost spell
-        -- and an icon swapped without an override matter.
         resolvePending = true
         loadCheckFrame:NCScheduleUpdate()
         self:RefreshSpellTextures()
@@ -617,7 +649,8 @@ local function OnEvent(_, event, ...)
 end
 
 function CDM:RegisterTriggerEvents()
-    self.inCombat = InCombatLockdown() -- a reload mid-fight misses the REGEN_DISABLED edge
+    -- A reload mid-fight misses the REGEN_DISABLED edge
+    self.inCombat = InCombatLockdown()
 
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
@@ -648,3 +681,7 @@ function CDM:UnregisterTriggerEvents()
         end
     end
 end
+
+-- Exports --
+
+CDM.SPELL_TYPES = SPELL_TYPES

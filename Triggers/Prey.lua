@@ -4,14 +4,9 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
---[[
-The Prey Hunt trigger: active while a hunt runs, its progress as Cold, Warm, Hot and Final.
-Progress only lives on a UI widget and no API names that widget, so it's found by its type (Blizzard_UIWidgetTemplatePreyHuntProgress.lua).
-A hunt has no widget outside its zone, so it can be active without a state but can be handled with condition checks.
-]]
-
-local ipairs, pairs = ipairs, pairs
 local CreateFrame = CreateFrame
+local ipairs = ipairs
+local pairs = pairs
 local next = next
 
 local GetPreyHuntInfo = C_UIWidgetManager.GetPreyHuntProgressWidgetVisualizationInfo
@@ -21,24 +16,26 @@ local GetActivePreyQuest = C_QuestLog.GetActivePreyQuest
 local GetTitleForQuestID = C_QuestLog.GetTitleForQuestID
 
 local PREY_WIDGET = Enum.UIWidgetVisualizationType.PreyHuntProgress
+local PreyHuntProgressState = Enum.PreyHuntProgressState
 local HIDDEN = Enum.WidgetShownState.Hidden
 
 local PREY_ICON = 'Interface\\Icons\\Ability_Hunter_MarkedForDeath'
-local STEPS = 4 -- a bar's fill, nothing returns finer progress than the state
+local STEPS = 4 -- A bar's fill, nothing returns finer progress than the state
 
 local STATE_NAMES = {
-    [Enum.PreyHuntProgressState.Cold] = L['Cold'],
-    [Enum.PreyHuntProgressState.Warm] = L['Warm'],
-    [Enum.PreyHuntProgressState.Hot] = L['Hot'],
-    [Enum.PreyHuntProgressState.Final] = L['Final'],
+    [PreyHuntProgressState.Cold] = L['Cold'],
+    [PreyHuntProgressState.Warm] = L['Warm'],
+    [PreyHuntProgressState.Hot] = L['Hot'],
+    [PreyHuntProgressState.Final] = L['Final'],
 }
 
 local preyLayers = {} ---@type table<CDMLayer, true>
-local hunt = {} -- what the layers read: questID, title, state, hint
+local hunt = {} ---@type { questID: number?, title: string?, state: number?, hint: string? } what the layers read
 local widgetID ---@type number?
 
 -- Hunt --
 
+-- No API names the progress widget, so it's found by its type
 ---@return number?
 local function FindWidget()
     for _, widget in ipairs(GetAllWidgetsBySetID(GetPowerBarWidgetSetID())) do
@@ -65,8 +62,8 @@ local function ReadHunt()
     return true
 end
 
----What a trigger's %n reads.
----@param trigger table
+-- What a trigger's %n reads
+---@param trigger CDMTrigger
 ---@return string?
 local function HuntText(trigger)
     if trigger.Text == 'state' then
@@ -95,7 +92,7 @@ local function OnPreyEvent(_, event, widget)
     end
 end
 
--- RegisterTriggerEvents runs for every trigger type, so these go by the layers in use instead: UPDATE_UI_WIDGET fires for every widget in the world
+-- Only while a layer uses it, as UPDATE_UI_WIDGET fires for every widget in the world
 local function StartWatching()
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
@@ -104,7 +101,7 @@ local function StartWatching()
 
     eventFrame:RegisterEvent('UPDATE_UI_WIDGET')
     eventFrame:RegisterEvent('UPDATE_ALL_UI_WIDGETS')
-    eventFrame:RegisterEvent('QUEST_LOG_UPDATE') -- accept, abandon, turn in and the title loading in
+    eventFrame:RegisterEvent('QUEST_LOG_UPDATE') -- Accept, abandon, turn in and the title loading in
     widgetID = FindWidget()
     ReadHunt()
 end
@@ -115,8 +112,17 @@ end
 
 -- Trigger --
 
+-- Active while a hunt runs, its progress Cold, Warm, Hot and Final
+-- Outside its zone a hunt has no widget, so it's active with no state for a condition
 CDM.TriggerTypes.prey = {
     IsKnown = function() return true end,
+
+    ---@param trigger CDMTrigger
+    Conform = function(trigger)
+        if not CDM.IsChoice(CDM.HUNT_TEXTS, trigger.Text) then
+            trigger.Text = nil
+        end
+    end,
 
     ---@param layer CDMLayer
     Resolve = function(layer)
@@ -129,8 +135,8 @@ CDM.TriggerTypes.prey = {
     end,
 
     ---@param layer CDMLayer
-    ---@param _ table
-    ---@param trigger table
+    ---@param _ NorskenCore.IconStyle|CDMBarStyle
+    ---@param trigger CDMTrigger
     Update = function(layer, _, trigger)
         layer.state.preyState = hunt.state
         CDM:SetLayerName(layer, HuntText(trigger) or (CDM.IsPreviewingLayer(layer) and L['Prey Hunt']) or '')

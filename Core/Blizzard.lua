@@ -73,7 +73,7 @@ end
 ---The frame a viewer draws for a Cooldown Manager entry, nil while none of them draws it
 ---@param viewers string[]
 ---@param cooldownID number
----@return table? item
+---@return any? item
 function CDM:FindViewerItem(viewers, cooldownID)
     for _, name in ipairs(viewers) do
         for item in _G[name].itemFramePool:EnumerateActive() do

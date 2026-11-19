@@ -4,26 +4,31 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
-local UnitCastingDuration, UnitChannelDuration = UnitCastingDuration, UnitChannelDuration
-local UnitCastingInfo, UnitChannelInfo = UnitCastingInfo, UnitChannelInfo
 local UnitEmpoweredStagePercentages = UnitEmpoweredStagePercentages
 local UnitEmpoweredChannelDuration = UnitEmpoweredChannelDuration
-local pairs, ipairs = pairs, ipairs
+local UnitCastingDuration = UnitCastingDuration
+local UnitChannelDuration = UnitChannelDuration
+local UnitCastingInfo = UnitCastingInfo
+local UnitChannelInfo = UnitChannelInfo
 local issecretvalue = issecretvalue
 local CreateFrame = CreateFrame
 local GetNetStats = GetNetStats
 local GetTime = GetTime
+local ipairs = ipairs
 local select = select
+local pairs = pairs
 
-local GetSpellTexture = C_Spell.GetSpellTexture
-local GetSpellName = C_Spell.GetSpellName
-local IsSpellKnown = C_SpellBook.IsSpellKnown
-local GetPlayerAuraBySpellID = C_UnitAuras.GetPlayerAuraBySpellID
 local CreateDuration = C_DurationUtil.CreateDuration
+local GetSpellTexture = C_Spell.GetSpellTexture
+local IsSpellKnown = C_SpellBook.IsSpellKnown
+local GetSpellName = C_Spell.GetSpellName
 local NewTimer = C_Timer.NewTimer
 
+local INTERRUPTED = INTERRUPTED
+local FAILED = FAILED
+
 local PREVIEW_CAST = 10
-local MAX_LATENCY = 1 -- a SENT older than this belongs to some other cast attempt
+local MAX_LATENCY = 1 -- A SENT older than this belongs to another cast attempt
 
 local CHANNEL_TICKS = {
     [755] = 5,
@@ -51,45 +56,35 @@ local CHANNEL_TICKS = {
     [400171] = 3,
 }
 local TALENT_TICKS = { [356995] = { spellID = 1219723, ticks = 4 } }
-local AURA_TICKS = { [47757] = { spellID = 373183, ticks = 6 }, [47758] = { spellID = 373183, ticks = 6 } }
 local CHAIN_TICKS = { [356995] = { extra = 1, within = 3 } } -- Disintegrate chained into itself gains a tick
 
 ---@class CDMCastState
 local cast = { stage = 0 }
-local castLayers = {} ---@type table<CDMLayer, table> cast layers -> their trigger
+local castLayers = {} ---@type table<CDMLayer, CDMTrigger>
 local stageTimers = {} ---@type table[]
 local sentAt ---@type number?
 local lastChannelEnd = {} ---@type table<number, number> spellID -> when its last channel ended
 local zeroDuration = CreateDuration()
 
---[[
-Cast Bar triggers: the player's own cast, channel or empower, with the castbar extras around it
-(channel ticks, empower stages, latency) and how it ended, held for a moment for the conditions.
-]]
-
 -- Cast state --
 
----@param trigger table
+---@param trigger CDMTrigger
 ---@return boolean
 local function Matches(trigger)
     if trigger.Casts == 'all' then return true end
+    -- Specific casts with none listed match nothing
+    if not trigger.SpellIDs then return false end
 
-    local ids = trigger.SpellIDs
-    -- specific casts with none listed match nothing; a save from before the mode reads an empty list as every cast
-    if not (ids and ids[1]) then
-        return trigger.Casts == nil
-    end
-    for _, spellID in ipairs(ids) do
+    for _, spellID in ipairs(trigger.SpellIDs) do
         if spellID == cast.spellID then return true end
     end
     return false
 end
 
----@param layer CDMLayer
----@param trigger table
+---@param trigger CDMTrigger
 ---@return boolean
-local function IsHeld(layer, trigger)
-    return cast.result ~= nil and (trigger.HoldTime or 0) > 0 and GetTime() < cast.endedAt + trigger.HoldTime and Matches(trigger)
+local function IsHeld(trigger)
+    return cast.result ~= nil and trigger.HoldTime > 0 and GetTime() < cast.endedAt + trigger.HoldTime and Matches(trigger)
 end
 
 local function Refresh()
@@ -118,11 +113,6 @@ local function ChannelTicks(spellID)
         count = talent.ticks
     end
 
-    local aura = AURA_TICKS[spellID]
-    if aura and GetPlayerAuraBySpellID(aura.spellID) then
-        count = aura.ticks
-    end
-
     local chain = CHAIN_TICKS[spellID]
     if chain and lastChannelEnd[spellID] and GetTime() - lastChannelEnd[spellID] <= chain.within then
         count = count + chain.extra
@@ -135,7 +125,7 @@ local function ChannelTicks(spellID)
     return ticks
 end
 
----Where each empower stage ends along the bar, and a timer per stage to recolour it.
+-- Where each empower stage ends along the bar, with a timer per stage to recolor it
 ---@param elapsed number
 local function ScheduleStages(elapsed)
     CancelStageTimers()
@@ -143,7 +133,7 @@ local function ScheduleStages(elapsed)
     if not (percentages and cast.total) then return end
 
     local stages, sum = {}, 0
-    for i = 1, #percentages - 1 do -- the last part is the hold at max, not a stage
+    for i = 1, #percentages - 1 do -- The last part is the hold at max, not a stage
         sum = sum + percentages[i]
         stages[i] = sum
         local at = sum * cast.total - elapsed
@@ -210,7 +200,7 @@ local function Start()
     Refresh()
 end
 
----Pushback, a clipped channel or a held empower re-issue the running cast's duration.
+-- Pushback, a clipped channel or a held empower re-issue the running cast's duration
 local function Update()
     if cast.kind == 'cast' then
         cast.duration = UnitCastingDuration('player')
@@ -226,7 +216,7 @@ end
 ---@param result 'success'|'failed'|'interrupted'
 local function Finish(result)
     CancelStageTimers()
-    if cast.kind == 'channel' and cast.spellID then
+    if cast.kind == 'channel' then
         lastChannelEnd[cast.spellID] = GetTime()
     end
     cast.castBarID, cast.duration = nil, nil
@@ -236,9 +226,8 @@ local function Finish(result)
             layer.castHoldTimer:Cancel()
         end
         layer.castHoldTimer = nil
-        local hold = trigger.HoldTime or 0
-        if hold > 0 and layer.owner.shown then
-            layer.castHoldTimer = NewTimer(hold, function()
+        if trigger.HoldTime > 0 and layer.owner.shown then
+            layer.castHoldTimer = NewTimer(trigger.HoldTime, function()
                 layer.castHoldTimer = nil
                 CDM:UpdateLayer(layer)
             end)
@@ -264,7 +253,7 @@ end
 
 -- Events --
 
--- pushback and clipping: castGUID, spellID, castBarID
+-- Pushback and clipping, the payload is castGUID, spellID, castBarID
 local function OnUpdated(_, _, castBarID)
     if IsCurrent(castBarID) then
         Update()
@@ -310,26 +299,9 @@ local handlers = {
 
 local eventFrame ---@type Frame?
 
--- Payloads after the unit: castGUID, spellID, then the event's own fields ending in castBarID.
+-- After the unit, castGUID, spellID, then the event's own fields ending in castBarID
 local function OnEvent(_, event, _, ...)
     handlers[event](...)
-end
-
----What the conditions read: the running cast's kind and empower stage, or how the held one ended.
----@param layer CDMLayer
----@param trigger table
----@return 'cast'|'channel'|'empower'|nil kind, number stage, 'success'|'failed'|'interrupted'|nil result
-function CDM:GetCastStatus(layer, trigger)
-    if cast.castBarID and Matches(trigger) then
-        return cast.kind, cast.stage, nil
-    end
-    if IsHeld(layer, trigger) then
-        return nil, 0, cast.result
-    end
-    if self.IsPreviewingLayer(layer) then
-        return 'cast', 0, nil
-    end
-    return nil, 0, nil
 end
 
 -- Trigger --
@@ -341,19 +313,28 @@ local function ClearExtras(layer)
     CDM:SetBarLatency(layer, nil, false)
 end
 
+-- The player's own cast, channel or empower and how it ended, held for a moment
 CDM.TriggerTypes.cast = {
     IsKnown = function() return true end,
 
+    ---@param trigger CDMTrigger
+    Conform = function(trigger)
+        -- A save from before the mode picked its casts by listing them
+        if not CDM.IsChoice(CDM.CAST_MODES, trigger.Casts) then
+            trigger.Casts = trigger.SpellIDs and 'specific' or 'all'
+        end
+    end,
+
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     Resolve = function(layer, trigger)
         layer.spellID, layer.baseSpellID = nil, nil
         castLayers[layer] = trigger
     end,
 
     ---@param layer CDMLayer
-    ---@param style table
-    ---@param trigger table
+    ---@param style CDMBarStyle
+    ---@param trigger CDMTrigger
     Update = function(layer, style, trigger)
         if cast.castBarID and Matches(trigger) then
             layer.duration = cast.duration
@@ -366,7 +347,7 @@ CDM.TriggerTypes.cast = {
                 local latency = trigger.ShowLatency and cast.kind ~= 'empower' and cast.total and cast.total > 0 and cast.latency / cast.total or nil
                 CDM:SetBarLatency(layer, latency, cast.kind == 'channel', style.LatencyColor)
             end
-        elseif IsHeld(layer, trigger) then
+        elseif IsHeld(trigger) then
             layer.duration = zeroDuration
             CDM:SetLayerValue(layer, 1, 1)
             local success = cast.result == 'success'
@@ -375,7 +356,10 @@ CDM.TriggerTypes.cast = {
                 ClearExtras(layer)
             end
         elseif CDM.IsPreviewingLayer(layer) then
-            local spellID = trigger.Casts ~= 'all' and trigger.SpellIDs and trigger.SpellIDs[1]
+            local spellID
+            if trigger.Casts ~= 'all' and trigger.SpellIDs then
+                spellID = trigger.SpellIDs[1]
+            end
             layer.duration = CDM.PreviewDuration(layer, PREVIEW_CAST)
             CDM:SetLayerTimer(layer, layer.duration, CDM.BAR_ELAPSED)
             CDM:SetIconTexture(layer, spellID and GetSpellTexture(spellID))
@@ -394,10 +378,10 @@ CDM.TriggerTypes.cast = {
     end,
 
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@return boolean
     IsActive = function(layer, trigger)
-        return (cast.castBarID ~= nil and Matches(trigger)) or IsHeld(layer, trigger) or CDM.IsPreviewingLayer(layer)
+        return (cast.castBarID ~= nil and Matches(trigger)) or IsHeld(trigger) or CDM.IsPreviewingLayer(layer)
     end,
 
     ---@param id string
@@ -422,7 +406,7 @@ CDM.TriggerTypes.cast = {
         for event in pairs(handlers) do
             eventFrame:RegisterUnitEvent(event, 'player')
         end
-        Start() -- a reload mid-cast
+        Start() -- A reload mid-cast
     end,
 
     UnregisterEvents = function()
@@ -434,12 +418,12 @@ CDM.TriggerTypes.cast = {
     Name = function() return L['Cast Bar'] end,
 
     ---@param i number
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     ---@param warnings string[]
     Warnings = function(i, trigger, warnings)
-        if trigger.Casts == 'all' then return end
+        if trigger.Casts == 'all' or not trigger.SpellIDs then return end
 
-        for _, spellID in ipairs(trigger.SpellIDs or {}) do
+        for _, spellID in ipairs(trigger.SpellIDs) do
             CDM:WarnUnknownSpell(warnings, i, spellID)
         end
     end,
@@ -447,13 +431,32 @@ CDM.TriggerTypes.cast = {
 
 -- Conditions --
 
+-- The running cast's kind and stage or how the held one ended, a preview reads as a cast
+---@param layer CDMLayer
+---@param trigger CDMTrigger
+---@return 'cast'|'channel'|'empower'|nil kind
+---@return number stage
+---@return 'success'|'failed'|'interrupted'|nil result
+local function CastStatus(layer, trigger)
+    if cast.castBarID and Matches(trigger) then
+        return cast.kind, cast.stage, nil
+    end
+    if IsHeld(trigger) then
+        return nil, 0, cast.result
+    end
+    if CDM.IsPreviewingLayer(layer) then
+        return 'cast', 0, nil
+    end
+    return nil, 0, nil
+end
+
 CDM.ConditionChecks.cast = {
     active       = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.cast.IsActive(layer, trigger) end },
-    casting      = { type = 'bool', get = function(layer, trigger) return CDM:GetCastStatus(layer, trigger) == 'cast' end },
-    channeling   = { type = 'bool', get = function(layer, trigger) return CDM:GetCastStatus(layer, trigger) == 'channel' end },
-    empowering   = { type = 'bool', get = function(layer, trigger) return CDM:GetCastStatus(layer, trigger) == 'empower' end },
-    empowerStage = { type = 'number', get = function(layer, trigger) return (select(2, CDM:GetCastStatus(layer, trigger))) end },
-    succeeded    = { type = 'bool', get = function(layer, trigger) return select(3, CDM:GetCastStatus(layer, trigger)) == 'success' end },
-    interrupted  = { type = 'bool', get = function(layer, trigger) return select(3, CDM:GetCastStatus(layer, trigger)) == 'interrupted' end },
-    failed       = { type = 'bool', get = function(layer, trigger) return select(3, CDM:GetCastStatus(layer, trigger)) == 'failed' end },
+    casting      = { type = 'bool', get = function(layer, trigger) return CastStatus(layer, trigger) == 'cast' end },
+    channeling   = { type = 'bool', get = function(layer, trigger) return CastStatus(layer, trigger) == 'channel' end },
+    empowering   = { type = 'bool', get = function(layer, trigger) return CastStatus(layer, trigger) == 'empower' end },
+    empowerStage = { type = 'number', get = function(layer, trigger) return (select(2, CastStatus(layer, trigger))) end },
+    succeeded    = { type = 'bool', get = function(layer, trigger) return select(3, CastStatus(layer, trigger)) == 'success' end },
+    interrupted  = { type = 'bool', get = function(layer, trigger) return select(3, CastStatus(layer, trigger)) == 'interrupted' end },
+    failed       = { type = 'bool', get = function(layer, trigger) return select(3, CastStatus(layer, trigger)) == 'failed' end },
 }

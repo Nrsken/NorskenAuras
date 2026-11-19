@@ -75,10 +75,10 @@ end
 -- Blizzard's viewer reads the secret currentCharges and leaves a plain wasSetFromCharges
 -- Shadow Dance needs it, in its buff a charge left and none read alike (CooldownViewer.lua)
 local CHARGE_VIEWERS = { 'EssentialCooldownViewer', 'UtilityCooldownViewer' }
-local hookedItems = {} ---@type table<table, true>
+local hookedItems = {} ---@type table<CDMChargeItem, true>
 local chargeLayers = {} ---@type table<CDMLayer, true> layers reading a viewer item's verdict
 
----@param item table
+---@param item CDMChargeItem
 local function OnItemCached(item)
     for layer in pairs(chargeLayers) do
         if layer.chargeItem == item and item.wasSetFromCharges ~= layer.fromCharges then
@@ -89,7 +89,7 @@ end
 
 -- Blizzard's viewer icon for this layer's spell, nil when its Cooldown Manager has none
 ---@param layer CDMLayer
----@return table? item
+---@return CDMChargeItem? item
 local function ChargeItem(layer)
     local cooldownID = CDM.Catalogue:FindBySpell(layer.baseSpellID, 'cooldown') or CDM.Catalogue:FindBySpell(layer.spellID, 'cooldown')
     local item = layer.chargeItem

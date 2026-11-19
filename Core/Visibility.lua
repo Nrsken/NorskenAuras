@@ -29,8 +29,7 @@ local STATE_RANK = {
 ---@return boolean
 function CDM:IsDisplayKnown(display)
     for _, trigger in ipairs(display.Triggers) do
-        local triggerType = self.TriggerTypes[trigger.Type]
-        if triggerType and triggerType.IsKnown(trigger) then return true end
+        if self.TriggerTypes[trigger.Type].IsKnown(trigger) then return true end
     end
     return false
 end

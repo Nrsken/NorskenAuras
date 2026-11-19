@@ -109,13 +109,13 @@ local function ConfigureText(text, element, spellName, layer, triggers)
     text.source = source
 
     -- Whose conditions can color it
-    local display = text.ordinal and layer.owner.id and CDM:Get(layer.owner.id)
+    local display = text.ordinal and layer.owner.display
     local reads = triggers[source or layer.index]
     local readsType = reads and CDM.TriggerTypes[reads.Type]
 
     -- An Each Rune %p is that rune's recharge
     -- Anywhere else a value trigger's %p is its value and %t its max
-    local perPip = element.EachPip and reads and reads.Mode and layer.isBar
+    local perPip = element.EachPip and reads and reads.Type == 'power' and reads.Mode ~= 'bar' and layer.isBar
     if readsType and readsType.Value and not perPip and (hasDuration or hasCharges) then
         if text.binding then
             text.binding:SetToDefaults()
@@ -323,8 +323,7 @@ end
 function CDM:StyleTextCopy(layer, ordinal, copy, parent, name, triggers)
     local own = layer.texts[ordinal]
     local element = own and own.element
-    local display = layer.owner.id and self:Get(layer.owner.id)
-    if not (element and display) then
+    if not element then
         return copy
     end
 
@@ -339,8 +338,8 @@ function CDM:StyleTextCopy(layer, ordinal, copy, parent, name, triggers)
     fs:SetTextColor(unpack(element.Color))
     fs:SetShown(element.Enabled)
 
-    triggers = triggers or display.Triggers
-    ConfigureText(copy, element, name or self:GetTriggerName(triggers[layer.index] or {}) or '', layer, triggers)
+    triggers = triggers or layer.owner.display.Triggers
+    ConfigureText(copy, element, name or self:GetTriggerName(triggers[layer.index]) or '', layer, triggers)
     -- It reads what it's handed, never another trigger
     copy.source = nil
     return copy
@@ -362,13 +361,10 @@ function CDM:SetLayerName(layer, name)
     if layer.shownName == name then return end
 
     layer.shownName = name
-    local display = layer.owner.id and self:Get(layer.owner.id)
-    if not display then return end
-
     for i = 1, layer.textCount do
         local text = layer.texts[i]
         if text.usesName then
-            ConfigureText(text, text.element, name, layer, display.Triggers)
+            ConfigureText(text, text.element, name, layer, layer.owner.display.Triggers)
         end
     end
 end
@@ -379,12 +375,10 @@ end
 ---@param element NorskenCore.SubElement
 ---@param value string
 function CDM:SetDisplayText(layer, text, element, value)
-    local display = layer.owner.id and self:Get(layer.owner.id)
-    if not display then return end
-
-    local trigger = display.Triggers[layer.index]
+    local triggers = layer.owner.display.Triggers
+    local trigger = triggers[layer.index]
     local name = layer.shownName or (trigger and self:GetTriggerName(trigger)) or ''
-    ConfigureText(text, setmetatable({ Text = value }, { __index = element }), name, layer, display.Triggers)
+    ConfigureText(text, setmetatable({ Text = value }, { __index = element }), name, layer, triggers)
     if text.source then
         layer.sourced = true
     end

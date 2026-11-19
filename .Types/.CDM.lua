@@ -22,12 +22,16 @@
 ---@field chainGroup CDMChainGroup? the chain group the icon sits in
 ---@field chainPad number[]? that group's spacing, padding the icon's measured size
 ---@field style NorskenCore.IconStyle|CDMBarStyle its display's Style
+---@field display CDMDisplay the saved display it's built from, stale once released (id nil)
 ---@field shown boolean loaded or previewed
 ---@field groupId string?
 ---@field placeholder boolean? a lone aura showing its placeholder, which holds its place while the aura is missing
 ---@field fitsText boolean? a text display sizing itself to its text each frame
 ---@field fitProbes Frame[]? the two corners of the measured text
 ---@field fitText FontString? the text those corners ride
+
+---Blizzard's Essential or Utility viewer icon, which a spell trigger reads its charge verdict off
+---@alias CDMChargeItem CooldownViewerEssentialItemTemplate|CooldownViewerUtilityItemTemplate
 
 ---One trigger's visuals, the icon stacks one per trigger with trigger 1 on top
 ---@class CDMLayer : Frame
@@ -55,7 +59,7 @@
 ---@field readyDuration LuaDurationObject? zero, handed to texts for ready (a cast lockout)
 ---@field realCooldown LuaDurationObject? spell triggers: a copy of the running cooldown, shown on while a GCD outlasts it
 ---@field heldGCD number? spell triggers: the GCD that overtook realCooldown, which shows until it ends
----@field chargeItem table? spell triggers: Blizzard's viewer icon for the spell, whose verdict tells a charge left from none
+---@field chargeItem CDMChargeItem? spell triggers: Blizzard's viewer icon for the spell, whose verdict tells a charge left from none
 ---@field fromCharges boolean? spell triggers: that icon's wasSetFromCharges last read
 ---@field timerDone boolean? set while OnCooldownDone re-reads the trigger
 ---@field count number? a count to show for %s instead of spell charges
@@ -100,7 +104,7 @@
 ---@field pipLayout { corners: string[], dx: number, dy: number, share: number }? split power bars: how a pip sits between its boundaries
 ---@field barLength number? bar displays: the bar's long side, without the icon
 ---@field viewerCooldownID number? the Cooldown Manager tracked bar followed
----@field viewerChild table? its live Blizzard frame
+---@field viewerChild CooldownViewerBuffBarItemTemplate? its live Blizzard frame
 ---@field viewerActive boolean? whether it is running
 ---@field viewerSpellID number?
 ---@field viewerTarget StatusBar? where it is mirrored, when not the layer's own bar
@@ -223,6 +227,26 @@
 ---@field logic boolean? a trigger Lua can see is on show
 
 -- Triggers --
+
+---What a trigger type gives the shared pipeline (Triggers/Triggers.lua)
+---@class CDMTriggerType
+---@field IsKnown fun(trigger: CDMTrigger): boolean whether it can load for this character
+---@field Conform fun(trigger: CDMTrigger)? at login and import, what its template can't fix, before the template fills
+---@field Resolve fun(layer: CDMLayer, trigger: CDMTrigger) what the trigger points at, on a build or a spell change
+---@field Update fun(layer: CDMLayer, style: NorskenCore.IconStyle|CDMBarStyle, trigger: CDMTrigger) the layer read from the game
+---@field IsActive fun(layer: CDMLayer, trigger: CDMTrigger): boolean
+---@field IsStandby (fun(layer: CDMLayer, trigger: CDMTrigger): boolean)? hidden but ready for a Show Display condition
+---@field RefreshUsable (fun(layer: CDMLayer): boolean)? usability re-read, true when it changed
+---@field Warnings fun(i: number, trigger: CDMTrigger, warnings: string[])?
+---@field Texture (fun(trigger: CDMTrigger): number|string?)?
+---@field Name (fun(trigger: CDMTrigger): string?)?
+---@field Unwatch fun(id: string)? forget an icon before a re-resolve or release
+---@field RegisterEvents fun()?
+---@field UnregisterEvents fun()?
+---@field DebugLines fun(lines: string[], layer: CDMLayer)? its own lines in the debug report
+---@field Secret boolean? drawn by a native aura button, which Lua can't read
+---@field Value boolean? %p is a value and %t its max, not a time
+---@field Decimals number|table<string, number>? a value text's rounding, per token when a table
 
 ---@class CDMCastState
 ---@field castBarID number?

@@ -453,6 +453,18 @@ function CDM:CreateGroup(name, dynamic, parentId)
     return id
 end
 
+---A new trigger of a type, as complete as the login repair leaves a saved one
+---@param triggerType string a key of CDM.TRIGGER_TEMPLATES
+---@return CDMTrigger
+function CDM:NewTrigger(triggerType)
+    local trigger = CopyTable(self.TRIGGER_TEMPLATES[triggerType])
+    local conform = self.TriggerTypes[triggerType].Conform
+    if conform then
+        conform(trigger)
+    end
+    return trigger
+end
+
 ---@param name string
 ---@param trigger CDMTrigger
 ---@param parentId string?
@@ -540,7 +552,8 @@ function CDM:CreateResourceBar(parentId)
     local split = CDM.SEGMENTED_POWER[powerType] == true
     local recharges = powerType == PowerType.Runes or powerType == PowerType.Essence
 
-    local trigger = { Type = 'power', PowerType = powerType ~= 'primary' and powerType or nil }
+    local trigger = self:NewTrigger('power')
+    trigger.PowerType = powerType
     if split then
         trigger.Mode = recharges and 'progress' or 'static'
     end

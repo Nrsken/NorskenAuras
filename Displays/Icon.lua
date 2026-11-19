@@ -67,7 +67,7 @@ function CDM:ShowsTimerText(layer, style)
     if pick then
         return pick == layer.index
     end
-    local display = layer.owner.id and self:Get(layer.owner.id)
-    local trigger = display and display.Triggers and display.Triggers[layer.index] -- An aura group has no list of its own
+    local triggers = layer.owner.display.Triggers
+    local trigger = triggers and triggers[layer.index] -- An aura group has no list of its own
     return not (trigger and trigger.Type == 'auraoverlay')
 end

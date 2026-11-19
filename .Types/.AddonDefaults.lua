@@ -98,7 +98,7 @@
 
 -- One class for every trigger type, the fields a type doesn't use stay nil
 ---@class CDMTrigger
----@field Type string spell, aura, auraoverlay, item, timer, totem, power, viewerbar, cast, stat, lootSpec, prey, conditions
+---@field Type string a key of CDM.TRIGGER_TEMPLATES
 ---@field SpellID number?
 ---@field SpellIDs number[]?
 ---@field AlsoSpellIDs number[]? counted with SpellID
@@ -119,15 +119,15 @@
 ---@field ShowNotOwned boolean?
 ---@field ShowOn string? 'always', 'cooldown' or 'ready'
 ---@field Duration number? cast timers
----@field Casts string|number[]? cast bars and timers
+---@field Casts string? cast triggers, 'all' or 'specific'
 ---@field HoldTime number?
 ---@field ShowLatency boolean?
----@field PowerType number|string?
----@field Mode string? split power bars: 'progress' or 'static'
+---@field PowerType number|string? power triggers, a power type, a named one or 'primary'
+---@field Mode string? power triggers, 'bar', 'static' or 'progress'
 ---@field ProgressCooldownID number?
 ---@field Stat string?
----@field SpecIDs table? loot spec triggers
----@field CurrentSpec string? 'current' or 'other'
+---@field SpecIDs number[]? loot spec triggers, empty is any spec
+---@field CurrentSpec string? loot spec triggers, 'any', 'current' or 'other'
 ---@field Text string? 'title', 'state' or 'hint'
 ---@field Conditions table? a load table's shape, { State, Group }
 

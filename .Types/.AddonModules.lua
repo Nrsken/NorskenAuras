@@ -37,7 +37,7 @@ function NorskenAuras:NewModule(name, ...) end
 ---@field IsPreviewingLayer fun(layer: CDMLayer): boolean
 ---@field PreviewDuration fun(layer: CDMLayer, length: number): LuaDurationObject
 ---@field Catalogue CDMCatalogue
----@field TriggerTypes table<string, { IsKnown: fun(trigger: table): boolean, Resolve: fun(frame: CDMIcon, trigger: table), Update: fun(frame: CDMIcon, style: table) }>
+---@field TriggerTypes table<string, CDMTriggerType> one per key of TRIGGER_TEMPLATES, filled by Triggers/*.lua
 ---@field preview table<string, number> icon id to preview level, 1 selected and 2 pinned
 ---@field selectionPreview string[] icons the current selection raised to level 1
 ---@field previewing boolean? the options page is open

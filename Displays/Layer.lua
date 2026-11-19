@@ -246,7 +246,7 @@ function CDM:StyleIcon(frame, display, style)
             overlays[#overlays + 1] = i
         end
     end
-    local function SlotOf(i) return min(triggers[i].Slot or 0, elements) end
+    local function SlotOf(i) return min(triggers[i].Slot, elements) end
     -- An overlay under every element that only swaps the art goes under the base swipe
     -- So the cooldown and GCD stay on it
     local artOnly, hasArtOnly = {}, false
@@ -320,7 +320,7 @@ function CDM:StyleIcon(frame, display, style)
         StyleLayer(layer, style, subRegions, self:GetTriggerName(trigger) or '', triggers)
         NRSKNUI:StyleBorders(layer.borders, layer.borderHost, layer, subRegions)
         -- An aura layer's own glows are only the preview's, as the aura button draws the real ones
-        local secret = self.TriggerTypes[trigger.Type] and self.TriggerTypes[trigger.Type].Secret
+        local secret = self.TriggerTypes[trigger.Type].Secret
         self:StyleGlows(layer.glows, LayerGlowHost(layer), subRegions, style.Width, style.Height, secret and Never or ElementEnabled)
         NRSKNUI:LevelElements(subRegions, layer.borders, layer.glows, layer.texts, levelOf, layer.tickSets)
     end

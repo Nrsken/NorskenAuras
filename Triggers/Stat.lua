@@ -4,34 +4,35 @@ local NRSKNUI = _G.NorskenAuras
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
 
---[[
-The Player Stat trigger: one secondary's percent and rating or the highest/lowest secondary.
-Ratings are secret in combat, so the game picks the highest/lowest and only the winner's text is revealed.
-]]
-
 local GetCombatRatingBonus = GetCombatRatingBonus
 local GetMasteryEffect = GetMasteryEffect
 local GetCombatRating = GetCombatRating
 local GetCritChance = GetCritChance
-local pairs, ipairs = pairs, ipairs
-local GetLifesteal = GetLifesteal
+local issecretvalue = issecretvalue
 local GetAvoidance = GetAvoidance
-local CreateFrame = CreateFrame
+local GetLifesteal = GetLifesteal
 local setmetatable = setmetatable
-local strfind = string.find
+local CreateFrame = CreateFrame
+local format = string.format
 local tconcat = table.concat
+local strfind = string.find
 local GetHaste = GetHaste
 local GetSpeed = GetSpeed
 local tostring = tostring
+local ipairs = ipairs
 local unpack = unpack
-local format = string.format
+local pairs = pairs
 local next = next
-local issecretvalue = issecretvalue
 local _G = _G
 
-local GATE_LENGTH = 100000000 -- one rating point below another moves a gate ~10000px, well past GATE_REACH / 2
-local GATE_REACH = 4000       -- an open gate's clip, centred on the display's right edge, so any display fits inside
-local RATING_FLOOR = -1000    -- Venomcursed procs cut the other secondaries below zero; a max under the min never fills
+local CR_VERSATILITY_DAMAGE_DONE = CR_VERSATILITY_DAMAGE_DONE
+
+-- One rating point below another moves a gate about 10000px, well past GATE_REACH / 2
+local GATE_LENGTH = 100000000
+-- An open gate's clip, centred on the display's right edge, so any display fits inside
+local GATE_REACH = 4000
+-- Venomcursed procs push other secondaries below zero, a max under the min never fills
+local RATING_FLOOR = -1000
 
 -- Stats --
 
@@ -42,7 +43,7 @@ CDM.STATS = {
         key = 'mastery',
         name = L['Mastery'],
         get = function()
-            return (GetMasteryEffect()) -- the effect, not its coefficient
+            return (GetMasteryEffect()) -- The effect, not its coefficient
         end,
         rating = 'CR_MASTERY'
     },
@@ -79,7 +80,7 @@ local SECONDARIES = {
     STAT_BY_KEY.versatility
 }
 
--- What PaperDollFrame refreshes its stats on.
+-- What PaperDollFrame refreshes its stats on
 local EVENTS = {
     'COMBAT_RATING_UPDATE',
     'MASTERY_UPDATE',
@@ -94,19 +95,18 @@ local UNIT_EVENTS = {
     'UNIT_ATTACK_SPEED',
 }
 
-local statLayers = {} ---@type table<CDMLayer, table>
-local ratings = {} -- each secondary's rating, refilled on every stat event
+local statLayers = {} ---@type table<CDMLayer, CDMTrigger>
+local ratings = {} -- Each secondary's rating, refilled on every stat event
 
----@param trigger table
+---@param trigger CDMTrigger
 ---@return table
 function CDM:GetStat(trigger)
-    return STAT_BY_KEY[trigger.Stat] or STAT_BY_KEY.haste
+    return STAT_BY_KEY[trigger.Stat]
 end
 
 -- Gates --
 
--- A bar is full only when value >= max, so nested clips on the fill edges open for the stat winning every comparison.
-
+-- A bar is full only at value >= max, so nested clips on its fill open for the winner
 ---@param layer CDMLayer
 ---@param index number
 ---@return CDMStatGate
@@ -137,18 +137,21 @@ end
 
 ---@param layer CDMLayer
 local function HideGates(layer)
-    for _, gate in ipairs(layer.statGates or {}) do
-        gate.root:Hide()
+    if layer.statGates then
+        for _, gate in ipairs(layer.statGates) do
+            gate.root:Hide()
+        end
     end
-    for i in pairs(layer.gatedTexts or {}) do
-        if layer.texts[i] then
+    -- A text pool never shrinks, so every gated text is still there
+    if layer.gatedTexts then
+        for i in pairs(layer.gatedTexts) do
             layer.texts[i].host:SetAlpha(1)
         end
     end
     layer.gatedTexts, layer.gateSource = nil, nil
 end
 
----The texts on `layer` that read the stat layer: all of the stat layer's own, %N.n/%N.p/%N.t on any other.
+-- The texts on a layer reading the stat layer, all its own, a %N.n, %N.p or %N.t elsewhere
 ---@param layer CDMLayer
 ---@param statLayer CDMLayer
 ---@return table<number, true>?
@@ -156,8 +159,7 @@ local function GatedTexts(layer, statLayer)
     local pattern = '%%' .. statLayer.index .. '%.[npt]'
     local gated
     for i = 1, layer.textCount do
-        local element = layer.texts[i].element
-        if layer == statLayer or (element and strfind(element.Text or '', pattern)) then
+        if layer == statLayer or strfind(layer.texts[i].element.Text, pattern) then
             gated = gated or {}
             gated[i] = true
         end
@@ -165,24 +167,27 @@ local function GatedTexts(layer, statLayer)
     return gated
 end
 
----Copy the gated texts (and the stat's own bar fill) into one gate per secondary; the originals stay, invisible, as the display's size.
+-- The gated texts and the stat's bar fill copied into one gate per secondary
+-- The originals stay, invisible, as the display's size
 ---@param layer CDMLayer
 ---@param statLayer CDMLayer
 ---@param gated table<number, true>
 local function StyleGates(layer, statLayer, gated)
     layer.statGates = layer.statGates or {}
     layer.gatedTexts, layer.gateSource = gated, statLayer
-    layer:SetIgnoringChildrenForBounds(true) -- a fitting text display must never measure the huge comparison bars
+    -- A fitting text display must never measure the huge comparison bars
+    layer:SetIgnoringChildrenForBounds(true)
+    -- The host, so a spell trigger's countdown alpha can't bring it back
     for i in pairs(gated) do
-        layer.texts[i].host:SetAlpha(0)      -- the host, so a spell trigger's countdown alpha can't bring it back
+        layer.texts[i].host:SetAlpha(0)
     end
     local style = layer.owner.style
-    local triggers = CDM:Get(layer.owner.id).Triggers
+    local triggers = layer.owner.display.Triggers
     for index, stat in ipairs(SECONDARIES) do
         local gate = layer.statGates[index] or CreateGate(layer, index)
         layer.statGates[index] = gate
         gate.root:Show()
-        -- The copies see the stat trigger as this gate's stat, so %n, %N.n and %N.p all read it.
+        -- The copies see the stat trigger as this gate's stat, so %n, %N.n and %N.p all read it
         local asStat = setmetatable({ [statLayer.index] = { Type = 'stat', Stat = stat.key } }, { __index = triggers })
         for _, copy in pairs(gate.texts) do
             copy.fs:Hide()
@@ -191,7 +196,8 @@ local function StyleGates(layer, statLayer, gated)
             local copy = CDM:StyleTextCopy(layer, i, gate.texts[i], gate.inner, layer == statLayer and stat.name or nil, asStat)
             gate.texts[i] = copy
             if copy then
-                copy.fs:SetShown(layer.texts[i].fs:IsShown()) -- a condition's Visible stays on the original between changes
+                -- A condition's Visible stays on the original between changes
+                copy.fs:SetShown(layer.texts[i].fs:IsShown())
             end
         end
 
@@ -214,7 +220,7 @@ local function StyleGates(layer, statLayer, gated)
     end
 end
 
----Read the ratings once and set every reader's gates; each reader's texts re-run, the stat layer's by its own Update.
+-- The ratings read once for every reader's gates, the stat layer's texts run in its Update
 ---@param statLayer CDMLayer
 ---@param lowest boolean
 local function UpdateGates(statLayer, lowest)
@@ -222,7 +228,7 @@ local function UpdateGates(statLayer, lowest)
         ratings[index] = GetCombatRating(_G[stat.rating])
     end
 
-    for _, layer in ipairs(statLayer.gateReaders or {}) do
+    for _, layer in ipairs(statLayer.gateReaders) do
         for index, gate in ipairs(layer.statGates) do
             for i, bar in ipairs(gate.bars) do
                 local other = ratings[gate.others[i]]
@@ -244,7 +250,7 @@ local function UpdateGates(statLayer, lowest)
     end
 end
 
----Feed a layer's gate copies, after its own texts: a copy reads what its original does, the stat as the gate's stat.
+---Feed a layer's gate copies after its own texts, each reading what its original does
 ---@param layer CDMLayer
 function CDM:UpdateStatCopies(layer)
     local statIndex = layer.gateSource.index
@@ -268,15 +274,24 @@ end
 
 -- Trigger --
 
--- %p is the percent and %t the rating, which a bar doesn't use: it fills to the percent out of 100.
+-- One secondary or the highest or lowest, %p its percent, %t its rating
+-- Ratings are secret in combat, so the game picks the winner and only its text is revealed
 CDM.TriggerTypes.stat = {
     Value = true,
-    Decimals = 0, -- rounded like the character sheet (PaperDollFrame_SetLabelAndText), unless the text picks its own format
+    -- Rounded as the character sheet does (PaperDollFrame_SetLabelAndText)
+    Decimals = 0,
 
     IsKnown = function() return true end,
 
+    ---@param trigger CDMTrigger
+    Conform = function(trigger)
+        if not STAT_BY_KEY[trigger.Stat] then
+            trigger.Stat = nil
+        end
+    end,
+
     ---@param layer CDMLayer
-    ---@param trigger table
+    ---@param trigger CDMTrigger
     Resolve = function(layer, trigger)
         layer.spellID, layer.baseSpellID = nil, nil
         statLayers[layer] = trigger
@@ -284,13 +299,12 @@ CDM.TriggerTypes.stat = {
         layer.gateReaders = nil
         if not CDM:GetStat(trigger).gate then return end
         local readers = {}
-        local display = CDM:Get(layer.owner.id)
-        for i, other in ipairs(display.Triggers) do
+        for i, other in ipairs(layer.owner.display.Triggers) do
             local reader = layer.owner.layers[i]
             local gated = GatedTexts(reader, layer)
             local ownGates = other.Type == 'stat' and CDM:GetStat(other).gate
-            local auraTexts = CDM.TriggerTypes[other.Type] and CDM.TriggerTypes[other.Type].Secret -- drawn inside its aura button
-            -- a layer reads one Highest/Lowest trigger, the first
+            local auraTexts = CDM.TriggerTypes[other.Type].Secret -- Drawn inside its aura button
+            -- A layer reads one Highest or Lowest trigger, the first
             if reader == layer or (gated and not ownGates and not auraTexts and not reader.gateSource) then
                 StyleGates(reader, layer, gated or {})
                 readers[#readers + 1] = reader
@@ -300,14 +314,15 @@ CDM.TriggerTypes.stat = {
     end,
 
     ---@param layer CDMLayer
-    ---@param style table
-    ---@param trigger table
+    ---@param style NorskenCore.IconStyle|CDMBarStyle
+    ---@param trigger CDMTrigger
     Update = function(layer, style, trigger)
         local stat = CDM:GetStat(trigger)
         if stat.gate then
             UpdateGates(layer, stat.gate == 'lowest')
-            local first = layer.statGates and layer.statGates[1]
-            layer.value, layer.max = first and first.source.value, first and first.source.max
+            -- Resolve gave the stat layer its own gates
+            local first = layer.statGates[1]
+            layer.value, layer.max = first.source.value, first.source.max
             CDM:SetLayerValue(layer, 0, 100)
             CDM:UpdateTexts(layer)
             return
@@ -324,9 +339,11 @@ CDM.TriggerTypes.stat = {
     Unwatch = function(id)
         for layer in pairs(statLayers) do
             if layer.owner.id == id then
-                -- a pooled frame may come back with other triggers
-                for _, reader in ipairs(layer.gateReaders or {}) do
-                    HideGates(reader)
+                -- A pooled frame may come back with other triggers
+                if layer.gateReaders then
+                    for _, reader in ipairs(layer.gateReaders) do
+                        HideGates(reader)
+                    end
                 end
                 HideGates(layer)
                 layer.gateReaders = nil
@@ -344,11 +361,14 @@ local function Plain(value)
     return issecretvalue(value) and 'secret' or format('%.2f', value)
 end
 
----The gates for the debug report: what each comparison holds and whether its clip reaches the display.
+---The debug report's gates, each comparison and whether its clip reaches the display
 ---@param lines string[]
 ---@param layer CDMLayer
 CDM.TriggerTypes.stat.DebugLines = function(lines, layer)
-    for _, reader in ipairs(layer.gateReaders or {}) do
+    -- Only a Highest or Lowest trigger has gates
+    if not layer.gateReaders then return end
+
+    for _, reader in ipairs(layer.gateReaders) do
         lines[#lines + 1] = format('  Gates on trigger %d', reader.index)
         local first = next(reader.gatedTexts)
         for index, gate in ipairs(reader.statGates) do
@@ -374,7 +394,7 @@ CDM.TriggerTypes.stat.DebugLines = function(lines, layer)
     end
 end
 
----@param trigger table
+---@param trigger CDMTrigger
 ---@return string name
 CDM.TriggerTypes.stat.Name = function(trigger)
     return CDM:GetStat(trigger).name
@@ -413,7 +433,7 @@ end
 
 -- Conditions --
 
--- Its value is secret in combat, so nothing compares it.
+-- Its value is secret in combat, so nothing compares it
 CDM.ConditionChecks.stat = {
     active = { type = 'bool', get = function() return true end },
 }

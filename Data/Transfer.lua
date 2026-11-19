@@ -168,6 +168,25 @@ local function Conform(input, default)
     end
 end
 
+-- A missing or wrongly typed field takes the template's
+-- A table is only filled when missing, deeper would add choices to a trigger's own options
+---@param trigger CDMTrigger
+local function ConformTrigger(trigger)
+    -- An empty list is saved as none, as the options save it
+    if type(trigger.SpellIDs) ~= 'table' or not trigger.SpellIDs[1] then
+        trigger.SpellIDs = nil
+    end
+    local conform = CDM.TriggerTypes[trigger.Type].Conform
+    if conform then
+        conform(trigger)
+    end
+    for key, value in pairs(CDM.TRIGGER_TEMPLATES[trigger.Type]) do
+        if type(trigger[key]) ~= type(value) then
+            trigger[key] = type(value) == 'table' and CopyTable(value) or value
+        end
+    end
+end
+
 -- A grow no group knows takes the template's
 ---@param layout CDMLayout
 ---@param default string
@@ -228,7 +247,7 @@ local function Repairable(display)
     if CDM.LAYERED_TYPES[display.type] then
         if type(display.Triggers) ~= 'table' then return false end
         for _, trigger in ipairs(display.Triggers) do
-            if type(trigger) ~= 'table' or type(trigger.Type) ~= 'string' then return false end
+            if type(trigger) ~= 'table' or not CDM.TRIGGER_TEMPLATES[trigger.Type] then return false end
         end
     end
     if type(display.SubRegions) == 'table' then
@@ -279,6 +298,9 @@ function CDM:ConformDisplay(display, id)
     Conform(display, { Position = CDM.POSITION_TEMPLATE })
 
     if CDM.LAYERED_TYPES[display.type] then
+        for _, trigger in ipairs(display.Triggers) do
+            ConformTrigger(trigger)
+        end
         ConformLook(display)
         Conform(display, { Load = NRSKNUI.LoadConditions:GetDefaults() })
     elseif display.type == 'auragroup' then

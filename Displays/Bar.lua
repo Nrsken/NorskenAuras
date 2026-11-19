@@ -207,7 +207,8 @@ end
 ---@param trigger CDMTrigger
 ---@return number
 function CDM:GetMaxStacks(layer, trigger)
-    return layer.owner.conditionMaxStacks or trigger.MaxStacks or 10
+    -- Only asked of a stacks bar, which always has its cap
+    return layer.owner.conditionMaxStacks or trigger.MaxStacks --[[@as number]]
 end
 
 ---A lone aura's bar in its button, filled by duration or stacks (Blizzard_CustomAuraButton)
@@ -591,9 +592,8 @@ function CDM:StylePips(layer)
         return
     end
 
-    local display = layer.owner.id and self:Get(layer.owner.id)
-    local triggers = display and display.Triggers or {}
-    local spellName = triggers[layer.index] and self:GetTriggerName(triggers[layer.index]) or ''
+    local triggers = layer.owner.display.Triggers
+    local spellName = self:GetTriggerName(triggers[layer.index]) or ''
     local textOrdinal, borderOrdinal = 0, 0
     for _, element in ipairs(layer.subRegions) do
         local each = element.EachPip == true
@@ -850,9 +850,7 @@ end
 ---Point every aura overlay of a bar display at the bar it covers
 ---@param frame CDMIcon
 function CDM:AnchorBarOverlays(frame)
-    local display = frame.id and self:Get(frame.id)
-    if not display then return end
-
+    local display = frame.display
     local base
     for i, trigger in ipairs(display.Triggers) do
         if trigger.Type ~= 'auraoverlay' then

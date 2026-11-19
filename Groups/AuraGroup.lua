@@ -11,7 +11,7 @@ local pairs = pairs
 -- An aura group's button has no spell of its own to name
 local AURA_GROUP_TRIGGER = { Type = 'aura', Source = 'custom' }
 
-local groups = {} ---@type table<string, { aura: AuraDisplay, owner: { id: string, style: NorskenCore.IconStyle } }>
+local groups = {} ---@type table<string, { aura: AuraDisplay, owner: { id: string, style: NorskenCore.IconStyle, display: CDMDisplay } }>
 
 -- Host --
 
@@ -89,7 +89,7 @@ function CDM:BuildAuraGroup(id, part)
     local looks = all or not (part == Apply.Position or part == Apply.Visibility)
     -- Set before the display reads it, as SetTrigger can hand a button over at once
     local style = display.Style
-    group.owner.style = style
+    group.owner.display, group.owner.style = display, style
     local aura, host = group.aura, group.aura.host
     if looks then
         aura:Restyle()

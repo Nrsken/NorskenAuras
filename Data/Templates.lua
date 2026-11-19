@@ -87,6 +87,33 @@ CDM.POSITION_TEMPLATE = { AnchorFrom = 'CENTER', AnchorTo = 'CENTER', XOffset = 
 -- A new dynamic group's layout
 CDM.LAYOUT_TEMPLATE = { Grow = 'HORIZONTAL', Spacing = 2, UseLimit = false, Limit = 10 }
 
+-- Triggers --
+
+-- Choices a trigger saves as a value, in the options' order, which keep the labels
+CDM.SHOW_ON = { 'always', 'cooldown', 'ready' }      -- Spell and item triggers
+CDM.CAST_MODES = { 'all', 'specific' }
+CDM.POWER_MODES = { 'bar', 'static', 'progress' }
+CDM.CURRENT_SPEC = { 'any', 'current', 'other' }   -- Loot spec triggers
+CDM.HUNT_TEXTS = { 'title', 'state', 'hint' }      -- What a prey trigger's %n reads
+
+-- A new trigger of each type is a copy, a type without one doesn't exist
+---@type table<string, CDMTrigger>
+CDM.TRIGGER_TEMPLATES = {
+    spell       = { Type = 'spell', ShowOn = 'always' },
+    -- The same keys, as an aura beside other triggers becomes an overlay in place
+    aura        = { Type = 'aura', Source = 'cdm', Unit = 'player', OwnOnly = true, Slot = 0 },
+    auraoverlay = { Type = 'auraoverlay', Source = 'cdm', Unit = 'player', OwnOnly = true, Slot = 0 },
+    item        = { Type = 'item', Item = 'trinket1', HidePassive = true, ShowOn = 'always', ShowNotOwned = false },
+    timer       = { Type = 'timer', Duration = 8 },
+    power       = { Type = 'power', Mode = 'bar' }, -- PowerType holds a number or a name, so its Conform fills it
+    viewerbar   = { Type = 'viewerbar' },
+    cast        = { Type = 'cast', Casts = 'all', HoldTime = 0.5, ShowLatency = true },
+    stat        = { Type = 'stat', Stat = 'haste' },
+    lootSpec    = { Type = 'lootSpec', CurrentSpec = 'any', SpecIDs = {} },
+    prey        = { Type = 'prey', Text = 'title' },
+    conditions  = { Type = 'conditions', Conditions = { State = { Always = true } } },
+}
+
 -- Sub elements --
 
 ---A new icon's elements, a 1px border with the time in the middle and charges in the corner
