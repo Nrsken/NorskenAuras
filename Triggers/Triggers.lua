@@ -71,6 +71,57 @@ function CDM.PreviewDuration(layer, length)
     return layer.previewDuration
 end
 
+-- Countdowns --
+
+---Start a layer's countdown of its timerLength over, on a Cast Timer's cast or an Events trigger's event
+---@param layer CDMLayer
+function CDM.StartCountdown(layer)
+    local length = layer.timerLength
+    if length <= 0 then return end
+
+    layer.timerEnd = GetTime() + length
+    -- Starting again restarts it instead of stacking a second one
+    if layer.timerTicker then
+        layer.timerTicker:Cancel()
+    end
+    -- No event fires when our own timer runs out, so this wakes the layer to go inactive
+    layer.timerTicker = NewTimer(length, function()
+        layer.timerTicker = nil
+        CDM:UpdateLayer(layer)
+    end)
+    CDM:UpdateLayer(layer)
+end
+
+---A countdown layer's timer and texts, a looping one while previewing
+---@param layer CDMLayer
+function CDM.UpdateCountdown(layer)
+    local running = layer.timerEnd ~= nil and GetTime() < layer.timerEnd
+    layer.timerDuration = layer.timerDuration or CreateDuration()
+    if running then
+        layer.timerDuration:SetTimeFromStart(layer.timerEnd - layer.timerLength, layer.timerLength)
+        layer.duration = layer.timerDuration
+    else
+        layer.timerEnd = nil
+        -- Texts keep counting their last duration, so an ended timer hands them a zero one
+        layer.timerDuration:SetTimeFromStart(0, 0)
+        layer.duration = layer.timerDuration
+        if CDM.IsPreviewingLayer(layer) and layer.timerLength > 0 then
+            layer.duration = CDM.PreviewDuration(layer, layer.timerLength)
+            running = true
+        end
+    end
+
+    CDM:SetLayerTimer(layer, running and layer.duration or nil)
+    layer.endTime = running and (layer.timerEnd or layer.previewEnd) or nil
+    CDM:UpdateTexts(layer)
+end
+
+---@param layer CDMLayer
+---@return boolean
+function CDM.IsCountdownActive(layer)
+    return (layer.timerEnd ~= nil and GetTime() < layer.timerEnd) or (CDM.IsPreviewingLayer(layer) and layer.timerLength > 0)
+end
+
 -- Watchers --
 
 ---Update an icon whenever a spell changes

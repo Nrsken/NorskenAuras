@@ -3,8 +3,6 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local L = NRSKNUI.Libs.AL
-local IsPreviewing = CDM.IsPreviewingLayer
-local PreviewDuration = CDM.PreviewDuration
 
 local issecretvalue = issecretvalue
 local CreateFrame = CreateFrame
@@ -14,11 +12,9 @@ local ipairs = ipairs
 local pairs = pairs
 local next = next
 
-local CreateDuration = C_DurationUtil.CreateDuration
 local GetOverrideSpell = C_Spell.GetOverrideSpell
 local GetSpellTexture = C_Spell.GetSpellTexture
 local IsSpellKnown = C_SpellBook.IsSpellKnown
-local NewTimer = C_Timer.NewTimer
 
 local timerIndex = {} ---@type table<number, table<CDMLayer, true>> cast spellID -> timer layers it starts
 
@@ -79,37 +75,9 @@ CDM.TriggerTypes.timer = {
         CDM:SetIconTexture(layer, spellID and GetSpellTexture(spellID))
     end,
 
-    ---@param layer CDMLayer
-    Update = function(layer)
-        local running = layer.timerEnd ~= nil and GetTime() < layer.timerEnd
-        layer.timerDuration = layer.timerDuration or CreateDuration()
+    Update = CDM.UpdateCountdown,
 
-        if running then
-            layer.timerDuration:SetTimeFromStart(layer.timerEnd - layer.timerLength, layer.timerLength)
-            layer.duration = layer.timerDuration
-        else
-            layer.timerEnd = nil
-
-            -- Texts keep counting their last duration, so an ended timer hands them a zero one
-            layer.timerDuration:SetTimeFromStart(0, 0)
-            layer.duration = layer.timerDuration
-
-            if IsPreviewing(layer) and layer.timerLength > 0 then
-                layer.duration = PreviewDuration(layer, layer.timerLength)
-                running = true
-            end
-        end
-
-        CDM:SetLayerTimer(layer, running and layer.duration or nil)
-        layer.endTime = running and (layer.timerEnd or layer.previewEnd) or nil
-        CDM:UpdateTexts(layer)
-    end,
-
-    ---@param layer CDMLayer
-    ---@return boolean
-    IsActive = function(layer)
-        return (layer.timerEnd ~= nil and GetTime() < layer.timerEnd) or (IsPreviewing(layer) and layer.timerLength > 0)
-    end,
+    IsActive = CDM.IsCountdownActive,
 }
 
 ---Warning text for Information tab's problem list
@@ -153,23 +121,7 @@ local function OnCast(_, _, _, _, spellID)
     if not layers then return end
 
     for layer in pairs(layers) do
-        local length = layer.timerLength
-        if length > 0 then
-            layer.timerEnd = GetTime() + length
-
-            -- Recasting restarts the timer instead of stacking a second one
-            if layer.timerTicker then
-                layer.timerTicker:Cancel()
-            end
-
-            -- No event fires when our own timer runs out, so this wakes the layer to go inactive
-            layer.timerTicker = NewTimer(length, function()
-                layer.timerTicker = nil
-                CDM:UpdateLayer(layer)
-            end)
-
-            CDM:UpdateLayer(layer)
-        end
+        CDM.StartCountdown(layer)
     end
 end
 
