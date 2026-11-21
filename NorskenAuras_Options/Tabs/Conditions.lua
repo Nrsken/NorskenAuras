@@ -50,6 +50,7 @@ local CHECK_ORDER = {
     'lootSpecID',
     'inHuntZone',
     'preyState',
+    'unitRole',
     'pandemic',
     'missing',
     'combat',
@@ -89,6 +90,7 @@ local CHECK_NAMES = {
     lootSpecID = L['Loot Specialization'],
     inHuntZone = L['In Hunt Zone'],
     preyState = L['Progress State'],
+    unitRole = L['Unit Role'],
     combat = L['In Combat'],
     hasTarget = L['Has Target'],
     attackable = L['Attackable Target'],
@@ -115,6 +117,11 @@ local BOOLEAN = {
 -- Values a select check picks from, by its def.options; specs build on first use, like the CDM Strings page's.
 local SELECT_OPTIONS = setmetatable({
     class = {},
+    role = {
+        { value = 'TANK',    text = L['Tank'] },
+        { value = 'HEALER',  text = L['Healer'] },
+        { value = 'DAMAGER', text = L['DPS'] },
+    },
     preyState = {
         { value = Enum.PreyHuntProgressState.Cold,  text = L['Cold'] },
         { value = Enum.PreyHuntProgressState.Warm,  text = L['Warm'] },
@@ -209,7 +216,10 @@ local DEFAULT_VALUES = { bool = true, alpha = 0.5, fontSize = 20, stacks = 10, o
 ---@class NRSKNUI.CDMConditionsTab
 local ConditionsTab = {}
 NRSKNUI.CDMConditionsTab = ConditionsTab
-ConditionsTab.SELECT_OPTIONS = SELECT_OPTIONS -- the Loot Specialization trigger picks from the same spec list
+ConditionsTab.SELECT_OPTIONS = SELECT_OPTIONS -- The Loot Specialization trigger picks from the same spec list
+-- A durability trigger's Show At Value picks as a Percent check does
+ConditionsTab.OPERATORS = OPERATORS
+ConditionsTab.PERCENT_RANGE = CHECK_RANGES.percent
 
 ---Every property a change can set on this icon, its sub elements included.
 ---@param display table
@@ -345,7 +355,8 @@ local function CheckOptions(trigger, skipSecret, skipCurve, only)
         local def = checks and checks[key]
         if def and not (skipSecret and def.secret) and not (skipCurve and def.curve) and not (only and not only[key]) and not (key == 'missing' and not trigger.Placeholder)
             and not (key == 'stacks' and trigger.Type == 'power' and trigger.PowerType ~= CDM.MAELSTROM_WEAPON)
-            and not (key == 'charged' and not CDM.CHARGED_POWER[trigger.PowerType]) then
+            and not (key == 'charged' and not CDM.CHARGED_POWER[trigger.PowerType])
+            and not (key == 'unitRole' and trigger.Event ~= 'unitDied') then
             options[#options + 1] = { value = key, text = def.secret and AURA_CHECK_NAMES[key] or CHECK_NAMES[key] }
             first = first or key
         end

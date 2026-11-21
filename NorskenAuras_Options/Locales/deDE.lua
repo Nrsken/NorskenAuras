@@ -359,3 +359,19 @@ L['Built-in aura group'] = "Eingebaute Aurengruppe"
 L['Welcome to NorskenAuras'] = "Willkommen bei NorskenAuras"
 L['Open Trinket Blacklist'] = "Schmuckstück-Sperrliste öffnen"
 L['Spell lists match buffs on friendly units and debuffs on enemies only.'] = "Zauberlisten erfassen Stärkungszauber nur auf freundlichen Einheiten und Schwächungszauber nur auf Feinden."
+
+-- Durability trigger
+L['At Value'] = "Bei Wert"
+L['At Value shows it only while the lowest durability passes the check.'] = "Bei Wert zeigt es nur, solange die niedrigste Haltbarkeit die Prüfung besteht."
+
+-- Events trigger
+L['Events'] = "Ereignisse"
+L['Event'] = "Ereignis"
+L['How long it shows after the event.'] = "Wie lange es nach dem Ereignis angezeigt wird."
+L['Encounter Combat'] = "Bosskampf als Kampf"
+L['A boss fight counts as combat from its start to its end, so leaving combat inside one is ignored.'] = "Ein Bosskampf zählt von Beginn bis Ende als Kampf, ein Kampfende darin wird ignoriert."
+L['Group is everyone in your party or raid but you.'] = "Gruppe ist jeder in deiner Gruppe oder deinem Schlachtzug außer dir."
+L['Deaths Shown'] = "Angezeigte Tode"
+L['A wipe kills many at once, so only this many show inside the window.'] = "Ein Wipe tötet viele auf einmal, daher werden im Zeitfenster nur so viele angezeigt."
+L['Window'] = "Zeitfenster"
+L['Unit Role'] = "Rolle der Einheit"

@@ -25,7 +25,7 @@ local TriggerLabel = Shared.TriggerLabel
 local TriggerRows = Shared.TriggerRows
 local triggerOpen = Shared.triggerOpen
 
--- types that start on rows of their own height, an unused type row would leave a gap
+-- Types that start on rows of their own height, an unused type row would leave a gap
 local OWN_ROWS = { conditions = true }
 
 ---@param page table

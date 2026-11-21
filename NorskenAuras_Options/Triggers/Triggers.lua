@@ -45,9 +45,11 @@ local TRIGGER_TYPES = {
     { value = 'auraoverlay', text = L['Aura Overlay'] },
     { value = 'item',        text = L['Item'] },
     { value = 'timer',       text = L['Cast Timer'] },
+    { value = 'event',       text = L['Events'] },
     { value = 'stat',        text = L['Player Stat'],         group = 'unit' },
     { value = 'lootSpec',    text = L['Loot Specialization'], group = 'unit' },
     { value = 'prey',        text = L['Prey Hunt'],           group = 'unit' },
+    { value = 'durability',  text = L['Durability'],          group = 'unit' },
     { value = 'conditions',  text = L['Conditions'],          group = 'unit' },
 }
 local BAR_TRIGGER_TYPES = {
@@ -56,11 +58,13 @@ local BAR_TRIGGER_TYPES = {
     { value = 'aura',        text = L['Aura'] },
     { value = 'stat',        text = L['Player Stat'], group = 'unit' },
     { value = 'prey',        text = L['Prey Hunt'],   group = 'unit' },
+    { value = 'durability',  text = L['Durability'],  group = 'unit' },
     { value = 'conditions',  text = L['Conditions'],  group = 'unit' },
     { value = 'viewerbar',   text = L['Cooldown Bar'] },
     { value = 'spell',       text = L['Cooldown'] },
     { value = 'item',        text = L['Item'] },
     { value = 'timer',       text = L['Cast Timer'] },
+    { value = 'event',       text = L['Events'] },
     { value = 'auraoverlay', text = L['Aura Overlay'] },
 }
 -- No auras: an aura draws through a native aura button, which a text has none of.
@@ -71,8 +75,10 @@ local TEXT_TRIGGER_TYPES = {
     { value = 'cast',       text = L['Cast'] },
     { value = 'item',       text = L['Item'] },
     { value = 'timer',      text = L['Cast Timer'] },
+    { value = 'event',      text = L['Events'] },
     { value = 'lootSpec',   text = L['Loot Specialization'],   group = 'unit' },
     { value = 'prey',       text = L['Prey Hunt'],             group = 'unit' },
+    { value = 'durability', text = L['Durability'],            group = 'unit' },
     { value = 'conditions', text = L['Conditions'],            group = 'unit' },
 }
 local TRIGGER_LISTS = { bar = BAR_TRIGGER_TYPES, text = TEXT_TRIGGER_TYPES }

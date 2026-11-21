@@ -362,3 +362,19 @@ L['Built-in aura group'] = true
 L['Welcome to NorskenAuras'] = true
 L['Open Trinket Blacklist'] = true
 L['Spell lists match buffs on friendly units and debuffs on enemies only.'] = true
+
+-- Durability trigger
+L['At Value'] = true
+L['At Value shows it only while the lowest durability passes the check.'] = true
+
+-- Events trigger
+L['Events'] = true
+L['Event'] = true
+L['How long it shows after the event.'] = true
+L['Encounter Combat'] = true
+L['A boss fight counts as combat from its start to its end, so leaving combat inside one is ignored.'] = true
+L['Group is everyone in your party or raid but you.'] = true
+L['Deaths Shown'] = true
+L['A wipe kills many at once, so only this many show inside the window.'] = true
+L['Window'] = true
+L['Unit Role'] = true
