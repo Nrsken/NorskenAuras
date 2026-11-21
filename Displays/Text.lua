@@ -3,6 +3,7 @@ local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
 local LITERAL_PERCENT = NRSKNUI.LITERAL_PERCENT
+local UNIT_NAME_PATTERN = NRSKNUI.UNIT_NAME_PATTERN
 
 local AbbreviateLargeNumbers = AbbreviateLargeNumbers
 local BreakUpLargeNumbers = BreakUpLargeNumbers
@@ -97,11 +98,12 @@ local function ConfigureText(text, element, spellName, layer, triggers)
     -- A spell trigger hides short countdowns through it
     text.fs:SetAlpha(1)
     text.usesName = strfind(element.Text, '%%n') ~= nil
+    text.usesUnit = strfind(element.Text, UNIT_NAME_PATTERN) ~= nil
     text.abbreviate, text.valueCurve, text.percent, text.colorsByValue, text.curveMax = nil, nil, nil, nil, nil
     text.colorCurve = nil
 
     local own = triggers[layer.index]
-    local raw = NRSKNUI:ExpandText(element, spellName, own and CDM:GetTriggerTexture(own), triggers, CDM)
+    local raw = NRSKNUI:ExpandText(element, spellName, own and CDM:GetTriggerTexture(own), triggers, CDM, layer.unitGUID)
     local hasDuration, hasCharges, source = NRSKNUI:ClassifyText(raw)
     if source == layer.index or not (hasDuration or hasCharges) then
         source = nil
@@ -354,16 +356,18 @@ end
 
 -- Live text --
 
----A cast's spell name for the layer's %n texts, set per cast instead of at styling
+---What a layer's %n and %unitName texts write, set live instead of at styling
 ---@param layer CDMLayer
 ---@param name string
-function CDM:SetLayerName(layer, name)
-    if layer.shownName == name then return end
+---@param unitGUID string?
+function CDM:SetLayerName(layer, name, unitGUID)
+    local nameChanged, unitChanged = layer.shownName ~= name, layer.unitGUID ~= unitGUID
+    if not (nameChanged or unitChanged) then return end
 
-    layer.shownName = name
+    layer.shownName, layer.unitGUID = name, unitGUID
     for i = 1, layer.textCount do
         local text = layer.texts[i]
-        if text.usesName then
+        if (nameChanged and text.usesName) or (unitChanged and text.usesUnit) then
             ConfigureText(text, text.element, name, layer, layer.owner.display.Triggers)
         end
     end

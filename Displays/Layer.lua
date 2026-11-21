@@ -153,6 +153,7 @@ local function StyleLayer(layer, style, subRegions, spellName, triggers)
     layer.subRegions = subRegions
     layer.sourced = false
     layer.shownName = nil
+    layer.unitGUID = nil
     local textCount = 0
     for _, element in ipairs(subRegions) do
         if element.type == 'text' then

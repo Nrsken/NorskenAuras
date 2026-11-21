@@ -117,7 +117,13 @@
 ---@field ItemID number? a custom item
 ---@field HidePassive boolean?
 ---@field ShowNotOwned boolean?
----@field ShowOn string? 'always', 'cooldown' or 'ready'
+---@field ShowOn string? 'always', 'cooldown' or 'ready', a durability trigger's 'always' or 'value'
+---@field Operator string? durability triggers, a CDM.OPERATORS key
+---@field Threshold number? durability triggers, the percent Operator compares to
+---@field Event string? event triggers, a CDM.EVENTS value
+---@field EncounterCombat boolean? event triggers, a boss fight counts as combat to its end
+---@field DeathLimit number? Unit Died on the group, deaths shown a window
+---@field DeathWindow number? Unit Died on the group, the window in seconds
 ---@field Duration number? cast timers
 ---@field Casts string? cast triggers, 'all' or 'specific'
 ---@field HoldTime number?

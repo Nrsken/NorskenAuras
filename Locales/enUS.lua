@@ -70,6 +70,14 @@ L['Warm'] = true
 L['Hot'] = true
 L['Final'] = true
 
+-- CDM durability
+L['Durability'] = true
+
+-- CDM events
+L['Enter Combat'] = true
+L['Leave Combat'] = true
+L['Unit Died'] = true
+
 -- AuraGroup
 L['Aura group "%s" had an unusable unit (%s), so it now watches the player.'] = true
 L['Layout'] = true

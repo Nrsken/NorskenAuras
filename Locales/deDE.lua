@@ -69,6 +69,14 @@ L['Warm'] = "Warm"
 L['Hot'] = "Heiß"
 L['Final'] = "Final"
 
+-- CDM durability
+L['Durability'] = "Haltbarkeit"
+
+-- CDM events
+L['Enter Combat'] = "Kampfbeginn"
+L['Leave Combat'] = "Kampfende"
+L['Unit Died'] = "Einheit gestorben"
+
 -- AuraGroup
 L['Aura group "%s" had an unusable unit (%s), so it now watches the player.'] = "Aurengruppe „%s“ hatte eine unbrauchbare Einheit (%s) und beobachtet jetzt den Spieler."
 L['Layout'] = "Layout"

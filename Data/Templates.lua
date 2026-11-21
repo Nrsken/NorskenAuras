@@ -91,6 +91,9 @@ CDM.LAYOUT_TEMPLATE = { Grow = 'HORIZONTAL', Spacing = 2, UseLimit = false, Limi
 
 -- Choices a trigger saves as a value, in the options' order, which keep the labels
 CDM.SHOW_ON = { 'always', 'cooldown', 'ready' }      -- Spell and item triggers
+CDM.DURABILITY_SHOW_ON = { 'always', 'value' }
+CDM.EVENTS = { 'enterCombat', 'leaveCombat', 'unitDied' }
+CDM.EVENT_UNITS = { 'group', 'player' }              -- Whose death a Unit Died trigger follows
 CDM.CAST_MODES = { 'all', 'specific' }
 CDM.POWER_MODES = { 'bar', 'static', 'progress' }
 CDM.CURRENT_SPEC = { 'any', 'current', 'other' }   -- Loot spec triggers
@@ -111,6 +114,11 @@ CDM.TRIGGER_TEMPLATES = {
     stat        = { Type = 'stat', Stat = 'haste' },
     lootSpec    = { Type = 'lootSpec', CurrentSpec = 'any', SpecIDs = {} },
     prey        = { Type = 'prey', Text = 'title' },
+    durability  = { Type = 'durability', ShowOn = 'always', Operator = '<=', Threshold = 30 },
+    event       = {
+        Type = 'event', Event = 'enterCombat', Duration = 2.5, EncounterCombat = false,
+        Unit = 'group', DeathLimit = 4, DeathWindow = 10,
+    },
     conditions  = { Type = 'conditions', Conditions = { State = { Always = true } } },
 }
 

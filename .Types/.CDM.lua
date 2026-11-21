@@ -93,6 +93,9 @@
 ---@field previewOverlay table<string, Texture[]>? bar aura overlays: the options preview's parts
 ---@field previewOverlayShown boolean? those parts are up
 ---@field shownName string? cast layers: the spell name its %n texts were last given
+---@field unitGUID string? event layers: the unit its %unitName texts write
+---@field deathWindowStart number? Unit Died on the group: when the throttle's window began
+---@field deathCount number? Unit Died on the group: deaths shown in that window
 ---@field barColor number[]? bar displays: the colour the trigger or style last painted
 ---@field barColorOverride number[]? bar displays: a condition's colour, held over the trigger's
 ---@field powerType number|string? power layers: the power type read, 'maelstromWeapon' for that one
@@ -139,6 +142,7 @@
 ---@field order string[]? value texts: the token behind each %s, in order
 ---@field element table? the sub element it was configured from
 ---@field usesName boolean? holds %n, so a cast's spell name reconfigures it
+---@field usesUnit boolean? holds %unitName, so an event's unit reconfigures it
 ---@field source number? the trigger a %N.p / %N.s text reads, when it isn't the layer's own
 ---@field eachPip boolean? hidden for its copies on every pip of a split bar
 ---@field host Frame? its own frame, so it draws at its place in the sub element list (a layer's texts)

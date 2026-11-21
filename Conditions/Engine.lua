@@ -765,3 +765,7 @@ function CDM:ConditionsUse(display, triggerIndex, variable)
     end
     return false
 end
+
+-- Exports --
+
+CDM.OPERATORS = OPERATORS -- A durability trigger's Show At Value compares as a condition does
