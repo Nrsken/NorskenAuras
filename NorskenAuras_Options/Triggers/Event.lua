@@ -9,6 +9,21 @@ local rowH = Theme.rowHeight
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.event = {
+    p = L['Time left'],
+    t = L['Duration'],
+    n = L['Event name'],
+    extra = {
+        {
+            code = 'unitName',
+            label = L['Who died'],
+            perTrigger = false,
+            shows = function(trigger) return trigger.Event == 'unitDied' end,
+        },
+    },
+}
 
 local EVENTS = Shared.ChoiceOptions(CDM.EVENTS, CDM.EVENT_NAMES)
 local EVENT_UNITS = Shared.ChoiceOptions(CDM.EVENT_UNITS, {
@@ -16,6 +31,10 @@ local EVENT_UNITS = Shared.ChoiceOptions(CDM.EVENT_UNITS, {
     player = L['Player'],
 })
 
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param trigger CDMTrigger
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.event(card, typeRow, _, trigger, _, apply)
     typeRow:Dropdown(L['Event'], {
         width = 0.5,

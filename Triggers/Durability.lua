@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local GetInventoryItemDurability = GetInventoryItemDurability
@@ -62,7 +63,7 @@ end
 -- Trigger --
 
 -- %p the lowest percent, active always or at a value
-CDM.TriggerTypes.durability = {
+TriggerTypes.durability = {
     Value = true,
     Decimals = 0,
 
@@ -125,6 +126,6 @@ CDM.TriggerTypes.durability = {
 -- Conditions --
 
 CDM.ConditionChecks.durability = {
-    active = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.durability.IsActive(layer, trigger) end },
+    active = { type = 'bool', get = TriggerTypes.durability.IsActive },
     percent = { type = 'number', get = function() return lowestPercent end },
 }

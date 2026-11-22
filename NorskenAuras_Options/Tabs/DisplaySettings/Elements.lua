@@ -278,6 +278,7 @@ local function SubElements(card, page, icons, apply, triggerChip)
         adds = adds,
         pipName = CDM.PIP_NAMES[powerType or false],
         isValue = DisplayTab.IsValueTrigger,
+        codes = NRSKNUI.CDMOptions.TextSections,
         dropped = CDM:DroppedAuraTexts(first),
         rows = function(_, _, element, set, mixed, key)
             if element.type == 'glow' then

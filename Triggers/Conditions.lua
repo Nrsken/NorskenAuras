@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local LoadConditions = NRSKNUI.LoadConditions
 
 local pairs = pairs
@@ -19,7 +20,7 @@ end
 -- Trigger --
 
 -- Active while the player's states match, its Conditions read as a load block
-CDM.TriggerTypes.conditions = {
+TriggerTypes.conditions = {
     IsKnown = function() return true end,
 
     ---@param layer CDMLayer
@@ -68,5 +69,5 @@ CDM.TriggerTypes.conditions = {
 -- Conditions --
 
 CDM.ConditionChecks.conditions = {
-    active = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.conditions.IsActive(layer, trigger) end },
+    active = { type = 'bool', get = TriggerTypes.conditions.IsActive },
 }

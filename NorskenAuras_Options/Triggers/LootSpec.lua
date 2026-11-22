@@ -7,6 +7,12 @@ local L = NRSKNUI.Libs.AL
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.lootSpec = {
+    n = L['Loot specialization'],
+    i = L['Its icon'],
+}
 
 local CURRENT_SPEC = Shared.ChoiceOptions(CDM.CURRENT_SPEC, {
     any     = L['Any'],
@@ -14,6 +20,9 @@ local CURRENT_SPEC = Shared.ChoiceOptions(CDM.CURRENT_SPEC, {
     other   = L['Not Current Spec'],
 })
 
+---@param typeRow KajiGUIFluentRow
+---@param trigger CDMTrigger
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.lootSpec(_, typeRow, _, trigger, _, apply)
     typeRow:Dropdown(L['Loot Specialization'], {
         width = 0.5,

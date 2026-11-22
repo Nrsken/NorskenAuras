@@ -9,7 +9,22 @@ local Shared = NRSKNUI.CDMOptions
 local CatalogueOptions = Shared.CatalogueOptions
 local CataloguePicker = Shared.CataloguePicker
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
 
+TextCodes.spell = {
+    p = L['Cooldown time left'],
+    t = L['Cooldown length'],
+    s = L['Charges or cast count'],
+    n = L['Spell name'],
+    i = L['Spell icon'],
+}
+
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.spell(card, typeRow, display, trigger, id, apply)
     local Category = Enum.CooldownViewerCategory
     typeRow:Dropdown(L['Cooldown Manager'], {

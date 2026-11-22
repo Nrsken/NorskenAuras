@@ -233,6 +233,23 @@
 
 -- Triggers --
 
+---@class CDMTriggerTypeSet : table<string, CDMTriggerType>
+---@field spell CDMTriggerType
+---@field aura CDMTriggerType
+---@field auraoverlay CDMTriggerType
+---@field item CDMTriggerType
+---@field timer CDMTriggerType
+---@field power CDMTriggerType
+---@field viewerbar CDMTriggerType
+---@field cast CDMTriggerType
+---@field stat CDMTriggerType
+---@field lootSpec CDMTriggerType
+---@field prey CDMTriggerType
+---@field durability CDMTriggerType
+---@field faction CDMTriggerType
+---@field event CDMTriggerType
+---@field conditions CDMTriggerType
+
 ---What a trigger type gives the shared pipeline (Triggers/Triggers.lua)
 ---@class CDMTriggerType
 ---@field IsKnown fun(trigger: CDMTrigger): boolean whether it can load for this character
@@ -253,6 +270,72 @@
 ---@field Value boolean? %p is a value and %t its max, not a time
 ---@field Decimals number|table<string, number>? a value text's rounding, per token when a table
 ---@field Tokens table<string, fun(layer: CDMLayer): string>? named text tokens, %standing or %2.standing
+
+-- Options --
+
+---What the CDM options files share (NorskenAuras_Options/Shared.lua), each file adds its own
+---@class CDMOptions
+---@field TextCodes CDMTextCodeSet
+---@field TriggerRows CDMTriggerRowSet
+---@field trinketReturnKey string? the trigger the Trinkets page goes back to
+
+-- Each set names every key of CDM.TRIGGER_TEMPLATES, as only a named field checks a type
+-- file's entry, a plain table<string, V> doesn't
+
+---@class CDMTextCodeSet : table<string, CDMTextCodes>
+---@field spell CDMTextCodes
+---@field aura CDMTextCodes
+---@field auraoverlay CDMTextCodes
+---@field item CDMTextCodes
+---@field timer CDMTextCodes
+---@field power CDMTextCodes
+---@field viewerbar CDMTextCodes
+---@field cast CDMTextCodes
+---@field stat CDMTextCodes
+---@field lootSpec CDMTextCodes
+---@field prey CDMTextCodes
+---@field durability CDMTextCodes
+---@field faction CDMTextCodes
+---@field event CDMTextCodes
+---@field conditions CDMTextCodes
+
+---A trigger type's rows on the Trigger tab, the first beside the Type dropdown
+---A type that starts on rows of its own height gets no typeRow
+---@alias CDMTriggerRows fun(card: KajiGUIFluentCard, typeRow: KajiGUIFluentRow?, display: CDMDisplay, trigger: CDMTrigger, id: string, apply: fun(part: NorskenCore.Apply))
+
+---@class CDMTriggerRowSet : table<string, CDMTriggerRows>
+---@field spell CDMTriggerRows
+---@field aura CDMTriggerRows
+---@field auraoverlay CDMTriggerRows
+---@field item CDMTriggerRows
+---@field timer CDMTriggerRows
+---@field power CDMTriggerRows
+---@field viewerbar CDMTriggerRows
+---@field cast CDMTriggerRows
+---@field stat CDMTriggerRows
+---@field lootSpec CDMTriggerRows
+---@field prey CDMTriggerRows
+---@field durability CDMTriggerRows
+---@field faction CDMTriggerRows
+---@field event CDMTriggerRows
+---@field conditions CDMTriggerRows
+
+---What a trigger type's text codes show in the text panel
+---@class CDMTextCodes
+---@field p? string what %p shows, nil when the type leaves it empty
+---@field t? string
+---@field s? string
+---@field n? string
+---@field i? string
+---@field tokens? table<string, string> a label per name in the type's own Tokens
+---@field extra? CDMTextExtraCode[] Core's codes a type fills, %unitName and the like
+---@field tips? table<string, string> a row tooltip by code name, for what its short label leaves out
+
+---@class CDMTextExtraCode
+---@field code string
+---@field label string
+---@field perTrigger boolean written %N.code, else %code
+---@field shows? fun(trigger: CDMTrigger): boolean only listed while it says so, the trigger's own setting decides
 
 ---@class CDMCastState
 ---@field castBarID number?

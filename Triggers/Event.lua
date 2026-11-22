@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local UnitGroupRolesAssigned = UnitGroupRolesAssigned
@@ -180,7 +181,7 @@ end
 -- Trigger --
 
 -- Active for Duration after its event, %unitName the unit that died
-CDM.TriggerTypes.event = {
+TriggerTypes.event = {
     IsKnown = function() return true end,
 
     ---@param trigger CDMTrigger

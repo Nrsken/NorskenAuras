@@ -21,7 +21,25 @@ local CatalogueOptions = Shared.CatalogueOptions
 local CataloguePicker = Shared.CataloguePicker
 local SpellList = NRSKNUI.GUISpellList
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
 
+TextCodes.aura = {
+    p = L['Time left'],
+    t = L['Total time'],
+    s = L['Stacks'],
+    n = L['Spell name'],
+    i = L['Spell icon'],
+    extra = { { code = 'casterName', label = L['Who cast the aura'], perTrigger = true } },
+    tips = { casterName = L['Only works as a text of its own.'] },
+}
+TextCodes.auraoverlay = TextCodes.aura
+
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.aura(card, typeRow, display, trigger, id, apply)
     local Category = Enum.CooldownViewerCategory
     local function set(key, value)

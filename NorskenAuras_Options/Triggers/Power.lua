@@ -13,6 +13,13 @@ local format = string.format
 local Shared = NRSKNUI.CDMOptions
 local CatalogueOptions = Shared.CatalogueOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.power = {
+    p = L['Value'],
+    t = L['Max'],
+    n = L['Power name'],
+}
 
 -- What each of CDM.POWER_MODES is called here, %s in its tooltip is the resource
 local MODE_LABELS = {
@@ -21,6 +28,12 @@ local MODE_LABELS = {
     progress = { text = L['Recharging Segments'], tooltip = L['Like Static Segments but each one fills up as it recharges.'] },
 }
 
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.power(card, typeRow, display, trigger, id, apply)
     typeRow:Dropdown(L['Power Type'], {
         width = 0.5,

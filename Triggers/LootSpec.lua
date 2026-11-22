@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local LoadConditions = NRSKNUI.LoadConditions
 
 local GetSpecializationInfoByID = GetSpecializationInfoByID
@@ -25,7 +26,7 @@ local function GetLootSpec()
 end
 
 -- The loot spec's icon, its name as %n, active while it passes the spec filters
-CDM.TriggerTypes.lootSpec = {
+TriggerTypes.lootSpec = {
     IsKnown = function() return true end,
 
     ---@param trigger CDMTrigger
@@ -91,7 +92,7 @@ local function OnLootSpecEvent()
     CDM:UpdateAllTriggers(LOOT_SPEC_TYPES) -- Through Settle, so the filters and conditions derive again
 end
 
-CDM.TriggerTypes.lootSpec.RegisterEvents = function()
+TriggerTypes.lootSpec.RegisterEvents = function()
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
         eventFrame:SetScript('OnEvent', OnLootSpecEvent)
@@ -101,14 +102,14 @@ CDM.TriggerTypes.lootSpec.RegisterEvents = function()
     eventFrame:RegisterUnitEvent('PLAYER_SPECIALIZATION_CHANGED', 'player')
 end
 
-CDM.TriggerTypes.lootSpec.UnregisterEvents = function()
+TriggerTypes.lootSpec.UnregisterEvents = function()
     eventFrame:UnregisterAllEvents()
 end
 
 -- Conditions --
 
 CDM.ConditionChecks.lootSpec = {
-    active = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.lootSpec.IsActive(layer, trigger) end },
+    active = { type = 'bool', get = TriggerTypes.lootSpec.IsActive },
     isCurrentSpec = { type = 'bool', get = function(layer) return layer.state.isCurrentSpec == true end },
     lootSpecID = { type = 'select', options = 'spec', match = function(specID, layer) return layer.state.lootSpecID == specID end },
 }

@@ -10,7 +10,21 @@ local ipairs = ipairs
 local Shared = NRSKNUI.CDMOptions
 local SpellList = NRSKNUI.GUISpellList
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
 
+TextCodes.timer = {
+    p = L['Time left'],
+    t = L['Duration'],
+    n = L['Spell name'],
+    i = L['Spell icon'],
+}
+
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.timer(card, typeRow, display, trigger, id, apply)
     -- stored as SpellID (the icon and its override) plus AlsoSpellIDs, shown as one list
     local source = SpellList:ArraySource(trigger, function()

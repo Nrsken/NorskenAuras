@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local CreateFrame = CreateFrame
@@ -270,7 +271,7 @@ end
 -- Trigger --
 
 -- %p the progress in the current standing, %t its size, active while the faction exists
-CDM.TriggerTypes.faction = {
+TriggerTypes.faction = {
     Value = true,
     Decimals = 0,
 
@@ -366,7 +367,7 @@ CDM.TriggerTypes.faction = {
 -- Conditions --
 
 CDM.ConditionChecks.faction = {
-    active = { type = 'bool', get = function(layer) return CDM.TriggerTypes.faction.IsActive(layer) end },
+    active = { type = 'bool', get = TriggerTypes.faction.IsActive },
     reputation = { type = 'number', get = function(layer) return LayerRead(layer).value end },
     totalReputation = { type = 'number', get = function(layer) return LayerRead(layer).total end },
     percent = { type = 'number', get = function(layer) return LayerRead(layer).percent end },

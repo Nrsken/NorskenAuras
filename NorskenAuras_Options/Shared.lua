@@ -10,9 +10,9 @@ local Kaji = NRSKNUI.Kaji
 local ipairs, select = ipairs, select
 local CreateFrame = CreateFrame
 
--- What the CDM options files share: page keys, helpers and the trigger lists.
-NRSKNUI.CDMOptions = {}
-local Shared = NRSKNUI.CDMOptions
+---@class CDMOptions
+local Shared = {}
+NRSKNUI.CDMOptions = Shared
 
 local PAGE = 'cooldownManager'
 local GENERAL = 'cdm:general'

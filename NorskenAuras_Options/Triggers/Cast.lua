@@ -10,12 +10,26 @@ local rowH = Theme.rowHeight
 local Shared = NRSKNUI.CDMOptions
 local SpellList = NRSKNUI.GUISpellList
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.cast = {
+    p = L['Cast time left'],
+    t = L['Cast time'],
+    n = L['Spell being cast'],
+    i = L["First spell's icon"],
+}
 
 local CAST_MODES = Shared.ChoiceOptions(CDM.CAST_MODES, {
     all      = L['All Casts'],
     specific = L['Specific Casts'],
 })
 
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.cast(card, typeRow, display, trigger, id, apply)
     typeRow:Dropdown(L['Casts'], {
         width = 0.5,

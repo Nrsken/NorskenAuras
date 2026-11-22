@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local CreateFrame = CreateFrame
@@ -114,7 +115,7 @@ end
 
 -- Active while a hunt runs, its progress Cold, Warm, Hot and Final
 -- Outside its zone a hunt has no widget, so it's active with no state for a condition
-CDM.TriggerTypes.prey = {
+TriggerTypes.prey = {
     IsKnown = function() return true end,
 
     ---@param trigger CDMTrigger
@@ -173,7 +174,7 @@ CDM.TriggerTypes.prey = {
 -- Conditions --
 
 CDM.ConditionChecks.prey = {
-    active = { type = 'bool', get = function(layer) return CDM.TriggerTypes.prey.IsActive(layer) end },
+    active = { type = 'bool', get = TriggerTypes.prey.IsActive },
     inHuntZone = { type = 'bool', get = function(layer) return layer.state.preyState ~= nil end },
     preyState = { type = 'select', options = 'preyState', match = function(state, layer) return layer.state.preyState == state end },
 }

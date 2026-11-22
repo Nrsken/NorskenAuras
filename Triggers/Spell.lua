@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local IsPreviewing = CDM.IsPreviewingLayer
 local PreviewDuration = CDM.PreviewDuration
 local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
@@ -143,7 +144,7 @@ end
 
 -- Cooldown, charges, usability, range and proc glow
 -- Only SPELL_UPDATE_COOLDOWN tells a GCD from a real cooldown, much of this keeps them apart
-CDM.TriggerTypes.spell = {
+TriggerTypes.spell = {
     ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger)
@@ -167,7 +168,7 @@ CDM.TriggerTypes.spell = {
 
         -- A spell this character doesn't know never reads, the game reports a shared category's
         -- cooldown on every spell in it (probed, a Rogue's Sprint showed on Monk Roll)
-        if base and not CDM.TriggerTypes.spell.IsKnown(trigger) then
+        if base and not TriggerTypes.spell.IsKnown(trigger) then
             layer.spellID, layer.realCooldown, layer.heldGCD = nil, nil, nil
             layer.state = {}
             CDM:SetLayerTimer(layer, nil)
@@ -374,7 +375,7 @@ CDM.TriggerTypes.spell = {
 ---@param i number
 ---@param trigger CDMTrigger
 ---@param warnings string[]
-CDM.TriggerTypes.spell.Warnings = function(i, trigger, warnings)
+TriggerTypes.spell.Warnings = function(i, trigger, warnings)
     if trigger.SpellID then
         CDM:WarnUnknownSpell(warnings, i, trigger.SpellID)
     else
@@ -384,7 +385,7 @@ end
 
 ---@param layer CDMLayer
 ---@return boolean changed
-CDM.TriggerTypes.spell.RefreshUsable = function(layer)
+TriggerTypes.spell.RefreshUsable = function(layer)
     if not layer.spellID then return false end
     local state = layer.state
     local usable, noPower = IsSpellUsable(layer.spellID)
@@ -448,7 +449,7 @@ local function OnEvent(_, event, ...)
     handlers[event](...)
 end
 
-CDM.TriggerTypes.spell.RegisterEvents = function()
+TriggerTypes.spell.RegisterEvents = function()
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
         eventFrame:SetScript('OnEvent', OnEvent)
@@ -461,14 +462,14 @@ CDM.TriggerTypes.spell.RegisterEvents = function()
     end
 end
 
-CDM.TriggerTypes.spell.UnregisterEvents = function()
+TriggerTypes.spell.UnregisterEvents = function()
     eventFrame:UnregisterAllEvents()
 end
 
 -- Conditions --
 
 CDM.ConditionChecks.spell = {
-    active     = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.spell.IsActive(layer, trigger) end },
+    active     = { type = 'bool', get = TriggerTypes.spell.IsActive },
     onCooldown = { type = 'bool', get = function(layer) return layer.state.onCooldown == true end },
     onGCD      = { type = 'bool', get = function(layer) return layer.state.onGCD == true end },
     recharging = { type = 'bool', get = function(layer) return layer.state.recharging == true end },

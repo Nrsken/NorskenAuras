@@ -7,6 +7,13 @@ local L = NRSKNUI.Libs.AL
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.prey = {
+    n = L['Hunt text'],
+    i = L['Prey icon'],
+    tips = { n = L['The title, heat or hint, as its Text option picks.'] },
+}
 
 local HUNT_TEXTS = Shared.ChoiceOptions(CDM.HUNT_TEXTS, {
     title = L['Quest Title'],
@@ -14,6 +21,9 @@ local HUNT_TEXTS = Shared.ChoiceOptions(CDM.HUNT_TEXTS, {
     hint  = L['Hunt Hint'],
 })
 
+---@param typeRow KajiGUIFluentRow
+---@param trigger CDMTrigger
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.prey(_, typeRow, _, trigger, _, apply)
     typeRow:Dropdown(L['Text'], {
         width = 1,

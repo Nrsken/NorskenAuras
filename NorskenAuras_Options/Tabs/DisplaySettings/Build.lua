@@ -102,6 +102,7 @@ function DisplayTab:Build(page, iconIds, apply, refreshTree, triggerChip, opts)
                     slot = 1,
                     main = true,
                     isValue = DisplayTab.IsValueTrigger,
+                    codes = NRSKNUI.CDMOptions.TextSections,
                 })
             end
             Heading(card, L['Layout'])

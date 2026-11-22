@@ -23,9 +23,10 @@ local GetSpellTexture = C_Spell.GetSpellTexture
 local GetSpellName = C_Spell.GetSpellName
 local NewTimer = C_Timer.NewTimer
 
-CDM.TriggerTypes = {}
 CDM.PREVIEW_LENGTH = 7
 CDM.PREVIEW_PANDEMIC = 0.3 -- The pandemic border shows at 30% left
+
+local TriggerTypes = {} ---@type CDMTriggerTypeSet
 
 -- Items aren't in it as BAG_UPDATE_COOLDOWN covers bags and equipped slots
 local SPELL_TYPES = { spell = true }
@@ -746,3 +747,4 @@ end
 -- Exports --
 
 CDM.SPELL_TYPES = SPELL_TYPES
+CDM.TriggerTypes = TriggerTypes

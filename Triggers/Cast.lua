@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local UnitEmpoweredStagePercentages = UnitEmpoweredStagePercentages
@@ -314,7 +315,7 @@ local function ClearExtras(layer)
 end
 
 -- The player's own cast, channel or empower and how it ended, held for a moment
-CDM.TriggerTypes.cast = {
+TriggerTypes.cast = {
     IsKnown = function() return true end,
 
     ---@param trigger CDMTrigger
@@ -451,7 +452,7 @@ local function CastStatus(layer, trigger)
 end
 
 CDM.ConditionChecks.cast = {
-    active       = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.cast.IsActive(layer, trigger) end },
+    active       = { type = 'bool', get = TriggerTypes.cast.IsActive },
     casting      = { type = 'bool', get = function(layer, trigger) return CastStatus(layer, trigger) == 'cast' end },
     channeling   = { type = 'bool', get = function(layer, trigger) return CastStatus(layer, trigger) == 'channel' end },
     empowering   = { type = 'bool', get = function(layer, trigger) return CastStatus(layer, trigger) == 'empower' end },

@@ -636,7 +636,8 @@ end
 ---@param change table
 ---@param set fun(value: any)
 ---@param edit fun(fn: fun())
-local function ValueWidget(row, entry, change, set, edit)
+---@param panel KajiGUISidePanelConfig? a text value's code panel
+local function ValueWidget(row, entry, change, set, edit, panel)
     if entry.kind == 'bool' then
         local on = change.value ~= false
         row:Checkbox(on and L['ON'] or L['OFF'], {
@@ -700,6 +701,7 @@ local function ValueWidget(row, entry, change, set, edit)
         row:EditBox(L['Display Text'], {
             width = 0.5,
             value = change.value or '',
+            panel = panel,
             callback = function(text) edit(function() change.value = text end) end,
         })
     elseif entry.kind == 'sound' then
@@ -956,10 +958,15 @@ function ConditionsTab:Build(page, id, apply, triggerTitle, triggerChip)
                     })
                     local entry = change.property and byKey[change.property]
                     if entry then
+                        local panel
+                        if entry.kind == 'text' then
+                            panel = NRSKNUI.GUIAuraLook.TextPanel(format('condition%d:%d', index, changeIndex),
+                                display.Triggers, NRSKNUI.CDMOptions.TextSections, display.Trigger)
+                        end
                         ValueWidget(changeRow, entry, change, function(value)
                             change.value = value
                             ApplyChange()
-                        end, Edit)
+                        end, Edit, panel)
                     end
                 end
 

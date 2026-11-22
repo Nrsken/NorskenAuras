@@ -9,7 +9,20 @@ local ipairs = ipairs
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
 
+TextCodes.stat = {
+    p = L['Percent'],
+    t = L['Rating'],
+    n = L['Stat name'],
+}
+
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.stat(card, typeRow, display, trigger, id, apply)
     local options = {}
     for _, stat in ipairs(CDM.STATS) do options[#options + 1] = { value = stat.key, text = stat.name } end

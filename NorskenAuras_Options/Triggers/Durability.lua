@@ -7,12 +7,23 @@ local L = NRSKNUI.Libs.AL
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.durability = {
+    p = L['Lowest percent'],
+    t = L['Always 100'],
+    n = L['Durability'],
+}
 
 local SHOW_ON = Shared.ChoiceOptions(CDM.DURABILITY_SHOW_ON, {
     always = L['Always'],
     value  = L['At Value'],
 })
 
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param trigger CDMTrigger
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.durability(card, typeRow, _, trigger, _, apply)
     local ConditionsTab = NRSKNUI.CDMConditionsTab
     typeRow:Dropdown(L['Show'], {

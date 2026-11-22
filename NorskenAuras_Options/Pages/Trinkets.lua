@@ -24,7 +24,7 @@ local Reopen = Shared.Reopen
 ---@param page table
 local function BuildTrinketPage(page)
     local blacklist = page:Card(L['Trinket Blacklist'], 'all')
-    local returnKey = Shared.trinketReturnKey --[[@as string?]]
+    local returnKey = Shared.trinketReturnKey
     if not (returnKey and CDM:Get(returnKey)) then
         returnKey = nil
     end

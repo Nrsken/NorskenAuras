@@ -9,6 +9,11 @@ local wipe = wipe
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.conditions = {
+    i = L['A gear icon'],
+}
 
 local TICK_ROW_HEIGHT = 24
 local DROPDOWN_BOX_OFFSET = -16 -- level with a Dropdown's box, which sits under the space for its label
@@ -18,6 +23,9 @@ local GROUP_TYPES = {
     { value = 'raid',  text = L['Raid'] },
 }
 
+---@param card KajiGUIFluentCard
+---@param trigger CDMTrigger
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.conditions(card, _, _, trigger, _, apply)
     local conditions = trigger.Conditions
     local states = conditions.State

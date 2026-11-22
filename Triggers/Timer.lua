@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local issecretvalue = issecretvalue
@@ -20,7 +21,7 @@ local timerIndex = {} ---@type table<number, table<CDMLayer, true>> cast spellID
 
 -- Trigger --
 
-CDM.TriggerTypes.timer = {
+TriggerTypes.timer = {
     ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger)
@@ -84,7 +85,7 @@ CDM.TriggerTypes.timer = {
 ---@param i number
 ---@param trigger CDMTrigger
 ---@param warnings string[]
-CDM.TriggerTypes.timer.Warnings = function(i, trigger, warnings)
+TriggerTypes.timer.Warnings = function(i, trigger, warnings)
     if trigger.SpellID then
         CDM:WarnUnknownSpell(warnings, i, trigger.SpellID)
     else
@@ -93,7 +94,7 @@ CDM.TriggerTypes.timer.Warnings = function(i, trigger, warnings)
 end
 
 ---@param id string
-CDM.TriggerTypes.timer.Unwatch = function(id)
+TriggerTypes.timer.Unwatch = function(id)
     for spellID, layers in pairs(timerIndex) do
         for layer in pairs(layers) do
             if layer.owner.id == id then
@@ -125,7 +126,7 @@ local function OnCast(_, _, _, _, spellID)
     end
 end
 
-CDM.TriggerTypes.timer.RegisterEvents = function()
+TriggerTypes.timer.RegisterEvents = function()
     if not castFrame then
         castFrame = CreateFrame('Frame')
         castFrame:SetScript('OnEvent', OnCast)
@@ -134,13 +135,13 @@ CDM.TriggerTypes.timer.RegisterEvents = function()
     castFrame:RegisterUnitEvent('UNIT_SPELLCAST_SUCCEEDED', 'player')
 end
 
-CDM.TriggerTypes.timer.UnregisterEvents = function()
+TriggerTypes.timer.UnregisterEvents = function()
     castFrame:UnregisterAllEvents()
 end
 
 -- Conditions --
 
 CDM.ConditionChecks.timer = {
-    active    = { type = 'bool', get = function(layer) return CDM.TriggerTypes.timer.IsActive(layer) end },
+    active    = { type = 'bool', get = CDM.IsCountdownActive },
     remaining = { type = 'number', get = function(layer) return layer.endTime and layer.endTime - GetTime() or 0 end },
 }

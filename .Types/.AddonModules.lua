@@ -5,6 +5,7 @@
 ---@field Libs NorskenAuras.Libraries its own, in place of Core's
 ---@field db NorskenAuras.DBObject
 ---@field GUIFrame KajiGUIWindow its settings window, from NorskenAuras_Options/Window.lua
+---@field CDMOptions CDMOptions
 ---@field Defaults { global: CDMSettings }
 
 ---@class NorskenAuras.Libraries
@@ -37,7 +38,7 @@ function NorskenAuras:NewModule(name, ...) end
 ---@field IsPreviewingLayer fun(layer: CDMLayer): boolean
 ---@field PreviewDuration fun(layer: CDMLayer, length: number): LuaDurationObject
 ---@field Catalogue CDMCatalogue
----@field TriggerTypes table<string, CDMTriggerType> one per key of TRIGGER_TEMPLATES, filled by Triggers/*.lua
+---@field TriggerTypes CDMTriggerTypeSet filled by Triggers/*.lua
 ---@field preview table<string, number> icon id to preview level, 1 selected and 2 pinned
 ---@field selectionPreview string[] icons the current selection raised to level 1
 ---@field previewing boolean? the options page is open

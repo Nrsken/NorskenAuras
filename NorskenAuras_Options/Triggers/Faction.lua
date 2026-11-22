@@ -7,6 +7,22 @@ local rowH = Theme.rowHeight
 
 local Shared = NRSKNUI.CDMOptions
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
+
+TextCodes.faction = {
+    p = L['Standing progress'],
+    t = L['Size of the standing'],
+    n = L['Faction name'],
+    i = L['Faction icon'],
+    tokens = {
+        standing = L['Standing, e.g. Honored'],
+        standingId = L['Standing number'],
+        percentRep = L['Standing percent'],
+        level = L['Level, rank or renown'],
+        maxLevel = L['Highest level'],
+    },
+    tips = { standingId = L['Hated is 1 and Exalted 8, friendship and renown are 0.'] },
+}
 
 local tinsert = table.insert
 local ipairs = ipairs
@@ -40,6 +56,10 @@ local function FactionOptions()
     return factionOptions
 end
 
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param trigger CDMTrigger
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.faction(card, typeRow, _, trigger, _, apply)
     typeRow:Checkbox(L['Use Watched Faction'], {
         width = 1,

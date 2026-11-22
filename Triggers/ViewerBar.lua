@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local hooksecurefunc = hooksecurefunc
@@ -150,7 +151,7 @@ end
 -- Trigger --
 
 -- For Cooldown Manager entries that aren't real auras
-CDM.TriggerTypes.viewerbar = {
+TriggerTypes.viewerbar = {
     ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger) return trigger.CooldownID ~= nil end,
@@ -216,5 +217,5 @@ CDM.TriggerTypes.viewerbar = {
 -- Conditions --
 
 CDM.ConditionChecks.viewerbar = {
-    active = { type = 'bool', get = function(layer) return CDM.TriggerTypes.viewerbar.IsActive(layer) end },
+    active = { type = 'bool', get = TriggerTypes.viewerbar.IsActive },
 }

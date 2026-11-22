@@ -16,7 +16,22 @@ local QUESTION_MARK = Shared.QUESTION_MARK
 local Reopen = Shared.Reopen
 local TRINKETS = Shared.TRINKETS
 local TriggerRows = Shared.TriggerRows
+local TextCodes = Shared.TextCodes
 
+TextCodes.item = {
+    p = L['Cooldown time left'],
+    t = L['Cooldown length'],
+    s = L['Count in your bags'],
+    n = L['Item name'],
+    i = L['Item icon'],
+}
+
+---@param card KajiGUIFluentCard
+---@param typeRow KajiGUIFluentRow
+---@param display CDMDisplay
+---@param trigger CDMTrigger
+---@param id string
+---@param apply fun(part: NorskenCore.Apply)
 function TriggerRows.item(card, typeRow, display, trigger, id, apply)
     typeRow:Dropdown(L['Item'], {
         width = 0.5,

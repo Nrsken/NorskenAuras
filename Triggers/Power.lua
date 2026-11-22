@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local GetPowerRegenForPowerType = GetPowerRegenForPowerType
@@ -301,7 +302,7 @@ end
 
 -- Trigger --
 
-CDM.TriggerTypes.power = {
+TriggerTypes.power = {
     Value = true, -- %p is the value and %t the max, not a time
     IsKnown = function() return true end,
 
@@ -456,12 +457,12 @@ CDM.TriggerTypes.power = {
 
 ---@param trigger CDMTrigger
 ---@return string? name
-CDM.TriggerTypes.power.Name = function(trigger)
+TriggerTypes.power.Name = function(trigger)
     return POWER_NAMES[trigger.PowerType]
 end
 
 ---@param id string
-CDM.TriggerTypes.power.Unwatch = function(id)
+TriggerTypes.power.Unwatch = function(id)
     for layer in pairs(powerLayers) do
         if layer.owner.id == id then
             powerLayers[layer] = nil
@@ -476,7 +477,7 @@ local powerFrame ---@type Frame?
 -- A plain tick only moves the bar and its texts
 -- Recharging and Maelstrom Weapon's Stacks feed conditions, so those run them too
 local function OnPowerEvent(_, event)
-    local powerTrigger = CDM.TriggerTypes.power
+    local powerTrigger = TriggerTypes.power
     local aura = event == 'UNIT_AURA'
 
     for layer, trigger in pairs(powerLayers) do
@@ -502,7 +503,7 @@ local POWER_EVENTS = {
     'UNIT_AURA',
 }
 
-CDM.TriggerTypes.power.RegisterEvents = function()
+TriggerTypes.power.RegisterEvents = function()
     if not powerFrame then
         powerFrame = CreateFrame('Frame')
         powerFrame:SetScript('OnEvent', OnPowerEvent)
@@ -514,7 +515,7 @@ CDM.TriggerTypes.power.RegisterEvents = function()
     powerFrame:RegisterEvent('RUNE_POWER_UPDATE')
 end
 
-CDM.TriggerTypes.power.UnregisterEvents = function()
+TriggerTypes.power.UnregisterEvents = function()
     powerFrame:UnregisterAllEvents()
 end
 
@@ -523,7 +524,7 @@ end
 -- The value can be secret, so only a %p text's curve compares it
 -- Recharging and Supercharged are plain, Stacks only Maelstrom Weapon's
 CDM.ConditionChecks.power = {
-    active     = { type = 'bool', get = function() return CDM.TriggerTypes.power.IsActive() end },
+    active     = { type = 'bool', get = TriggerTypes.power.IsActive },
     stacks     = { type = 'number', get = function(layer) return layer.powerType == MAELSTROM_WEAPON and layer.value or 0 end },
     percent    = { type = 'number', curve = true },
     value      = { type = 'number', curve = true }, -- A percent of the max, so it waits for a plain max

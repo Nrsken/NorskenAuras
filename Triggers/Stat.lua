@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local L = NRSKNUI.Libs.AL
 
 local GetCombatRatingBonus = GetCombatRatingBonus
@@ -276,7 +277,7 @@ end
 
 -- One secondary or the highest or lowest, %p its percent, %t its rating
 -- Ratings are secret in combat, so the game picks the winner and only its text is revealed
-CDM.TriggerTypes.stat = {
+TriggerTypes.stat = {
     Value = true,
     -- Rounded as the character sheet does (PaperDollFrame_SetLabelAndText)
     Decimals = 0,
@@ -303,7 +304,7 @@ CDM.TriggerTypes.stat = {
             local reader = layer.owner.layers[i]
             local gated = GatedTexts(reader, layer)
             local ownGates = other.Type == 'stat' and CDM:GetStat(other).gate
-            local auraTexts = CDM.TriggerTypes[other.Type].Secret -- Drawn inside its aura button
+            local auraTexts = TriggerTypes[other.Type].Secret -- Drawn inside its aura button
             -- A layer reads one Highest or Lowest trigger, the first
             if reader == layer or (gated and not ownGates and not auraTexts and not reader.gateSource) then
                 StyleGates(reader, layer, gated or {})
@@ -364,7 +365,7 @@ end
 ---The debug report's gates, each comparison and whether its clip reaches the display
 ---@param lines string[]
 ---@param layer CDMLayer
-CDM.TriggerTypes.stat.DebugLines = function(lines, layer)
+TriggerTypes.stat.DebugLines = function(lines, layer)
     -- Only a Highest or Lowest trigger has gates
     if not layer.gateReaders then return end
 
@@ -396,7 +397,7 @@ end
 
 ---@param trigger CDMTrigger
 ---@return string name
-CDM.TriggerTypes.stat.Name = function(trigger)
+TriggerTypes.stat.Name = function(trigger)
     return CDM:GetStat(trigger).name
 end
 
@@ -405,7 +406,7 @@ end
 local eventFrame ---@type Frame?
 
 local function OnStatEvent()
-    local statTrigger = CDM.TriggerTypes.stat
+    local statTrigger = TriggerTypes.stat
     for layer, trigger in pairs(statLayers) do
         if layer.owner.shown then
             statTrigger.Update(layer, layer.owner.style, trigger)
@@ -413,7 +414,7 @@ local function OnStatEvent()
     end
 end
 
-CDM.TriggerTypes.stat.RegisterEvents = function()
+TriggerTypes.stat.RegisterEvents = function()
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
         eventFrame:SetScript('OnEvent', OnStatEvent)
@@ -427,7 +428,7 @@ CDM.TriggerTypes.stat.RegisterEvents = function()
     end
 end
 
-CDM.TriggerTypes.stat.UnregisterEvents = function()
+TriggerTypes.stat.UnregisterEvents = function()
     eventFrame:UnregisterAllEvents()
 end
 

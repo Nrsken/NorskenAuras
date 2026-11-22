@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local IsPreviewing = CDM.IsPreviewingLayer
 local PreviewDuration = CDM.PreviewDuration
 local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
@@ -123,7 +124,7 @@ end
 -- Trigger --
 
 -- Secret, as we never learn the aura is up, its slot shows itself while it is
-CDM.TriggerTypes.aura = {
+TriggerTypes.aura = {
     Secret = true,
 
     ---@param trigger CDMTrigger
@@ -334,12 +335,12 @@ CDM.TriggerTypes.aura = {
 
     IsActive = function() return false end,
 }
-CDM.TriggerTypes.auraoverlay = CDM.TriggerTypes.aura
+TriggerTypes.auraoverlay = TriggerTypes.aura
 
 ---@param i number
 ---@param trigger CDMTrigger
 ---@param warnings string[]
-CDM.TriggerTypes.aura.Warnings = function(i, trigger, warnings)
+TriggerTypes.aura.Warnings = function(i, trigger, warnings)
     if trigger.Source ~= 'custom' then
         if not (trigger.CooldownID or trigger.SpellID) then
             warnings[#warnings + 1] = format(L['Trigger %d: no aura chosen.'], i)

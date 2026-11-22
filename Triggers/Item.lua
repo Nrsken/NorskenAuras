@@ -2,6 +2,7 @@
 local NRSKNUI = _G.NorskenAuras
 ---@class CDMModule
 local CDM = NRSKNUI:GetModule('CDM')
+local TriggerTypes = CDM.TriggerTypes
 local IsPreviewing = CDM.IsPreviewingLayer
 local PreviewDuration = CDM.PreviewDuration
 local PREVIEW_LENGTH = CDM.PREVIEW_LENGTH
@@ -36,6 +37,7 @@ local ITEM_SLOTS = {
 }
 
 -- Items that share one cooldown, so any of them reads it, the first one in the bags is shown
+---@type table<string, number[]>
 local ITEM_FAMILIES = {
     healthstone = { 5512, 224464 }, -- Healthstone, Demonic Healthstone
     combatPotion = { 241308 },      -- Light's Potential, every combat potion shares its cooldown
@@ -73,7 +75,7 @@ local function ItemIDs(trigger)
 end
 
 -- An equipped trinket, a family of items sharing a cooldown or one item by ID
-CDM.TriggerTypes.item = {
+TriggerTypes.item = {
     ---@param trigger CDMTrigger
     ---@return boolean
     IsKnown = function(trigger)
@@ -206,14 +208,14 @@ CDM.TriggerTypes.item = {
 
 ---@param trigger CDMTrigger
 ---@return number? texture
-CDM.TriggerTypes.item.Texture = function(trigger)
+TriggerTypes.item.Texture = function(trigger)
     local itemID = ItemIDs(trigger)[1]
     return itemID and GetItemIconByID(itemID)
 end
 
 ---@param trigger CDMTrigger
 ---@return string? name
-CDM.TriggerTypes.item.Name = function(trigger)
+TriggerTypes.item.Name = function(trigger)
     local itemID = ItemIDs(trigger)[1]
     return itemID and GetItemNameByID(itemID)
 end
@@ -221,7 +223,7 @@ end
 ---@param i number
 ---@param trigger CDMTrigger
 ---@param warnings string[]
-CDM.TriggerTypes.item.Warnings = function(i, trigger, warnings)
+TriggerTypes.item.Warnings = function(i, trigger, warnings)
     if trigger.Item ~= 'custom' then return end
     if not trigger.ItemID then
         warnings[#warnings + 1] = format(L['Trigger %d: no item ID.'], i)
@@ -231,7 +233,7 @@ CDM.TriggerTypes.item.Warnings = function(i, trigger, warnings)
 end
 
 ---@param id string
-CDM.TriggerTypes.item.Unwatch = function(id)
+TriggerTypes.item.Unwatch = function(id)
     itemWatchers[id] = nil
 end
 
@@ -247,7 +249,7 @@ end
 
 -- A swapped trinket or a bag change can change which item shows and whether it loads
 local function ResolveItems()
-    local itemType = CDM.TriggerTypes.item
+    local itemType = TriggerTypes.item
     for id in pairs(itemWatchers) do
         local frame = CDM.icons[id]
         for i, trigger in ipairs(frame.display.Triggers) do
@@ -275,7 +277,7 @@ local function OnEvent(_, event)
     handlers[event]()
 end
 
-CDM.TriggerTypes.item.RegisterEvents = function()
+TriggerTypes.item.RegisterEvents = function()
     if not eventFrame then
         eventFrame = CreateFrame('Frame')
         eventFrame:SetScript('OnEvent', OnEvent)
@@ -286,14 +288,14 @@ CDM.TriggerTypes.item.RegisterEvents = function()
     end
 end
 
-CDM.TriggerTypes.item.UnregisterEvents = function()
+TriggerTypes.item.UnregisterEvents = function()
     eventFrame:UnregisterAllEvents()
 end
 
 -- Conditions --
 
 CDM.ConditionChecks.item = {
-    active     = { type = 'bool', get = function(layer, trigger) return CDM.TriggerTypes.item.IsActive(layer, trigger) end },
+    active     = { type = 'bool', get = TriggerTypes.item.IsActive },
     onCooldown = { type = 'bool', get = function(layer) return layer.state.onCooldown == true end },
     remaining  = { type = 'number', get = function(layer) return layer.endTime and layer.endTime - GetTime() or 0 end },
     count      = { type = 'number', get = function(layer) return layer.count or 0 end },
