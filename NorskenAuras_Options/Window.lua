@@ -48,6 +48,8 @@ window = GUI:CreateGUIWindow({
                 color = 'textSecondary'
             },
         },
+        version = NRSKNUI:GetVersionText(),
+        versionAnchor = { 'LEFT', 2, 'RIGHT', -2, -2 },
     },
     state = {
         load = function()
