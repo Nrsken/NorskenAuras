@@ -92,6 +92,16 @@ function CDM.StartCountdown(layer)
     CDM:UpdateLayer(layer)
 end
 
+---End a running countdown before its time
+---@param layer CDMLayer
+function CDM.StopCountdown(layer)
+    if not layer.timerTicker then return end
+
+    layer.timerTicker:Cancel()
+    layer.timerTicker, layer.timerEnd = nil, nil
+    CDM:UpdateLayer(layer)
+end
+
 ---A countdown layer's timer and texts, a looping one while previewing
 ---@param layer CDMLayer
 function CDM.UpdateCountdown(layer)
