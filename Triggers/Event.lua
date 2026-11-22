@@ -26,6 +26,7 @@ local NAMES = CDM.EVENT_NAMES
 local eventLayers = {} ---@type table<CDMLayer, CDMTrigger>
 local regenCombat = false
 local inEncounter = false
+local bossFight = false
 
 -- Combat --
 
@@ -41,10 +42,26 @@ end
 ---@param regen boolean
 ---@param encounter boolean
 local function OnCombatChange(regen, encounter)
+    -- A pull's combat and encounter start come in either order, so either makes it a boss fight
+    if regen and not regenCombat then
+        bossFight = encounter
+    end
+    if encounter and not inEncounter then
+        bossFight = true
+    end
+
     for layer, trigger in pairs(eventLayers) do
+        local event = trigger.Event
         local was, is = InFight(trigger, regenCombat, inEncounter), InFight(trigger, regen, encounter)
-        if (trigger.Event == 'enterCombat' and is and not was) or (trigger.Event == 'leaveCombat' and was and not is) then
+        if (event == 'enterCombat' and is and not was) or (event == 'leaveCombat' and was and not is) then
+            layer.state.bossFight = bossFight
             CDM.StartCountdown(layer)
+        elseif event ~= 'unitDied' and was ~= is and trigger.EndOnOpposite then
+            CDM.StopCountdown(layer)
+        elseif event == 'enterCombat' and bossFight and not layer.state.bossFight and layer.timerTicker then
+            -- The encounter started just after the combat this text is showing for
+            layer.state.bossFight = true
+            CDM:UpdateLayer(layer)
         end
     end
     regenCombat, inEncounter = regen, encounter
@@ -90,12 +107,18 @@ local function OnUnitDied(guid)
     -- UNIT_DIED fires for feign death too
     if not unit or UnitIsFeignDeath(unit) then return end
 
+    -- A unit without a role counts as damage, so the DPS sound still plays for it
+    local role = UnitGroupRolesAssigned(unit)
+    -- A group member's identity is never secret
+    ---@diagnostic disable-next-line: secret-comparison
+    role = (role == 'TANK' or role == 'HEALER') and role or 'DAMAGER'
+
     local isPlayer = unit == 'player'
     local now = GetTime()
     for layer, trigger in pairs(eventLayers) do
         local follows = trigger.Event == 'unitDied' and (trigger.Unit == 'player') == isPlayer
         if follows and DeathShows(layer, trigger, now) then
-            layer.state.unitGUID, layer.state.role = guid, UnitGroupRolesAssigned(unit)
+            layer.state.unitGUID, layer.state.role = guid, role
             CDM.StartCountdown(layer)
         end
     end
@@ -133,6 +156,7 @@ local function WatchEvents()
     -- A reload mid-fight misses the start events
     if not eventFrame:IsEventRegistered('PLAYER_REGEN_DISABLED') then
         regenCombat, inEncounter = InCombatLockdown(), IsEncounterInProgress()
+        bossFight = inEncounter
         eventFrame:RegisterEvent('PLAYER_REGEN_DISABLED')
         eventFrame:RegisterEvent('PLAYER_REGEN_ENABLED')
         eventFrame:RegisterEvent('ENCOUNTER_START')
@@ -192,11 +216,11 @@ CDM.TriggerTypes.event = {
     IsActive = CDM.IsCountdownActive,
 
     ---@param id string
+    -- Every re-resolve unwatches first, so a showing death text keeps its unit and role
     Unwatch = function(id)
         for layer in pairs(eventLayers) do
             if layer.owner.id == id then
                 eventLayers[layer] = nil
-                layer.state.unitGUID, layer.state.role = nil, nil
             end
         end
         WatchEvents()
@@ -214,4 +238,5 @@ CDM.ConditionChecks.event = {
     active = CDM.ConditionChecks.timer.active,
     remaining = CDM.ConditionChecks.timer.remaining,
     unitRole = { type = 'select', options = 'role', match = function(role, layer) return layer.state.role == role end },
+    bossFight = { type = 'bool', get = function(layer) return layer.state.bossFight == true end },
 }

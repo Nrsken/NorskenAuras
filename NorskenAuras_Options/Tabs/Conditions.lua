@@ -67,6 +67,7 @@ local CHECK_ORDER = {
     'paragon',
     'paragonReward',
     'unitRole',
+    'bossFight',
     'pandemic',
     'missing',
     'combat',
@@ -118,6 +119,7 @@ local CHECK_NAMES = {
     paragon = L['Is Paragon Reputation'],
     paragonReward = L['Paragon Reward Pending'],
     unitRole = L['Unit Role'],
+    bossFight = L['Boss Fight'],
     combat = L['In Combat'],
     hasTarget = L['Has Target'],
     attackable = L['Attackable Target'],
@@ -395,7 +397,8 @@ local function CheckOptions(trigger, skipSecret, skipCurve, only)
         if def and not (skipSecret and def.secret) and not (skipCurve and def.curve) and not (only and not only[key]) and not (key == 'missing' and not trigger.Placeholder)
             and not (key == 'stacks' and trigger.Type == 'power' and trigger.PowerType ~= CDM.MAELSTROM_WEAPON)
             and not (key == 'charged' and not CDM.CHARGED_POWER[trigger.PowerType])
-            and not (key == 'unitRole' and trigger.Event ~= 'unitDied') then
+            and not (key == 'unitRole' and trigger.Event ~= 'unitDied')
+            and not (key == 'bossFight' and trigger.Event == 'unitDied') then
             options[#options + 1] = { value = key, text = def.secret and AURA_CHECK_NAMES[key] or CHECK_NAMES[key] }
             first = first or key
         end

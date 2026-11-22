@@ -124,6 +124,7 @@
 ---@field UseWatched boolean? faction triggers follow the watched faction
 ---@field Event string? event triggers, a CDM.EVENTS value
 ---@field EncounterCombat boolean? event triggers, a boss fight counts as combat to its end
+---@field EndOnOpposite boolean? Enter and Leave Combat end early on the other edge
 ---@field DeathLimit number? Unit Died on the group, deaths shown a window
 ---@field DeathWindow number? Unit Died on the group, the window in seconds
 ---@field Duration number? cast timers

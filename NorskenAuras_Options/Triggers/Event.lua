@@ -50,6 +50,16 @@ function TriggerRows.event(card, typeRow, _, trigger, _, apply)
                 apply(Apply.All)
             end,
         })
+        local entering = trigger.Event == 'enterCombat'
+        card:Row(rowH):Checkbox(entering and L['Hide on Leave'] or L['Hide on Enter'], {
+            width = 0.5,
+            tooltip = entering and L['Hides when combat ends.'] or L['Hides when combat starts.'],
+            value = trigger.EndOnOpposite,
+            callback = function(checked)
+                trigger.EndOnOpposite = checked
+                apply(Apply.All)
+            end,
+        })
         return
     end
 

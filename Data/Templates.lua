@@ -116,7 +116,7 @@ CDM.TRIGGER_TEMPLATES = {
     durability  = { Type = 'durability', ShowOn = 'always', Operator = '<=', Threshold = 30 },
     faction     = { Type = 'faction', UseWatched = false },
     event       = {
-        Type = 'event', Event = 'enterCombat', Duration = 2.5, EncounterCombat = false,
+        Type = 'event', Event = 'enterCombat', Duration = 2.5, EncounterCombat = false, EndOnOpposite = true,
         Unit = 'group', DeathLimit = 4, DeathWindow = 10,
     },
     conditions  = { Type = 'conditions', Conditions = { State = { Always = true } } },
