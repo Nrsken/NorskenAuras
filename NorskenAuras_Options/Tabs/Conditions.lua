@@ -10,15 +10,20 @@ local LoadConditions = NRSKNUI.LoadConditions
 local IconPicker = NRSKNUI.CDMIconPicker
 local rowH = Theme.rowHeight
 
-local tinsert, tremove, tconcat = table.insert, table.remove, table.concat
-local tostring, tonumber, type = tostring, tonumber, type
-local format = string.format
 local GetSpecializationInfoForClassID = GetSpecializationInfoForClassID
 local GetNumClasses = GetNumClasses
 local setmetatable = setmetatable
+local format = string.format
+local tconcat = table.concat
+local tinsert = table.insert
+local tremove = table.remove
 local CopyTable = CopyTable
+local tonumber = tonumber
+local tostring = tostring
+local ipairs = ipairs
 local select = select
-local ipairs, pairs = ipairs, pairs
+local pairs = pairs
+local type = type
 
 local CHECK_ORDER = {
     'active',
@@ -50,6 +55,17 @@ local CHECK_ORDER = {
     'lootSpecID',
     'inHuntZone',
     'preyState',
+    'reputation',
+    'totalReputation',
+    'standing',
+    'reputationKind',
+    'level',
+    'maxLevel',
+    'capped',
+    'atWar',
+    'bonusRep',
+    'paragon',
+    'paragonReward',
     'unitRole',
     'pandemic',
     'missing',
@@ -90,6 +106,17 @@ local CHECK_NAMES = {
     lootSpecID = L['Loot Specialization'],
     inHuntZone = L['In Hunt Zone'],
     preyState = L['Progress State'],
+    reputation = L['Reputation'],
+    totalReputation = L['Total Reputation'],
+    standing = L['Standing'],
+    reputationKind = L['Reputation Type'],
+    level = L['Level'],
+    maxLevel = L['Max Level'],
+    capped = L['Capped'],
+    atWar = L['At War'],
+    bonusRep = L['Bonus Reputation Gain'],
+    paragon = L['Is Paragon Reputation'],
+    paragonReward = L['Paragon Reward Pending'],
     unitRole = L['Unit Role'],
     combat = L['In Combat'],
     hasTarget = L['Has Target'],
@@ -149,6 +176,18 @@ local SELECT_OPTIONS = setmetatable({
 for _, token in ipairs(CLASS_SORT_ORDER) do
     local name = LOCALIZED_CLASS_NAMES_MALE[token] or token
     SELECT_OPTIONS.class[#SELECT_OPTIONS.class + 1] = { value = token, text = NRSKNUI:ColorTextByClass(name, token) }
+end
+
+SELECT_OPTIONS.reputationKind = {
+    { value = 'standard',   text = L['Standard'] },
+    { value = 'friendship', text = L['Friendship'] },
+    { value = 'renown',     text = L['Renown'] },
+}
+
+-- A faction's eight reactions, Hated to Exalted
+SELECT_OPTIONS.standing = {}
+for reaction = 1, MAX_REPUTATION_REACTION do
+    SELECT_OPTIONS.standing[reaction] = { value = reaction, text = CDM.StandingLabel(reaction) }
 end
 
 local OPERATORS = {

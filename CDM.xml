@@ -31,6 +31,7 @@
     <Script file="Triggers\LootSpec.lua" />
     <Script file="Triggers\Prey.lua" />
     <Script file="Triggers\Durability.lua" />
+    <Script file="Triggers\Faction.lua" />
     <Script file="Triggers\Event.lua" />
     <Script file="Triggers\Conditions.lua" />
     <Script file="Triggers\ViewerBar.lua" />

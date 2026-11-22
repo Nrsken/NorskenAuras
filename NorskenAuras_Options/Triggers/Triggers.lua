@@ -50,6 +50,7 @@ local TRIGGER_TYPES = {
     { value = 'lootSpec',    text = L['Loot Specialization'], group = 'unit' },
     { value = 'prey',        text = L['Prey Hunt'],           group = 'unit' },
     { value = 'durability',  text = L['Durability'],          group = 'unit' },
+    { value = 'faction',     text = L['Faction Reputation'],  group = 'unit' },
     { value = 'conditions',  text = L['Conditions'],          group = 'unit' },
 }
 local BAR_TRIGGER_TYPES = {
@@ -59,6 +60,7 @@ local BAR_TRIGGER_TYPES = {
     { value = 'stat',        text = L['Player Stat'], group = 'unit' },
     { value = 'prey',        text = L['Prey Hunt'],   group = 'unit' },
     { value = 'durability',  text = L['Durability'],  group = 'unit' },
+    { value = 'faction',     text = L['Faction Reputation'], group = 'unit' },
     { value = 'conditions',  text = L['Conditions'],  group = 'unit' },
     { value = 'viewerbar',   text = L['Cooldown Bar'] },
     { value = 'spell',       text = L['Cooldown'] },
@@ -79,6 +81,7 @@ local TEXT_TRIGGER_TYPES = {
     { value = 'lootSpec',   text = L['Loot Specialization'],   group = 'unit' },
     { value = 'prey',       text = L['Prey Hunt'],             group = 'unit' },
     { value = 'durability', text = L['Durability'],            group = 'unit' },
+    { value = 'faction',    text = L['Faction Reputation'],    group = 'unit' },
     { value = 'conditions', text = L['Conditions'],            group = 'unit' },
 }
 local TRIGGER_LISTS = { bar = BAR_TRIGGER_TYPES, text = TEXT_TRIGGER_TYPES }

@@ -364,6 +364,9 @@ L['Spell lists match buffs on friendly units and debuffs on enemies only.'] = "Z
 L['At Value'] = "Bei Wert"
 L['At Value shows it only while the lowest durability passes the check.'] = "Bei Wert zeigt es nur, solange die niedrigste Haltbarkeit die Prüfung besteht."
 
+-- Faction trigger
+L['Faction Reputation'] = "Fraktionsruf"
+
 -- Events trigger
 L['Events'] = "Ereignisse"
 L['Event'] = "Ereignis"

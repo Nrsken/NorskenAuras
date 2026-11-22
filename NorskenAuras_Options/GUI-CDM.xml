@@ -11,6 +11,7 @@
     <Script file="Tabs\DisplaySettings\Build.lua" />
     <Script file="Tabs\Conditions.lua" />
     <Script file="Shared.lua" />
+    <Script file="Data\Factions.lua" />
     <Script file="Triggers\Triggers.lua" />
     <Script file="Triggers\Spell.lua" />
     <Script file="Triggers\Aura.lua" />
@@ -18,6 +19,7 @@
     <Script file="Triggers\LootSpec.lua" />
     <Script file="Triggers\Prey.lua" />
     <Script file="Triggers\Durability.lua" />
+    <Script file="Triggers\Faction.lua" />
     <Script file="Triggers\Event.lua" />
     <Script file="Triggers\Conditions.lua" />
     <Script file="Triggers\Item.lua" />

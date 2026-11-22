@@ -73,6 +73,9 @@ L['Final'] = true
 -- CDM durability
 L['Durability'] = true
 
+-- CDM factions
+L['Faction'] = true
+
 -- CDM events
 L['Enter Combat'] = true
 L['Leave Combat'] = true

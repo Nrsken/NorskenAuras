@@ -88,6 +88,28 @@ local function PowerColorCurve(text, display, index, max)
     text.valueCurve = CDM:TextColorCurve(display, index, powerScales, text.ordinal, text.element.Color)
 end
 
+-- The text being expanded, so TokenValue needs no new closure per call
+local tokenLayer ---@type CDMLayer
+local tokenText ---@type CDMIconText
+
+-- A trigger type's own token, %standing on the layer's trigger or %2.standing on Trigger 2
+---@param index number?
+---@param name string
+---@return string?
+local function TokenValue(index, name)
+    local owner = tokenLayer.owner
+    local slot = index or tokenLayer.index
+    local trigger = owner.display.Triggers[slot]
+    local tokens = trigger and CDM.TriggerTypes[trigger.Type].Tokens
+    local read = tokens and tokens[name]
+    if not read then return nil end
+
+    tokenText.tokenSources = tokenText.tokenSources or {}
+    tokenText.tokenSources[slot] = true
+    local source = owner.layers[slot]
+    return source and read(source) or ''
+end
+
 ---@param text CDMIconText
 ---@param element NorskenCore.SubElement
 ---@param spellName string
@@ -100,10 +122,12 @@ local function ConfigureText(text, element, spellName, layer, triggers)
     text.usesName = strfind(element.Text, '%%n') ~= nil
     text.usesUnit = strfind(element.Text, UNIT_NAME_PATTERN) ~= nil
     text.abbreviate, text.valueCurve, text.percent, text.colorsByValue, text.curveMax = nil, nil, nil, nil, nil
-    text.colorCurve = nil
+    text.colorCurve, text.tokenSources = nil, nil
 
     local own = triggers[layer.index]
-    local raw = NRSKNUI:ExpandText(element, spellName, own and CDM:GetTriggerTexture(own), triggers, CDM, layer.unitGUID)
+    tokenLayer, tokenText = layer, text
+    local raw = NRSKNUI:ExpandText(element, spellName, own and CDM:GetTriggerTexture(own), triggers, CDM, layer.unitGUID,
+        TokenValue)
     local hasDuration, hasCharges, source = NRSKNUI:ClassifyText(raw)
     if source == layer.index or not (hasDuration or hasCharges) then
         source = nil
@@ -369,6 +393,26 @@ function CDM:SetLayerName(layer, name, unitGUID)
         local text = layer.texts[i]
         if (nameChanged and text.usesName) or (unitChanged and text.usesUnit) then
             ConfigureText(text, text.element, name, layer, layer.owner.display.Triggers)
+        end
+    end
+end
+
+---Rewrite the display's texts that hold one of this layer's named tokens
+---@param layer CDMLayer
+function CDM:RefreshLayerTokens(layer)
+    local owner = layer.owner
+    local triggers = owner.display.Triggers
+    for i = 1, owner.layerCount do
+        local other = owner.layers[i]
+        for j = 1, other.textCount do
+            local text = other.texts[j]
+            local sources = text.tokenSources
+            if sources and sources[layer.index] then
+                local trigger = triggers[other.index]
+                local name = other.shownName or (trigger and self:GetTriggerName(trigger)) or ''
+                ConfigureText(text, text.element, name, other, triggers)
+                UpdateText(text, text.source and owner.layers[text.source] or other)
+            end
         end
     end
 end

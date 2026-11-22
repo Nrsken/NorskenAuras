@@ -367,6 +367,26 @@ L['Spell lists match buffs on friendly units and debuffs on enemies only.'] = tr
 L['At Value'] = true
 L['At Value shows it only while the lowest durability passes the check.'] = true
 
+-- Faction trigger
+L['Faction Reputation'] = true
+L['Use Watched Faction'] = true
+L['Follows the faction watched on the experience bar.'] = true
+L["Factions this character can't earn are left out."] = true
+L['Standing'] = true
+L['Reputation'] = true
+L['Total Reputation'] = true
+L['Reputation Type'] = true
+L['Standard'] = true
+L['Friendship'] = true
+L['Renown'] = true
+L['Level'] = true
+L['Max Level'] = true
+L['Capped'] = true
+L['At War'] = true
+L['Bonus Reputation Gain'] = true
+L['Is Paragon Reputation'] = true
+L['Paragon Reward Pending'] = true
+
 -- Events trigger
 L['Events'] = true
 L['Event'] = true

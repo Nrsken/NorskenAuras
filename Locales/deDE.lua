@@ -72,6 +72,9 @@ L['Final'] = "Final"
 -- CDM durability
 L['Durability'] = "Haltbarkeit"
 
+-- CDM factions
+L['Faction'] = "Fraktion"
+
 -- CDM events
 L['Enter Combat'] = "Kampfbeginn"
 L['Leave Combat'] = "Kampfende"

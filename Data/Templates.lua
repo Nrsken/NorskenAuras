@@ -98,7 +98,6 @@ CDM.CAST_MODES = { 'all', 'specific' }
 CDM.POWER_MODES = { 'bar', 'static', 'progress' }
 CDM.CURRENT_SPEC = { 'any', 'current', 'other' }   -- Loot spec triggers
 CDM.HUNT_TEXTS = { 'title', 'state', 'hint' }      -- What a prey trigger's %n reads
-
 -- A new trigger of each type is a copy, a type without one doesn't exist
 ---@type table<string, CDMTrigger>
 CDM.TRIGGER_TEMPLATES = {
@@ -115,6 +114,7 @@ CDM.TRIGGER_TEMPLATES = {
     lootSpec    = { Type = 'lootSpec', CurrentSpec = 'any', SpecIDs = {} },
     prey        = { Type = 'prey', Text = 'title' },
     durability  = { Type = 'durability', ShowOn = 'always', Operator = '<=', Threshold = 30 },
+    faction     = { Type = 'faction', UseWatched = false },
     event       = {
         Type = 'event', Event = 'enterCombat', Duration = 2.5, EncounterCombat = false,
         Unit = 'group', DeathLimit = 4, DeathWindow = 10,

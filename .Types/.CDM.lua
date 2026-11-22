@@ -143,6 +143,7 @@
 ---@field element table? the sub element it was configured from
 ---@field usesName boolean? holds %n, so a cast's spell name reconfigures it
 ---@field usesUnit boolean? holds %unitName, so an event's unit reconfigures it
+---@field tokenSources table<number, true>? the triggers whose named tokens it holds, so they reconfigure it
 ---@field source number? the trigger a %N.p / %N.s text reads, when it isn't the layer's own
 ---@field eachPip boolean? hidden for its copies on every pip of a split bar
 ---@field host Frame? its own frame, so it draws at its place in the sub element list (a layer's texts)
@@ -251,6 +252,7 @@
 ---@field Secret boolean? drawn by a native aura button, which Lua can't read
 ---@field Value boolean? %p is a value and %t its max, not a time
 ---@field Decimals number|table<string, number>? a value text's rounding, per token when a table
+---@field Tokens table<string, fun(layer: CDMLayer): string>? named text tokens, %standing or %2.standing
 
 ---@class CDMCastState
 ---@field castBarID number?

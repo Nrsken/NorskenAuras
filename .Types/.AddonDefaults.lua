@@ -120,6 +120,8 @@
 ---@field ShowOn string? 'always', 'cooldown' or 'ready', a durability trigger's 'always' or 'value'
 ---@field Operator string? durability triggers, a CDM.OPERATORS key
 ---@field Threshold number? durability triggers, the percent Operator compares to
+---@field FactionID number? faction triggers, nil until one is picked
+---@field UseWatched boolean? faction triggers follow the watched faction
 ---@field Event string? event triggers, a CDM.EVENTS value
 ---@field EncounterCombat boolean? event triggers, a boss fight counts as combat to its end
 ---@field DeathLimit number? Unit Died on the group, deaths shown a window
